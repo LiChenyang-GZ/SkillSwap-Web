@@ -50,7 +50,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
 
   // Toggle mock vs real auth easily
-  const USE_SUPABASE = true;
+  const USE_SUPABASE = false;
 
   // --------------------------
   // Theme Initialization

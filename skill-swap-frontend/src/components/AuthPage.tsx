@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../utils/supabase/supabase';
+// import { supabase } from '../utils/supabase/supabase';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -18,9 +18,10 @@ import {
 import { GoogleIcon } from './ui/google-icon';
 
 export function AuthPage() {
-  const { setCurrentPage } = useApp();
+  const { setCurrentPage, signIn } = useApp();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Sign In state
   const [signInData, setSignInData] = useState({
@@ -38,65 +39,86 @@ export function AuthPage() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: signInData.email,
-      password: signInData.password,
-    });
-    if (error) {
-      alert(error.message);
+    // const { error } = await supabase.auth.signInWithPassword({
+    //   email: signInData.email,
+    //   password: signInData.password,
+    // });
+    // if (error) {
+    //   alert(error.message);
+    // }
+    // setLoading(false);
+    try {
+      // 使用 AppContext 的 signIn（支持 Mock Auth）
+      await signIn(signInData.email, signInData.password);
+      // 成功后 AppContext 会自动跳转页面
+    } catch (err: any) {
+      console.error("Sign in error:", err);
+      setError(err.message || "登录失败，请检查邮箱和密码");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (signUpData.password !== signUpData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: signUpData.email,
-      password: signUpData.password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/home`,
-      },
-    });
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Check your email for a confirmation link');
-    }
+    // if (signUpData.password !== signUpData.confirmPassword) {
+    //   alert('Passwords do not match');
+    //   return;
+    // }
+    // setLoading(true);
+    // const { error } = await supabase.auth.signUp({
+    //   email: signUpData.email,
+    //   password: signUpData.password,
+    //   options: {
+    //     emailRedirectTo: `${window.location.origin}/home`,
+    //   },
+    // });
+    // if (error) {
+    //   alert(error.message);
+    // } else {
+    //   alert('Check your email for a confirmation link');
+    // }
     setLoading(false);
+    try {
+      // Mock 模式下，注册和登录使用同样的逻辑
+      await signIn(signUpData.email, signUpData.password);
+    } catch (err: any) {
+      console.error("Sign up error:", err);
+      setError(err.message || "注册失败，请重试");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: signInData.email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/home`,
-      },
-    });
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Check your email for a magic link');
-    }
-    setLoading(false);
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   const { error } = await supabase.auth.signInWithOtp({
+  //     email: signInData.email,
+  //     options: {
+  //       emailRedirectTo: `${window.location.origin}/home`,
+  //     },
+  //   });
+  //   if (error) {
+  //     alert(error.message);
+  //   } else {
+  //     alert('Check your email for a magic link');
+  //   }
+  //   setLoading(false);
   };
 
   const handleGoogleAuth = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin + '/home' },
-      });
-      if (error) alert(error.message);
-    } catch (err) {
-      console.error('Google sign-in error:', err);
-    }
+  //   try {
+  //     const { error } = await supabase.auth.signInWithOAuth({
+  //       provider: 'google',
+  //       options: { redirectTo: window.location.origin + '/home' },
+  //     });
+  //     if (error) alert(error.message);
+  //   } catch (err) {
+  //     console.error('Google sign-in error:', err);
+  //   }
   };
 
   return (
