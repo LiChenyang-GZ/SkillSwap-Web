@@ -8,6 +8,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -15,14 +16,17 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final JwtConverter jwtConverter; // 3. 注入我们的转换器
+    private final CorsConfigurationSource corsConfigurationSource;
 
-    public SecurityConfig(JwtConverter jwtConverter) {
+    public SecurityConfig(JwtConverter jwtConverter, CorsConfigurationSource corsConfigurationSource) {
         this.jwtConverter = jwtConverter;
+        this.corsConfigurationSource = corsConfigurationSource;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             // 启用 OAuth2 资源服务器功能，并使用 JWT 进行验证
             .oauth2ResourceServer(oauth2 -> 
                 oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter))
