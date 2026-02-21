@@ -219,14 +219,14 @@ public class WorkshopServiceImpl implements WorkshopService {
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
             facilitatorDto = new FacilitatorDto(
-                "u_" + workshop.getFacilitator().getId(),
+                workshop.getFacilitator().getId().toString(),
                 workshop.getFacilitator().getUsername(),
                 workshop.getFacilitator().getAvatarUrl()
             );
         }
 
         return new WorkshopResponseDto(
-            "w_" + workshop.getId(),
+            workshop.getId().toString(),
             workshop.getTitle(),
             workshop.getDescription(),
             workshop.getCategory(),

@@ -3,11 +3,8 @@ package club.skillswap.skillswapbackend.workshop.controller;
 import club.skillswap.skillswapbackend.common.dto.ApiMessageDto;
 import club.skillswap.skillswapbackend.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.skillswapbackend.workshop.dto.WorkshopResponseDto;
-import club.skillswap.skillswapbackend.workshop.dto.JoinWorkshopRequestDto;
-import club.skillswap.skillswapbackend.workshop.dto.LeaveWorkshopRequestDto;
 import club.skillswap.skillswapbackend.workshop.service.WorkshopService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -75,23 +72,13 @@ public class WorkshopController {
     @PostMapping("/{id}/join")
     public ResponseEntity<ApiMessageDto> joinWorkshop(
             @PathVariable Long id,
-            @RequestBody JoinWorkshopRequestDto request,
-            Authentication authentication,
-            @Value("${spring.profiles.active:prod}") String activeProfile) {
+            Authentication authentication) {
         
-        String userId;
-        
-        // Dev 环境：允许从 request body 读取 userId
-        if ("dev".equals(activeProfile)) {
-            userId = request.userId();
-        } else {
-            // Prod 环境：必须有有效的 authentication
-            if (authentication == null || !authentication.isAuthenticated()) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-            }
-            userId = authentication.getName();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
-
+        
+        String userId = authentication.getName();
         workshopService.joinWorkshop(id, userId);
         return ResponseEntity.ok(new ApiMessageDto("Successfully joined workshop"));
     }
@@ -99,23 +86,13 @@ public class WorkshopController {
     @PostMapping("/{id}/leave")
     public ResponseEntity<ApiMessageDto> leaveWorkshop(
             @PathVariable Long id,
-            @RequestBody LeaveWorkshopRequestDto request,
-            Authentication authentication,
-            @Value("${spring.profiles.active:prod}") String activeProfile) {
+            Authentication authentication) {
         
-        String userId;
-        
-        // Dev 环境：允许从 request body 读取 userId
-        if ("dev".equals(activeProfile)) {
-            userId = request.userId();
-        } else {
-            // Prod 环境：必须有有效的 authentication
-            if (authentication == null || !authentication.isAuthenticated()) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-            }
-            userId = authentication.getName();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
-
+        
+        String userId = authentication.getName();
         workshopService.leaveWorkshop(id, userId);
         return ResponseEntity.ok(new ApiMessageDto("Successfully left workshop"));
     }

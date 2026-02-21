@@ -11,7 +11,7 @@ import java.sql.ResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "club.skillswap")
 @EnableJpaAuditing
 public class SkillSwapBackendApplication {
 

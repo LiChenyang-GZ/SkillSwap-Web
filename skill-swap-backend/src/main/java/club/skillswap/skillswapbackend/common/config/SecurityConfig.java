@@ -40,6 +40,10 @@ public class SecurityConfig {
             
             // 配置 API 端点的授权规则
             .authorizeHttpRequests(auth -> auth
+                // 开发登录接口放行
+                .requestMatchers("/dev/**").permitAll()
+                // 认证相关接口放行
+                .requestMatchers("/api/v1/auth/**").permitAll()
                 // 允许任何人 GET 公开的用户信息
                 .requestMatchers(HttpMethod.GET, "/api/v1/users/{id}").permitAll()
                 // **规则2 (新增的): 允许任何人 GET 公开的 Workshop 信息**

@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -10,8 +10,8 @@ import {
   mockUser,
   mockWorkshops,
   mockTransactions,
-  mockUsers,
 } from "../lib/mock-data";
+import { authAPI, workshopAPI } from "../lib/api";
 import { supabase } from "../utils/supabase/supabase";
 import { toast } from "sonner";
 
@@ -129,7 +129,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   };
 
-  const checkMockAuthState = () => {
+  const checkMockAuthState = async () => {
     console.log("🔍 Checking mock auth...");
     const savedAuth = localStorage.getItem("skill-swap-auth");
     const savedUser = localStorage.getItem("skill-swap-user");
@@ -138,7 +138,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const userData = JSON.parse(savedUser);
         setUser(userData);
-        setWorkshops(mockWorkshops);
+        // 登录状态下从后端拉取workshops
+        try {
+          const backendWorkshops = await workshopAPI.getAll();
+          setWorkshops(backendWorkshops);
+        } catch (err) {
+          console.warn("⚠️ Failed to fetch workshops, using mock data", err);
+          setWorkshops(mockWorkshops);
+        }
         setTransactions(mockTransactions);
         setIsAuthenticated(true);
         setSessionToken(savedToken || null);
@@ -202,28 +209,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // --- Mock Sign-In ---
     console.log("🔐 Mock sign in with email:", email);
     if (["demo", "password", "123456"].includes(password)) {
-      let userData =
-        mockUsers.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase()
-        ) ?? {
-          ...mockUser,
-          email,
-          username: email
-            .split("@")[0]
-            .replace(/[._]/g, " ")
-            .replace(/\b\w/g, (l) => l.toUpperCase()),
+      const usernamePart = email
+        .split("@")[0]
+        .replace(/[._]/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+      
+      // 调用后端 dev-login 创建/获取用户和 JWT token
+      try {
+        const loginResult = await authAPI.devRegisterLogin(email, usernamePart);
+        
+        // 转换后端用户数据为前端 User 类型
+        const userData: User = {
+          id: loginResult.user.id,
+          username: loginResult.user.username,
+          email: loginResult.user.email,
+          avatarUrl: loginResult.user.avatarUrl,
+          bio: loginResult.user.bio,
+          creditBalance: loginResult.user.creditBalance,
+          skills: [],
+          totalWorkshopsHosted: 0,
+          totalWorkshopsAttended: 0,
+          rating: 0,
+          createdAt: new Date().toISOString(),
         };
-      const mockToken = `mock-token-${Date.now()}`;
-      setUser(userData);
-      setWorkshops(mockWorkshops);
-      setTransactions(mockTransactions);
-      setIsAuthenticated(true);
-      setSessionToken(mockToken);
-      localStorage.setItem("skill-swap-auth", "true");
-      localStorage.setItem("skill-swap-user", JSON.stringify(userData));
-      localStorage.setItem("skill-swap-sessionToken", mockToken);
-      setCurrentPage("home");
-      toast.success(`Welcome back, ${userData.username}!`);
+        
+        // 设置本地登录状态
+        setUser(userData);
+        const latestWorkshops = await workshopAPI.getAll();
+        setWorkshops(latestWorkshops);
+        setTransactions(mockTransactions);
+        setIsAuthenticated(true);
+        setSessionToken(loginResult.access_token);
+        localStorage.setItem("skill-swap-auth", "true");
+        localStorage.setItem("skill-swap-user", JSON.stringify(userData));
+        localStorage.setItem("skill-swap-sessionToken", loginResult.access_token);
+        setCurrentPage("home");
+        console.log("✅ Dev login successful, JWT token obtained");
+        toast.success(`Welcome, ${userData.username}!`);
+      } catch (error) {
+        console.error("❌ Dev login failed:", error);
+        toast.error("Login failed: " + (error instanceof Error ? error.message : "Unknown error"));
+      }
     } else {
       throw new Error("Invalid email or password. Try password: demo");
     }
@@ -246,41 +272,106 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   // --------------------------
-  // Workshop Actions (mock only)
+  // Workshop Actions
   // --------------------------
   const attendWorkshop = async (workshopId: string) => {
     if (!isAuthenticated || !user) {
       toast.error("Please sign in to attend workshops");
       return;
     }
-    setWorkshops((prev) =>
-      prev.map((w) =>
-        w.id === workshopId
-          ? {
-              ...w,
-              currentParticipants: (w.currentParticipants || 0) + 1,
-              participants: [...(w.participants || []), user],
-            }
-          : w
-      )
-    );
-    toast.success("Joined workshop!");
+    
+    try {
+      console.log("🎯 Attempting to join workshop:", workshopId);
+      console.log("📊 Available workshops:", workshops.map(w => ({ id: w.id, title: w.title })));
+      
+      // 查找要 join 的 workshop，获取 creditCost
+      // 尝试精确匹配，也支持数字ID格式
+      let workshop = workshops.find((w) => w.id === workshopId);
+      
+      // 如果精确匹配失败，尝试转换为数字后再匹配
+      if (!workshop && !isNaN(Number(workshopId))) {
+        const numId = Number(workshopId);
+        workshop = workshops.find((w) => String(w.id) === String(numId) || Number(w.id) === numId);
+      }
+      
+      if (!workshop) {
+        throw new Error(`Workshop with ID "${workshopId}" not found in loaded workshops`);
+      }
+      
+      if (workshop.creditCost === undefined || workshop.creditCost === null) {
+        throw new Error("Workshop has no credit cost defined");
+      }
+      
+      console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
+      
+      // 调用后端 API
+      await workshopAPI.join(workshopId);
+      
+      // 更新本地用户状态：扣除 credit
+      const updatedUser = {
+        ...user,
+        creditBalance: (user.creditBalance || 0) - workshop.creditCost,
+      };
+      setUser(updatedUser);
+      localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
+      
+      // 更新本地 workshop 状态
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === workshopId || String(w.id) === String(workshopId)
+            ? {
+                ...w,
+                currentParticipants: (w.currentParticipants || 0) + 1,
+                participants: [...(w.participants || []), user],
+              }
+            : w
+        )
+      );
+      toast.success(`Joined "${workshop.title}"! -${workshop.creditCost} credits`);
+    } catch (error) {
+      console.error("Failed to join workshop:", error);
+      toast.error("Failed to join workshop: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
   };
 
   const cancelWorkshopAttendance = async (workshopId: string) => {
     if (!isAuthenticated || !user) return;
-    setWorkshops((prev) =>
-      prev.map((w) =>
-        w.id === workshopId
-          ? {
-              ...w,
-              currentParticipants: (w.currentParticipants || 1) - 1,
-              participants: (w.participants || []).filter((p) => p.id !== user.id),
-            }
-          : w
-      )
-    );
-    toast.success("Workshop attendance cancelled");
+    
+    try {
+      // 查找要 leave 的 workshop，获取 creditCost（退还）
+      const workshop = workshops.find((w) => w.id === workshopId);
+      if (!workshop || !workshop.creditCost) {
+        throw new Error("Workshop not found or has no credit cost");
+      }
+      
+      // 调用后端 API
+      await workshopAPI.leave(workshopId);
+      
+      // 更新本地用户状态：退还 credit
+      const updatedUser = {
+        ...user,
+        creditBalance: (user.creditBalance || 0) + workshop.creditCost,
+      };
+      setUser(updatedUser);
+      localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
+      
+      // 更新本地 workshop 状态
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === workshopId
+            ? {
+                ...w,
+                currentParticipants: (w.currentParticipants || 1) - 1,
+                participants: (w.participants || []).filter((p) => p.id !== user.id),
+              }
+            : w
+        )
+      );
+      toast.success("Workshop attendance cancelled");
+    } catch (error) {
+      console.error("Failed to leave workshop:", error);
+      toast.error("Failed to leave workshop: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
   };
 
   const createWorkshop = async (workshopData: any) => {
