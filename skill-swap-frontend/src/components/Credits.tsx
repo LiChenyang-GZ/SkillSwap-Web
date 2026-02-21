@@ -20,6 +20,15 @@ import {
 export function Credits() {
   const { user, transactions } = useApp();
 
+  // Early return if no user
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
+        <p className="text-muted-foreground">Please sign in to view your credits.</p>
+      </div>
+    );
+  }
+
   // Calculate monthly statistics
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -46,10 +55,10 @@ export function Credits() {
     { name: 'Diamond', min: 501, max: Infinity, color: 'text-blue-600', bgColor: 'bg-blue-100', darkBgColor: 'dark:bg-blue-900/20' },
   ];
 
-  const currentLevel = creditLevels.find(level => user.credits >= level.min && user.credits <= level.max) || creditLevels[0];
-  const nextLevel = creditLevels.find(level => level.min > user.credits);
+  const currentLevel = creditLevels.find(level => user.creditBalance >= level.min && user.creditBalance <= level.max) || creditLevels[0];
+  const nextLevel = creditLevels.find(level => level.min > user.creditBalance);
   const progressToNextLevel = nextLevel 
-    ? ((user.credits - currentLevel.min) / (nextLevel.min - currentLevel.min)) * 100
+    ? ((user.creditBalance - currentLevel.min) / (nextLevel.min - currentLevel.min)) * 100
     : 100;
 
   // Credit earning tips
@@ -99,7 +108,7 @@ export function Credits() {
               <CardContent>
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <p className="text-4xl font-bold">{user.credits}</p>
+                    <p className="text-4xl font-bold">{user.creditBalance}</p>
                     <p className="text-muted-foreground">Available Credits</p>
                   </div>
                   <div className={`px-4 py-2 rounded-lg ${currentLevel.bgColor} ${currentLevel.darkBgColor}`}>
@@ -119,12 +128,12 @@ export function Credits() {
                         Progress to {nextLevel.name}
                       </span>
                       <span className="text-sm font-medium">
-                        {user.credits}/{nextLevel.min} credits
+                        {user.creditBalance}/{nextLevel.min} credits
                       </span>
                     </div>
                     <Progress value={progressToNextLevel} className="h-2" />
                     <p className="text-xs text-muted-foreground mt-1">
-                      {nextLevel.min - user.credits} credits needed for {nextLevel.name}
+                      {nextLevel.min - user.creditBalance} credits needed for {nextLevel.name}
                     </p>
                   </div>
                 )}

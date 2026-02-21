@@ -31,7 +31,7 @@ public class Workshop {
     @Column(name = "skill_level")
     private String skillLevel;
 
-    private int duration;
+    private Integer duration;
 
     private String status = "upcoming"; // 默认状态
 
@@ -39,7 +39,7 @@ public class Workshop {
     private LocalTime time;
 
     @Column(name = "is_online")
-    private boolean isOnline;
+    private Boolean isOnline;
 
 
     @ElementCollection(fetch = FetchType.LAZY)
@@ -49,10 +49,13 @@ public class Workshop {
     private Set<String> location;
 
     @Column(name = "max_participants")
-    private int maxParticipants;
+    private Integer maxParticipants;
+
+    @Column(name = "credit_cost")
+    private Integer creditCost;        // 参与者付出的积分
 
     @Column(name = "credit_reward")
-    private int creditReward;
+    private Integer creditReward;      // 讲师获得的积分
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

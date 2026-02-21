@@ -74,7 +74,7 @@ export function Navigation() {
                 onClick={() => setCurrentPage('credits')}
               >
                 <CreditCard className="w-3 h-3" />
-                <span>{user.credits}</span>
+                <span>{user.creditBalance}</span>
               </Badge>
             )}
             
@@ -94,11 +94,11 @@ export function Navigation() {
                   onClick={() => setCurrentPage('dashboard')}
                 >
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarImage src={user.avatarUrl} alt={user.username} />
+                    <AvatarFallback>{user.username.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                   </Avatar>
                   <div className="hidden xl:block">
-                    <p className="text-sm font-medium">{user.name}</p>
+                    <p className="text-sm font-medium">{user.username}</p>
                   </div>
                 </div>
                 {isAuthenticated && (
@@ -144,7 +144,7 @@ export function Navigation() {
                 onClick={() => setCurrentPage('credits')}
               >
                 <CreditCard className="w-3 h-3" />
-                <span>{user.credits}</span>
+                <span>{user.creditBalance}</span>
               </Badge>
             )}
 

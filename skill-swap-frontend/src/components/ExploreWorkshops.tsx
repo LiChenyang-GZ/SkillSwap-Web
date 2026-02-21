@@ -33,7 +33,7 @@ export function ExploreWorkshops() {
   const filteredWorkshops = workshops.filter(workshop => {
     const matchesSearch = workshop.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          workshop.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         workshop.facilitator.name.toLowerCase().includes(searchQuery.toLowerCase());
+                         workshop.facilitator?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = selectedCategory === 'all' || workshop.category === selectedCategory;
     const matchesSkillLevel = selectedSkillLevel === 'all' || workshop.skillLevel === selectedSkillLevel;
@@ -46,7 +46,7 @@ export function ExploreWorkshops() {
 
   const isUserAttending = (workshopId: string) => {
     const workshop = workshops.find(w => w.id === workshopId);
-    return workshop?.participants.some(p => p.id === user.id) || false;
+    return workshop?.participants?.some(p => p.id === user?.id) || false;
   };
 
   return (
@@ -157,17 +157,13 @@ export function ExploreWorkshops() {
                     {/* Facilitator */}
                     <div className="flex items-center space-x-3 mb-4">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={workshop.facilitator.avatar} />
+                        <AvatarImage src={workshop.facilitator?.avatar} />
                         <AvatarFallback className="text-xs">
-                          {workshop.facilitator.name.split(' ').map(n => n[0]).join('')}
+                          {workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{workshop.facilitator.name}</p>
-                        <div className="flex items-center space-x-1">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-xs text-muted-foreground">{workshop.facilitator.rating}</span>
-                        </div>
+                        <p className="text-sm font-medium">{workshop.facilitator?.name}</p>
                       </div>
                     </div>
 
@@ -194,20 +190,20 @@ export function ExploreWorkshops() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Users className="w-4 h-4" />
-                        <span>{workshop.currentParticipants}/{workshop.maxParticipants} participants</span>
+                        <span>{workshop.currentParticipants ?? 0}/{workshop.maxParticipants} participants</span>
                       </div>
                     </div>
 
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1 mb-4">
-                      {workshop.tags.slice(0, 3).map((tag) => (
+                      {(workshop.tags ?? []).slice(0, 3).map((tag) => (
                         <Badge key={tag} variant="outline" className="text-xs">
                           {tag}
                         </Badge>
                       ))}
-                      {workshop.tags.length > 3 && (
+                      {(workshop.tags?.length ?? 0) > 3 && (
                         <Badge variant="outline" className="text-xs">
-                          +{workshop.tags.length - 3}
+                          +{(workshop.tags?.length ?? 0) - 3}
                         </Badge>
                       )}
                     </div>
@@ -226,11 +222,11 @@ export function ExploreWorkshops() {
                         <Badge variant="secondary" className="px-3 py-1">
                           Attending
                         </Badge>
-                      ) : workshop.currentParticipants >= workshop.maxParticipants ? (
+                      ) : (workshop.currentParticipants ?? 0) >= workshop.maxParticipants ? (
                         <Badge variant="outline" className="px-3 py-1">
                           Full
                         </Badge>
-                      ) : user.credits < workshop.creditCost ? (
+                      ) : user && user.creditBalance < workshop.creditCost ? (
                         <Badge variant="outline" className="px-3 py-1 text-muted-foreground">
                           Not Enough Credits
                         </Badge>

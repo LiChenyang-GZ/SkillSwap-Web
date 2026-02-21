@@ -24,13 +24,22 @@ import {
 export function Dashboard() {
   const { user, workshops, transactions, setCurrentPage, cancelWorkshopAttendance } = useApp();
 
+  // Early return if no user
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
+        <p className="text-muted-foreground">Please sign in to view your dashboard.</p>
+      </div>
+    );
+  }
+
   // Get user's attended workshops
   const attendedWorkshops = workshops.filter(w => 
-    w.participants.some(p => p.id === user.id)
+    (w.participants ?? []).some(p => p.id === user.id)
   );
 
   // Get user's hosted workshops
-  const hostedWorkshops = workshops.filter(w => w.facilitatorId === user.id);
+  const hostedWorkshops = workshops.filter(w => w.facilitator?.id === user.id);
 
   // Recent transactions
   const recentTransactions = transactions.slice(0, 5);
@@ -63,12 +72,12 @@ export function Dashboard() {
               <CardContent className="p-6">
                 <div className="text-center">
                   <Avatar className="w-20 h-20 mx-auto mb-4">
-                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarImage src={user.avatarUrl} alt={user.username} />
                     <AvatarFallback className="text-lg">
-                      {user.name.split(' ').map(n => n[0]).join('')}
+                      {user.username.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
-                  <h2 className="text-xl font-semibold mb-1">{user.name}</h2>
+                  <h2 className="text-xl font-semibold mb-1">{user.username}</h2>
                   <p className="text-muted-foreground text-sm mb-4">{user.email}</p>
                   
                   <div className="flex items-center justify-center space-x-1 mb-4">
@@ -112,7 +121,7 @@ export function Dashboard() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Credits</p>
-                        <p className="text-xl font-bold">{user.credits}</p>
+                        <p className="text-xl font-bold">{user.creditBalance}</p>
                       </div>
                     </div>
                   </div>
@@ -205,12 +214,12 @@ export function Dashboard() {
                               </div>
                               <div className="flex items-center space-x-3">
                                 <Avatar className="w-6 h-6">
-                                  <AvatarImage src={workshop.facilitator.avatar} />
+                                  <AvatarImage src={workshop.facilitator?.avatar} />
                                   <AvatarFallback className="text-xs">
-                                    {workshop.facilitator.name.split(' ').map(n => n[0]).join('')}
+                                    {workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="text-sm text-muted-foreground">{workshop.facilitator.name}</span>
+                                <span className="text-sm text-muted-foreground">{workshop.facilitator?.name}</span>
                                 <Badge variant="secondary">{workshop.category}</Badge>
                               </div>
                             </div>

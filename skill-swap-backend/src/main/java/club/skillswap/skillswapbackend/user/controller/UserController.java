@@ -43,9 +43,8 @@ public class UserController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<UserProfileDto> getUserProfileById(@PathVariable UUID id) {
-        UserAccount user = userService.findUserById(id);
-        UserProfileDto userProfileDto = UserProfileDto.fromEntity(user);
-        return ResponseEntity.ok(userProfileDto);
+        UserProfileDto userProfile = userService.getUserProfileWithStats(id);
+        return ResponseEntity.ok(userProfile);
     }
 
     /**
