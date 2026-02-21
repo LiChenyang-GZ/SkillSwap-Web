@@ -1,13 +1,17 @@
 package club.skillswap.skillswapbackend.workshop.service;
 
 import club.skillswap.skillswapbackend.common.exception.ResourceNotFoundException;
+import club.skillswap.skillswapbackend.credit.entity.CreditTransaction;
+import club.skillswap.skillswapbackend.credit.repository.CreditTransactionRepository;
 import club.skillswap.skillswapbackend.user.entity.UserAccount;
 import club.skillswap.skillswapbackend.user.service.UserService;
 import club.skillswap.skillswapbackend.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.skillswapbackend.workshop.dto.WorkshopResponseDto;
 import club.skillswap.skillswapbackend.workshop.dto.FacilitatorDto;
 import club.skillswap.skillswapbackend.workshop.entity.Workshop;
+import club.skillswap.skillswapbackend.workshop.entity.WorkshopParticipant;
 import club.skillswap.skillswapbackend.workshop.repository.WorkshopRepository;
+import club.skillswap.skillswapbackend.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -27,6 +32,8 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     private final WorkshopRepository workshopRepository;
     private final UserService userService;
+    private final WorkshopParticipantRepository participantRepository;
+    private final CreditTransactionRepository creditTransactionRepository;
 
     @Override
     @Transactional
@@ -112,6 +119,97 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         // 5. 如果权限校验通过，则执行删除操作
         workshopRepository.delete(workshop);
+    }
+
+    @Override
+    @Transactional
+    public void joinWorkshop(Long workshopId, String userId) {
+        // 1. 查找工作坊
+        Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        // 2. 查找用户
+        UserAccount user = userService.findUserByStringId(userId);
+
+        // 3. 检查用户是否已经参加了这个工作坊
+        List<WorkshopParticipant> existingParticipations = participantRepository.findByUserIdAndWorkshopId(
+                user.getId(), workshopId
+        );
+        if (!existingParticipations.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is already a participant in this workshop");
+        }
+
+        // 4. 检查用户是否有足够的积分
+        Integer creditCost = workshop.getCreditCost();
+        if (creditCost == null) creditCost = 0;
+        
+        Integer userCreditBalance = user.getCreditBalance();
+        if (userCreditBalance == null) userCreditBalance = 0;
+        
+        if (userCreditBalance < creditCost) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient credits to join this workshop");
+        }
+
+        // 5. 添加参与者记录
+        WorkshopParticipant participant = new WorkshopParticipant();
+        participant.setWorkshop(workshop);
+        participant.setUser(user);
+        participant.setRegistrationDate(LocalDateTime.now());
+        participantRepository.save(participant);
+
+        // 6. 扣除积分
+        user.setCreditBalance(userCreditBalance - creditCost);
+        userService.saveUser(user);
+
+        // 7. 记录积分交易
+        CreditTransaction transaction = new CreditTransaction();
+        transaction.setUser(user);
+        transaction.setWorkshop(workshop);
+        transaction.setCreditAmount(-creditCost);
+        transaction.setTransactionType("JOIN");
+        transaction.setDescription("Joined workshop: " + workshop.getTitle());
+        creditTransactionRepository.save(transaction);
+    }
+
+    @Override
+    @Transactional
+    public void leaveWorkshop(Long workshopId, String userId) {
+        // 1. 查找工作坊
+        Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        // 2. 查找用户
+        UserAccount user = userService.findUserByStringId(userId);
+
+        // 3. 查找参与记录
+        List<WorkshopParticipant> participations = participantRepository.findByUserIdAndWorkshopId(
+                user.getId(), workshopId
+        );
+        if (participations.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not a participant in this workshop");
+        }
+
+        // 4. 删除参与记录
+        participantRepository.deleteAll(participations);
+
+        // 5. 退还积分
+        Integer creditCost = workshop.getCreditCost();
+        if (creditCost == null) creditCost = 0;
+
+        Integer userCreditBalance = user.getCreditBalance();
+        if (userCreditBalance == null) userCreditBalance = 0;
+
+        user.setCreditBalance(userCreditBalance + creditCost);
+        userService.saveUser(user);
+
+        // 6. 记录积分交易（退还）
+        CreditTransaction transaction = new CreditTransaction();
+        transaction.setUser(user);
+        transaction.setWorkshop(workshop);
+        transaction.setCreditAmount(creditCost);
+        transaction.setTransactionType("LEAVE");
+        transaction.setDescription("Left workshop: " + workshop.getTitle());
+        creditTransactionRepository.save(transaction);
     }
 
     // 私有辅助方法，用于将 Entity 映射到 DTO

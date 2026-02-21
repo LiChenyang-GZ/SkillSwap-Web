@@ -30,8 +30,11 @@ public class UserAccount {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
-    @Column
+    @Column(name = "bio")
     private String bio;
+
+    @Column(name = "credit_balance")
+    private Integer creditBalance;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

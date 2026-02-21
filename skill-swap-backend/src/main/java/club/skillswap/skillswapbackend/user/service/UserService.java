@@ -39,6 +39,14 @@ public class UserService {
     }
 
     /**
+     * 保存用户信息
+     */
+    @Transactional
+    public UserAccount saveUser(UserAccount user) {
+        return userRepository.save(user);
+    }
+
+    /**
      * 获取用户资料（包含统计数据）
      */
     @Transactional(readOnly = true)

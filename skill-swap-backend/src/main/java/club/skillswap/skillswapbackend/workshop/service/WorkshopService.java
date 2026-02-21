@@ -16,4 +16,8 @@ public interface WorkshopService {
     List<WorkshopResponseDto> getAllWorkshops();
     
     void deleteWorkshop(Long workshopId, Authentication authentication);
+
+    void joinWorkshop(Long workshopId, String userId);
+
+    void leaveWorkshop(Long workshopId, String userId);
 }
