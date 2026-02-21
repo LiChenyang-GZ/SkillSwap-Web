@@ -30,10 +30,20 @@ function getDefaultImage(category: string): string {
 
 // 后端返回的数据直接映射，只添加 image 字段
 function enrichWorkshop(workshop: any): Workshop {
+  console.log("📦 Raw workshop data from backend:", workshop);
+  
   return {
     ...workshop,
+    id: String(workshop.id),
     image: workshop.image || getDefaultImage(workshop.category),
   };
+}
+
+function toBackendWorkshopId(workshopId: string): string {
+  // 兼容 mock id: workshop-1 -> 1
+  const match = /^workshop-(\d+)$/.exec(workshopId);
+  if (match) return match[1];
+  return workshopId;
 }
 
 // Helper function to make API calls with authentication
@@ -47,8 +57,11 @@ async function apiCall<T>(
     ...options.headers,
   };
 
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  // 如果没有显式传入 token，尝试从 localStorage 读取
+  const tokenToUse = token ?? localStorage.getItem('dev_token');
+  
+  if (tokenToUse) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${tokenToUse}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -90,6 +103,73 @@ export const authAPI = {
     return data;
   },
 
+  // 开发环境：调用后端 /dev/auth/dev-login，自动创建/获取用户并获取 JWT
+  devRegisterLogin: async (email: string, username?: string): Promise<{ access_token: string; user: any; expiresIn: number }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/dev/auth/dev-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          username: username || email.split('@')[0],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to dev login: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // 保存 token 到 localStorage
+      localStorage.setItem('dev_token', data.access_token);
+      localStorage.setItem('dev_token_user_id', data.user.id);
+      localStorage.setItem('dev_token_username', data.user.username);
+
+      return data;
+    } catch (error) {
+      console.error('❌ Dev register-login failed:', error);
+      throw error;
+    }
+  },
+
+  // 开发环境：从后端 /dev/token 获取 JWT token
+  devLogin: async (userId?: string, username?: string): Promise<{ token: string; userId: string; username: string; expiresIn: number }> => {
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.append('userId', userId);
+      if (username) params.append('username', username);
+      
+      const queryString = params.toString();
+      const url = queryString ? `/dev/token?${queryString}` : '/dev/token';
+      
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get dev token: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // 保存 token 到 localStorage
+      localStorage.setItem('dev_token', data.token);
+      localStorage.setItem('dev_token_user_id', data.userId);
+      localStorage.setItem('dev_token_username', data.username);
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Dev login failed:', error);
+      throw error;
+    }
+  },
+
   // Mock sign-in (just return the first mock user)
   signInMock: async () => {
     return mockUsers[0]; // ✅ always use the first mock user
@@ -114,8 +194,14 @@ export const authAPI = {
     return newUser;
   },
 
-  // Sign out (real Supabase)
+  // Sign out (real 和 dev 都支持)
   signOut: async () => {
+    // 清除 dev token
+    localStorage.removeItem('dev_token');
+    localStorage.removeItem('dev_token_user_id');
+    localStorage.removeItem('dev_token_username');
+    
+    // 清除 Supabase 会话
     await supabase.auth.signOut();
   },
 
@@ -189,7 +275,7 @@ export const workshopAPI = {
   // 获取单个工作坊
   getById: async (id: string): Promise<Workshop | null> => {
     try {
-      const data = await apiCall<Workshop>(`/api/v1/workshops/${id}`);
+      const data = await apiCall<Workshop>(`/api/v1/workshops/${toBackendWorkshopId(id)}`);
       return enrichWorkshop(data);
     } catch (error) {
       console.warn("⚠️ Backend unavailable, using mock data");
@@ -217,12 +303,12 @@ export const workshopAPI = {
   },
 
   // 加入工作坊
-  join: async (workshopId: string, token: string): Promise<void> => {
+  join: async (workshopId: string): Promise<void> => {
     try {
+      const backendId = toBackendWorkshopId(workshopId);
       await apiCall<void>(
-        `/api/v1/workshops/${workshopId}/join`,
-        { method: "POST" },
-        token
+        `/api/v1/workshops/${backendId}/join`,
+        { method: "POST" }
       );
       console.log("✅ Joined workshop:", workshopId);
     } catch (error) {
@@ -232,12 +318,12 @@ export const workshopAPI = {
   },
 
   // 离开工作坊
-  leave: async (workshopId: string, token: string): Promise<void> => {
+  leave: async (workshopId: string): Promise<void> => {
     try {
+      const backendId = toBackendWorkshopId(workshopId);
       await apiCall<void>(
-        `/api/v1/workshops/${workshopId}/leave`,
-        { method: "POST" },
-        token
+        `/api/v1/workshops/${backendId}/leave`,
+        { method: "POST" }
       );
       console.log("✅ Left workshop:", workshopId);
     } catch (error) {
