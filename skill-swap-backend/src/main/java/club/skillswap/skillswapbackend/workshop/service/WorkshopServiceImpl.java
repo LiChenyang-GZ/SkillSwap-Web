@@ -43,9 +43,10 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setDuration(createRequestDto.duration());
         workshop.setDate(createRequestDto.date());
         workshop.setTime(createRequestDto.time());
-        workshop.setOnline(createRequestDto.isOnline());
+        workshop.setIsOnline(createRequestDto.isOnline());
         workshop.setLocation(createRequestDto.location());
         workshop.setMaxParticipants(createRequestDto.maxParticipants());
+        workshop.setCreditCost(createRequestDto.creditCost());
         workshop.setCreditReward(createRequestDto.creditReward());
         workshop.setTags(createRequestDto.tags());
         workshop.setMaterials(createRequestDto.materials());
@@ -74,12 +75,12 @@ public class WorkshopServiceImpl implements WorkshopService {
     @Transactional(readOnly = true)
     public List<WorkshopResponseDto> getAllWorkshops() {
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
-        // 触发懒加载
+        // 触发懒加载（添加 null 检查）
         workshops.forEach(w -> {
-            w.getLocation().size();
-            w.getTags().size();
-            w.getMaterials().size();
-            w.getRequirements().size();
+            if (w.getLocation() != null) w.getLocation().size();
+            if (w.getTags() != null) w.getTags().size();
+            if (w.getMaterials() != null) w.getMaterials().size();
+            if (w.getRequirements() != null) w.getRequirements().size();
         });
         return workshops.stream().map(this::mapToDto).toList();
     }
@@ -116,12 +117,15 @@ public class WorkshopServiceImpl implements WorkshopService {
     // 私有辅助方法，用于将 Entity 映射到 DTO
     private WorkshopResponseDto mapToDto(Workshop workshop) {
 
-        // 创建嵌套的 FacilitatorDto
-        FacilitatorDto facilitatorDto = new FacilitatorDto(
-            "u_" + workshop.getFacilitator().getId(), // 假设UserAccount的ID是UUID，自动转为String
-            workshop.getFacilitator().getUsername(),
-            workshop.getFacilitator().getAvatarUrl() // 假设UserAccount有getAvatarUrl()方法
-        );
+        // 创建嵌套的 FacilitatorDto（添加 null 检查）
+        FacilitatorDto facilitatorDto = null;
+        if (workshop.getFacilitator() != null) {
+            facilitatorDto = new FacilitatorDto(
+                "u_" + workshop.getFacilitator().getId(),
+                workshop.getFacilitator().getUsername(),
+                workshop.getFacilitator().getAvatarUrl()
+            );
+        }
 
         return new WorkshopResponseDto(
             "w_" + workshop.getId(),
@@ -132,11 +136,16 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getStatus(),
             workshop.getDate(),
             workshop.getTime(),
-            workshop.isOnline(),
+            workshop.getDuration(),
+            workshop.getIsOnline(),
             workshop.getLocation(),
             workshop.getMaxParticipants(),
+            workshop.getCreditCost(),
             workshop.getCreditReward(),
             facilitatorDto,
+            workshop.getTags(),
+            workshop.getMaterials(),
+            workshop.getRequirements(),
             workshop.getCreatedAt()
             );
     }

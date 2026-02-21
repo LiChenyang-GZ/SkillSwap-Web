@@ -23,7 +23,7 @@ export function HomePage() {
   // Get upcoming workshops the user is attending
   const upcomingWorkshops = workshops.filter(w => 
     w.status === 'upcoming' && 
-    w.participants.some(p => p.id === user.id)
+    (w.participants ?? []).some(p => p.id === user?.id)
   );
 
   // Get featured workshops (newest or most popular)
@@ -35,21 +35,21 @@ export function HomePage() {
   const stats = [
     {
       title: 'Available Credits',
-      value: user.credits,
+      value: user?.creditBalance ?? 0,
       icon: Award,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
       title: 'Workshops Attended',
-      value: user.totalWorkshopsAttended,
+      value: user?.totalWorkshopsAttended ?? 0,
       icon: BookOpen,
       color: 'text-secondary',
       bgColor: 'bg-secondary/10',
     },
     {
       title: 'Workshops Hosted',
-      value: user.totalWorkshopsHosted,
+      value: user?.totalWorkshopsHosted ?? 0,
       icon: Target,
       color: 'text-accent',
       bgColor: 'bg-accent/10',
@@ -63,7 +63,7 @@ export function HomePage() {
         <div className="py-8 lg:py-12">
           <div className="text-center lg:text-left">
             <h1 className="text-3xl lg:text-4xl font-bold mb-4">
-              Welcome back, {user.name.split(' ')[0]}! 👋
+              Welcome back, {user?.username?.split(' ')[0] ?? 'Guest'}! 👋
             </h1>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
               Ready to learn something new or share your expertise? Discover workshops, earn credits, and grow your skills with our community.
@@ -157,10 +157,10 @@ export function HomePage() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
-                              <AvatarImage src={workshop.facilitator.avatar} />
-                              <AvatarFallback>{workshop.facilitator.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                              <AvatarImage src={workshop.facilitator?.avatar} />
+                              <AvatarFallback>{workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}</AvatarFallback>
                             </Avatar>
-                            <span className="text-sm text-muted-foreground">{workshop.facilitator.name}</span>
+                            <span className="text-sm text-muted-foreground">{workshop.facilitator?.name}</span>
                           </div>
                         </div>
                         <div className="flex flex-col items-end space-y-2">
@@ -231,14 +231,10 @@ export function HomePage() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Avatar className="w-5 h-5">
-                        <AvatarImage src={workshop.facilitator.avatar} />
-                        <AvatarFallback className="text-xs">{workshop.facilitator.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        <AvatarImage src={workshop.facilitator?.avatar} />
+                        <AvatarFallback className="text-xs">{workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}</AvatarFallback>
                       </Avatar>
-                      <span className="text-xs text-muted-foreground">{workshop.facilitator.name}</span>
-                      <div className="flex items-center space-x-1 ml-auto">
-                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs">{workshop.facilitator.rating}</span>
-                      </div>
+                      <span className="text-xs text-muted-foreground">{workshop.facilitator?.name}</span>
                     </div>
                   </CardContent>
                 </Card>

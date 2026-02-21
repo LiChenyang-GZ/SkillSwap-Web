@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -11,16 +11,11 @@ import { Badge } from './ui/badge';
 import { 
   Plus,
   X,
-  Calendar,
-  Clock,
   Users,
-  CreditCard,
   Award,
-  MapPin,
   Globe,
   Info,
-  Upload,
-  Tag
+  Upload
 } from 'lucide-react';
 import { categories, skillLevels } from '../lib/mock-data';
 
@@ -35,7 +30,8 @@ export function CreateWorkshop() {
     skillLevel: '',
     duration: '',
     maxParticipants: '',
-    creditCost: '',
+    creditCost: '',      // 参与者付出的积分
+    creditReward: '',    // 讲师获得的积分（自动计算）
     date: '',
     time: '',
     location: '',
@@ -49,7 +45,7 @@ export function CreateWorkshop() {
   const [newMaterial, setNewMaterial] = useState('');
   const [newRequirement, setNewRequirement] = useState('');
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: string | boolean | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -108,7 +104,7 @@ export function CreateWorkshop() {
     const baseCost = parseInt(formData.creditCost) || 0;
     const duration = parseInt(formData.duration) || 0;
     
-    // Formula: base cost + (duration bonus) + (skill level bonus)
+    // Formula: base cost * 1.5 + (duration bonus) + (skill level bonus)
     let earned = Math.floor(baseCost * 1.5); // 1.5x multiplier for hosting
     
     if (duration >= 120) earned += 10; // Bonus for longer workshops
@@ -202,7 +198,7 @@ export function CreateWorkshop() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="category">Category *</Label>
-                      <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+                      <Select value={formData.category} onValueChange={(value: string) => handleInputChange('category', value)}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -216,7 +212,7 @@ export function CreateWorkshop() {
 
                     <div>
                       <Label htmlFor="skillLevel">Skill Level *</Label>
-                      <Select value={formData.skillLevel} onValueChange={(value) => handleInputChange('skillLevel', value)}>
+                      <Select value={formData.skillLevel} onValueChange={(value: string) => handleInputChange('skillLevel', value)}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select skill level" />
                         </SelectTrigger>
@@ -272,6 +268,9 @@ export function CreateWorkshop() {
                         onChange={(e) => handleInputChange('creditCost', e.target.value)}
                         className="mt-1"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Cost for participants to attend
+                      </p>
                     </div>
                   </div>
 
@@ -304,7 +303,7 @@ export function CreateWorkshop() {
                       <Switch
                         id="isOnline"
                         checked={formData.isOnline}
-                        onCheckedChange={(checked) => handleInputChange('isOnline', checked)}
+                        onCheckedChange={(checked: boolean) => handleInputChange('isOnline', checked)}
                       />
                       <Label htmlFor="isOnline" className="flex items-center space-x-2">
                         <Globe className="w-4 h-4" />
@@ -487,7 +486,7 @@ export function CreateWorkshop() {
                     
                     <div className="flex items-center space-x-2">
                       <div className="w-6 h-6 bg-muted-foreground/20 rounded-full" />
-                      <span className="text-sm text-muted-foreground">{user.name}</span>
+                      <span className="text-sm text-muted-foreground">{user?.username}</span>
                     </div>
                   </div>
                 </CardContent>

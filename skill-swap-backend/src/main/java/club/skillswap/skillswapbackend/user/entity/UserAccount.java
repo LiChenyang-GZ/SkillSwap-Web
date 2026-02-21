@@ -24,6 +24,9 @@ public class UserAccount {
     @Column(unique = true, nullable = false)
     private String username;
 
+    @Column(unique = true)
+    private String email;
+
     @Column(name = "avatar_url")
     private String avatarUrl;
 

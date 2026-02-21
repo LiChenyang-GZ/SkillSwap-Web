@@ -106,8 +106,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ...mockUser, // fallback defaults
     id: sbUser.id,
     email: sbUser.email ?? "",
-    name: sbUser.user_metadata?.full_name ?? sbUser.email?.split("@")[0],
-    avatar: sbUser.user_metadata?.avatar_url ?? mockUser.avatar,
+    username: sbUser.user_metadata?.full_name ?? sbUser.email?.split("@")[0],
+    avatarUrl: sbUser.user_metadata?.avatar_url ?? mockUser.avatarUrl,
   });
 
   const checkSupabaseAuthState = async () => {
@@ -208,7 +208,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ) ?? {
           ...mockUser,
           email,
-          name: email
+          username: email
             .split("@")[0]
             .replace(/[._]/g, " ")
             .replace(/\b\w/g, (l) => l.toUpperCase()),
@@ -223,7 +223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("skill-swap-user", JSON.stringify(userData));
       localStorage.setItem("skill-swap-sessionToken", mockToken);
       setCurrentPage("home");
-      toast.success(`Welcome back, ${userData.name}!`);
+      toast.success(`Welcome back, ${userData.username}!`);
     } else {
       throw new Error("Invalid email or password. Try password: demo");
     }
@@ -258,8 +258,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         w.id === workshopId
           ? {
               ...w,
-              currentParticipants: w.currentParticipants + 1,
-              participants: [...w.participants, user],
+              currentParticipants: (w.currentParticipants || 0) + 1,
+              participants: [...(w.participants || []), user],
             }
           : w
       )
@@ -274,8 +274,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         w.id === workshopId
           ? {
               ...w,
-              currentParticipants: w.currentParticipants - 1,
-              participants: w.participants.filter((p) => p.id !== user.id),
+              currentParticipants: (w.currentParticipants || 1) - 1,
+              participants: (w.participants || []).filter((p) => p.id !== user.id),
             }
           : w
       )

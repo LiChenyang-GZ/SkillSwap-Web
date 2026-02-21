@@ -14,10 +14,15 @@ public record WorkshopResponseDto(
     String status,
     LocalDate date,
     LocalTime time,
-    boolean isOnline,
+    Integer duration,
+    Boolean isOnline,
     Set<String> location,
-    int maxParticipants,
-    int creditReward,
+    Integer maxParticipants,
+    Integer creditCost,
+    Integer creditReward,
     FacilitatorDto facilitator,
+    Set<String> tags,
+    Set<String> materials,
+    Set<String> requirements,
     LocalDateTime createdAt
 ) {}

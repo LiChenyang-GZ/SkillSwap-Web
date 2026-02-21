@@ -136,14 +136,14 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleGlobalException(Exception ex, HttpServletRequest request) {
-        // 在实际项目中，你应该在这里记录详细的错误日志
-        // log.error("An unexpected error occurred", ex);
+        // 打印详细的错误日志
+        ex.printStackTrace();
 
         ErrorResponseDto errorResponse = new ErrorResponseDto(
                 Instant.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                "An unexpected error occurred. Please try again later.",
+                "An unexpected error occurred: " + ex.getMessage(),
                 request.getRequestURI()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);

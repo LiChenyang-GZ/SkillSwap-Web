@@ -1,38 +1,47 @@
 export interface User {
   id: string;
-  name: string;
+  username: string;
   email: string;
-  credits: number;
-  avatar?: string;
+  creditBalance: number;
+  avatarUrl?: string;
   bio?: string;
   skills: string[];
   totalWorkshopsHosted: number;
   totalWorkshopsAttended: number;
   rating: number;
-  joinedAt: string;
+  reviewCount?: number;
+  createdAt: string;
+}
+
+// 简化的 facilitator 信息（来自 FacilitatorDto）
+export interface Facilitator {
+  id: string;
+  name: string;
+  avatar?: string;
 }
 
 export interface Workshop {
   id: string;
   title: string;
   description: string;
-  facilitatorId: string;
-  facilitator: User;
   category: string;
   skillLevel: 'Beginner' | 'Intermediate' | 'Advanced';
-  duration: number; // in minutes
-  maxParticipants: number;
-  currentParticipants: number;
-  creditCost: number;
-  creditReward: number; // for facilitator
+  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   date: string;
   time: string;
-  location: string;
+  duration?: number; // in minutes
   isOnline: boolean;
-  tags: string[];
+  location: string | string[];
+  maxParticipants: number;
+  currentParticipants?: number;
+  creditCost: number;      // 参与者付出的积分
+  creditReward: number;    // 讲师获得的积分
+  facilitator: Facilitator | null;
+  tags?: string[];
   image?: string;
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
-  participants: User[];
+  createdAt?: string;
+  // 以下是可选的扩展字段
+  participants?: User[];
   materials?: string[];
   requirements?: string[];
 }
