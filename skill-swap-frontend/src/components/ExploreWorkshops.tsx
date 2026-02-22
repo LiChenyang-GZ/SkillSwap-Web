@@ -157,7 +157,7 @@ export function ExploreWorkshops() {
                     {/* Facilitator */}
                     <div className="flex items-center space-x-3 mb-4">
                       <Avatar className="w-8 h-8">
-                        <AvatarImage src={workshop.facilitator?.avatar} />
+                        <AvatarImage src={workshop.facilitator?.avatarUrl} />
                         <AvatarFallback className="text-xs">
                           {workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}
                         </AvatarFallback>

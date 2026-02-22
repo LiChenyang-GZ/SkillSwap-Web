@@ -124,7 +124,7 @@ export const mockWorkshops: Workshop[] = [
     currentParticipants: 8,
     creditCost: 25,
     creditReward: 40,
-    facilitator: { id: 'user-2', name: mockUsers[1].username, avatar: mockUsers[1].avatarUrl },
+    facilitator: { id: 'user-2', name: mockUsers[1].username, avatarUrl: mockUsers[1].avatarUrl },
     tags: ['React', 'JavaScript', 'Performance', 'Frontend'],
     image:
       'https://images.unsplash.com/photo-1569693799105-4eb645d89aea?fit=crop&w=1080&q=80',
@@ -149,7 +149,7 @@ export const mockWorkshops: Workshop[] = [
     currentParticipants: 6,
     creditCost: 20,
     creditReward: 35,
-    facilitator: { id: 'user-1', name: mockUser.username, avatar: mockUser.avatarUrl },
+    facilitator: { id: 'user-1', name: mockUser.username, avatarUrl: mockUser.avatarUrl },
     tags: ['Design Systems', 'Figma', 'UI/UX', 'Components'],
     image:
       'https://images.unsplash.com/photo-1611773060335-a3983045bf4e?fit=crop&w=1080&q=80',
@@ -174,7 +174,7 @@ export const mockWorkshops: Workshop[] = [
     currentParticipants: 12,
     creditCost: 15,
     creditReward: 30,
-    facilitator: { id: 'user-3', name: mockUsers[2].username, avatar: mockUsers[2].avatarUrl },
+    facilitator: { id: 'user-3', name: mockUsers[2].username, avatarUrl: mockUsers[2].avatarUrl },
     tags: ['Machine Learning', 'Python', 'Data Science', 'AI'],
     image:
       'https://images.unsplash.com/photo-1532622785990-d2c36a76f5a6?fit=crop&w=1080&q=80',
@@ -199,7 +199,7 @@ export const mockWorkshops: Workshop[] = [
     currentParticipants: 15,
     creditCost: 22,
     creditReward: 32,
-    facilitator: { id: 'user-4', name: mockUsers[3].username, avatar: mockUsers[3].avatarUrl },
+    facilitator: { id: 'user-4', name: mockUsers[3].username, avatarUrl: mockUsers[3].avatarUrl },
     tags: ['Digital Marketing', 'Strategy', 'AI Tools', 'Analytics'],
     image:
       'https://images.unsplash.com/photo-1707301280380-56f7e7a00aef?fit=crop&w=1080&q=80',
