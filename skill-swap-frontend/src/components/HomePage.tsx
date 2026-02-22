@@ -157,7 +157,7 @@ export function HomePage() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
-                              <AvatarImage src={workshop.facilitator?.avatar} />
+                              <AvatarImage src={workshop.facilitator?.avatarUrl} />
                               <AvatarFallback>{workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}</AvatarFallback>
                             </Avatar>
                             <span className="text-sm text-muted-foreground">{workshop.facilitator?.name}</span>
@@ -231,7 +231,7 @@ export function HomePage() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Avatar className="w-5 h-5">
-                        <AvatarImage src={workshop.facilitator?.avatar} />
+                        <AvatarImage src={workshop.facilitator?.avatarUrl} />
                         <AvatarFallback className="text-xs">{workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}</AvatarFallback>
                       </Avatar>
                       <span className="text-xs text-muted-foreground">{workshop.facilitator?.name}</span>

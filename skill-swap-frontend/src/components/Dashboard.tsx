@@ -18,11 +18,12 @@ import {
   TrendingUp,
   Globe,
   CreditCard,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 export function Dashboard() {
-  const { user, workshops, transactions, setCurrentPage, cancelWorkshopAttendance } = useApp();
+  const { user, workshops, transactions, setCurrentPage, cancelWorkshopAttendance, deleteWorkshop } = useApp();
 
   // Early return if no user
   if (!user) {
@@ -214,7 +215,7 @@ export function Dashboard() {
                               </div>
                               <div className="flex items-center space-x-3">
                                 <Avatar className="w-6 h-6">
-                                  <AvatarImage src={workshop.facilitator?.avatar} />
+                                  <AvatarImage src={workshop.facilitator?.avatarUrl} />
                                   <AvatarFallback className="text-xs">
                                     {workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}
                                   </AvatarFallback>
@@ -304,6 +305,18 @@ export function Dashboard() {
                               {/* [] todo will go to form page  */}
                               <Button variant="outline" size="sm">
                                 Edit
+                              </Button>
+
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to delete this workshop?')) {
+                                    deleteWorkshop(workshop.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
                           </div>

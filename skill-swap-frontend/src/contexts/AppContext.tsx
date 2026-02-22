@@ -30,6 +30,7 @@ interface AppContextType {
   attendWorkshop: (workshopId: string) => Promise<void>;
   cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
   createWorkshop: (workshopData: any) => Promise<void>;
+  deleteWorkshop: (workshopId: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshData: () => Promise<void>;
@@ -95,7 +96,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       return () => subscription.unsubscribe();
     } else {
-      checkMockAuthState();
+      // 使用 IIFE 允许 await 异步操作
+      (async () => {
+        await restoreAuthStateFromStorage();
+      })();
     }
   }, []);
 
@@ -129,7 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   };
 
-  const checkMockAuthState = async () => {
+  const restoreAuthStateFromStorage = async () => {
     console.log("🔍 Checking mock auth...");
     const savedAuth = localStorage.getItem("skill-swap-auth");
     const savedUser = localStorage.getItem("skill-swap-user");
@@ -375,22 +379,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const createWorkshop = async (workshopData: any) => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !user || !sessionToken) {
       toast.error("Please sign in to create workshops");
       return;
     }
-    const newWorkshop: Workshop = {
-      id: `workshop-${Date.now()}`,
-      ...workshopData,
-      facilitatorId: user.id,
-      facilitator: user,
-      currentParticipants: 0,
-      participants: [],
-      status: "upcoming",
-    };
-    setWorkshops((prev) => [newWorkshop, ...prev]);
-    toast.success("Workshop created!");
-    setCurrentPage("dashboard");
+    
+    try {
+      // 调用后端 API 创建 workshop
+      await workshopAPI.create(workshopData, sessionToken);
+      
+      // 创建成功后，重新从后端拉取所有 workshops
+      const updatedWorkshops = await workshopAPI.getAll();
+      setWorkshops(updatedWorkshops);
+      
+      toast.success("Workshop created successfully!");
+      setCurrentPage("dashboard");
+    } catch (error) {
+      console.error("Failed to create workshop:", error);
+      toast.error("Failed to create workshop: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
+  };
+
+  const deleteWorkshop = async (workshopId: string) => {
+    if (!isAuthenticated || !user) {
+      toast.error("Please sign in to delete workshops");
+      return;
+    }
+
+    try {
+      console.log("🗑️ Attempting to delete workshop:", workshopId);
+      // 调用后端 API 删除 workshop
+      await workshopAPI.delete(workshopId);
+
+      // 删除成功后，从本地状态中移除该 workshop
+      setWorkshops((prev) => prev.filter((w) => w.id !== workshopId));
+
+      toast.success("Workshop deleted successfully!");
+    } catch (error) {
+      console.error("Failed to delete workshop:", error);
+      toast.error("Failed to delete workshop: " + (error instanceof Error ? error.message : "Unknown error"));
+      throw error;
+    }
   };
 
   return (
@@ -416,6 +445,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         attendWorkshop,
         cancelWorkshopAttendance,
         createWorkshop,
+        deleteWorkshop,
         signIn,
         signOut,
         refreshData,

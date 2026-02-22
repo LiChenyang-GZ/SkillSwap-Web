@@ -127,7 +127,7 @@ export function CreateWorkshop() {
         creditReward: calculateEarnedCredits(),
         date: formData.date,
         time: formData.time,
-        location: formData.isOnline ? 'Virtual' : formData.location,
+        location: formData.isOnline ? ['Virtual'] : [formData.location],
         isOnline: formData.isOnline,
         tags: formData.tags,
         materials: formData.materials,

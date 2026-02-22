@@ -8,6 +8,7 @@ import { Dashboard } from './components/Dashboard';
 import { Credits } from './components/Credits';
 import { CreateWorkshop } from './components/CreateWorkshop';
 import { AuthPage } from './components/AuthPage';
+import { WorkshopDetails } from './components/WorkshopDetails';
 import { Toaster } from './components/ui/sonner';
 
 function AppContent() {
@@ -39,6 +40,12 @@ function AppContent() {
 
   // Page Switcher - Return HeroPage by default for non-authenticated users
   const renderPage = () => {
+    // Check if currentPage is a workshop detail page (workshop-{id})
+    if (currentPage.startsWith('workshop-')) {
+      const workshopId = currentPage.substring('workshop-'.length);
+      return <WorkshopDetails workshopId={workshopId} />;
+    }
+
     switch (currentPage) {
       case 'hero':
         return <HeroPage />;

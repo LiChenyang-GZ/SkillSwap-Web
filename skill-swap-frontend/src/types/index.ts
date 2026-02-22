@@ -17,7 +17,8 @@ export interface User {
 export interface Facilitator {
   id: string;
   name: string;
-  avatar?: string;
+  avatarUrl?: string;
+  bio?: string;
 }
 
 export interface Workshop {

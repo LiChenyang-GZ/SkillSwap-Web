@@ -331,6 +331,21 @@ export const workshopAPI = {
       throw error;
     }
   },
+
+  // 删除工作坊
+  delete: async (workshopId: string): Promise<void> => {
+    try {
+      const backendId = toBackendWorkshopId(workshopId);
+      await apiCall<void>(
+        `/api/v1/workshops/${backendId}`,
+        { method: "DELETE" }
+      );
+      console.log("✅ Deleted workshop:", workshopId);
+    } catch (error) {
+      console.error("❌ Failed to delete workshop:", error);
+      throw error;
+    }
+  },
 };
 
 // ----------------------
