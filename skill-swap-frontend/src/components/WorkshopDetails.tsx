@@ -132,7 +132,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
           {/* Header right: image aligned with title/facilitator */}
           <div className="lg:col-span-1">
             {workshop.image && (
-              <div className="aspect-video w-full max-h-16 overflow-hidden rounded-lg bg-muted">
+              <div className="aspect-video w-full h-full overflow-hidden rounded-lg bg-muted">
                 <img src={workshop.image} alt={workshop.title} className="w-full h-full object-cover" />
               </div>
             )}

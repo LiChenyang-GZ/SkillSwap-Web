@@ -2,7 +2,7 @@
 
 import { Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
-import { mockUser, mockUsers, mockWorkshops, mockTransactions } from './mock-data';
+import { mockUser, mockUsers, mockTransactions } from './mock-data';
 
 // Backend API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -28,14 +28,43 @@ function getDefaultImage(category: string): string {
   );
 }
 
-// 后端返回的数据直接映射，只添加 image 字段
+// 后端返回的数据直接映射，转换字段名，添加 image 字段
 function enrichWorkshop(workshop: any): Workshop {
   console.log("📦 Raw workshop data from backend:", workshop);
   
+  // 处理后端返回的蛇形命名字段，转换为驼峰命名
+  const facilitator = workshop.facilitator 
+    ? {
+        id: workshop.facilitator.id,
+        name: workshop.facilitator.username || workshop.facilitator.name,
+        avatarUrl: workshop.facilitator.avatarUrl || workshop.facilitator.avatar_url,
+        bio: workshop.facilitator.bio,
+      }
+    : null;
+
   return {
-    ...workshop,
     id: String(workshop.id),
+    title: workshop.title,
+    description: workshop.description,
+    category: workshop.category,
+    skillLevel: workshop.skillLevel,
+    status: workshop.status,
+    date: workshop.date,
+    time: workshop.time,
+    duration: workshop.duration,
+    isOnline: workshop.isOnline,
+    location: workshop.location || workshop.locations || [],
+    maxParticipants: workshop.maxParticipants,
+    currentParticipants: workshop.currentParticipants,
+    creditCost: workshop.creditCost,
+    creditReward: workshop.creditReward,
+    facilitator,
+    tags: workshop.tags || [],
     image: workshop.image || getDefaultImage(workshop.category),
+    createdAt: workshop.createdAt,
+    participants: workshop.participants,
+    materials: workshop.materials,
+    requirements: workshop.requirements,
   };
 }
 
@@ -263,12 +292,15 @@ export const workshopAPI = {
   // 获取所有工作坊
   getAll: async (): Promise<Workshop[]> => {
     try {
-      const data = await apiCall<Workshop[]>("/api/v1/workshops");
-      console.log("✅ Fetched workshops from backend:", data.length);
-      return data.map(enrichWorkshop);
+      console.log("🔄 Fetching workshops from backend...");
+      const data = await apiCall<any[]>("/api/v1/workshops");
+      console.log("✅ Fetched workshops from backend:", data.length, data);
+      const enriched = data.map(enrichWorkshop);
+      console.log("✅ Enriched workshops:", enriched);
+      return enriched;
     } catch (error) {
-      console.warn("⚠️ Backend unavailable, using mock data:", error);
-      return mockWorkshops;
+      console.error("❌ Backend request failed:", error);
+      return [];
     }
   },
 
@@ -278,8 +310,8 @@ export const workshopAPI = {
       const data = await apiCall<Workshop>(`/api/v1/workshops/${toBackendWorkshopId(id)}`);
       return enrichWorkshop(data);
     } catch (error) {
-      console.warn("⚠️ Backend unavailable, using mock data");
-      return mockWorkshops.find((w) => w.id === id) || null;
+      console.warn("⚠️ Backend unavailable for workshop", id);
+      return null;
     }
   },
 

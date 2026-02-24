@@ -8,7 +8,7 @@ import {
 import { User, Workshop, CreditTransaction } from "../types";
 import {
   mockUser,
-  mockWorkshops,
+  // mockWorkshops,
   mockTransactions,
 } from "../lib/mock-data";
 import { authAPI, workshopAPI } from "../lib/api";
@@ -119,7 +119,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { data } = await supabase.auth.getSession();
     if (data.session) {
       setUser(mapSupabaseUser(data.session.user));
-      setWorkshops(mockWorkshops);
+      try {
+        const backendWorkshops = await workshopAPI.getAll();
+        setWorkshops(backendWorkshops);
+      } catch (err) {
+        console.warn("⚠️ Failed to fetch workshops", err);
+      }
       setTransactions(mockTransactions);
       setIsAuthenticated(true);
       setSessionToken(data.session.access_token || null);
@@ -138,18 +143,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const savedAuth = localStorage.getItem("skill-swap-auth");
     const savedUser = localStorage.getItem("skill-swap-user");
     const savedToken = localStorage.getItem("skill-swap-sessionToken");
+    
+    // 不管有无登录，都从后端加载 workshops
+    try {
+      const backendWorkshops = await workshopAPI.getAll();
+      setWorkshops(backendWorkshops);
+      console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
+    } catch (err) {
+      console.warn("⚠️ Failed to fetch workshops", err);
+      setWorkshops([]);
+    }
+    
     if (savedAuth === "true" && savedUser) {
       try {
         const userData = JSON.parse(savedUser);
         setUser(userData);
-        // 登录状态下从后端拉取workshops
-        try {
-          const backendWorkshops = await workshopAPI.getAll();
-          setWorkshops(backendWorkshops);
-        } catch (err) {
-          console.warn("⚠️ Failed to fetch workshops, using mock data", err);
-          setWorkshops(mockWorkshops);
-        }
         setTransactions(mockTransactions);
         setIsAuthenticated(true);
         setSessionToken(savedToken || null);
@@ -196,7 +204,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Data
   // --------------------------
   const refreshData = async () => {
-    setWorkshops(mockWorkshops);
+    try {
+      const backendWorkshops = await workshopAPI.getAll();
+      setWorkshops(backendWorkshops);
+    } catch (err) {
+      console.warn("⚠️ Failed to fetch workshops", err);
+    }
     setTransactions(mockTransactions);
   };
 

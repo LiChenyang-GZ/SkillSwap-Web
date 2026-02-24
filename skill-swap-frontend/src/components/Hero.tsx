@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { supabase } from "../utils/supabase/supabase";
-import { mockFeaturedWorkshops } from "../lib/mock-data";
 import { useApp } from "../contexts/AppContext";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -20,14 +19,14 @@ const stats = {
   skills: 25,
   workshops: 100,
 };  
-  const { setCurrentPage, user } = useApp();
+  const { setCurrentPage, user, workshops } = useApp();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Use featured workshops from mock-data.ts
-  const featuredWorkshops = mockFeaturedWorkshops;
+  // Use real workshops from AppContext, showing first 3 as featured
+  const featuredWorkshops = workshops.slice(0, 3);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +151,7 @@ const stats = {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredWorkshops.map((workshop) => (
               <Card key={workshop.id} className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer">
-                <div className="relative h-48 overflow-hidden">
+                <div className="relative h-56 overflow-hidden">
                   <ImageWithFallback
                     src={workshop.image}
                     alt={workshop.title}
@@ -160,7 +159,7 @@ const stats = {
                   />
                   <div className="absolute top-4 right-4">
                     <Badge className="bg-secondary text-secondary-foreground">
-                      {workshop.credits} credits
+                      {workshop.creditCost} credits
                     </Badge>
                   </div>
                 </div>
@@ -171,7 +170,7 @@ const stats = {
                   </h3>
                   
                   <p className="text-sm text-muted-foreground mb-4">
-                    by {workshop.instructor}
+                    by {workshop.facilitator?.name || 'Unknown'}
                   </p>
                   
                   <div className="space-y-3 mb-4">
@@ -185,18 +184,18 @@ const stats = {
                     </div>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Users className="w-4 h-4 mr-2 text-primary" />
-                      {workshop.participants}/{workshop.maxParticipants} participants
+                      {workshop.currentParticipants || 0}/{workshop.maxParticipants} participants
                     </div>
                   </div>
                   
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {workshop.skills.map((skill, index) => (
+                    {(workshop.tags || []).map((tag, index) => (
                       <Badge 
                         key={index} 
                         variant="outline" 
                         className="text-xs border-secondary/20 text-secondary hover:bg-secondary hover:text-secondary-foreground"
                       >
-                        {skill}
+                        {tag}
                       </Badge>
                     ))}
                   </div>

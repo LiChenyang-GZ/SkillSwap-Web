@@ -128,7 +128,7 @@ export function ExploreWorkshops() {
               <Card key={workshop.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
                 <CardContent className="p-0">
                   {/* Workshop Image */}
-                  <div className="aspect-video bg-muted rounded-t-lg overflow-hidden">
+                  <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden">
                     {workshop.image && (
                       <img 
                         src={workshop.image} 
