@@ -106,7 +106,10 @@ export const mockUsers: User[] = [
   },
 ];
 
-export const mockWorkshops: Workshop[] = [
+export const mockWorkshops: Workshop[] = [];
+// 原始数据已注释掉用于测试
+/*
+[
   {
     id: 'workshop-1',
     title: 'Advanced React Patterns & Performance',
@@ -207,7 +210,8 @@ export const mockWorkshops: Workshop[] = [
     materials: ['Strategy templates', 'Tool recommendations', 'Case studies'],
     requirements: ['Marketing basics'],
   },
-];
+]
+*/
 
 export const mockTransactions: CreditTransaction[] = [
   {
