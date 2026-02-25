@@ -126,7 +126,8 @@ public class UserService {
             return userRepository.save(newUser);
         });
 
-        return UserProfileDto.fromEntity(user);
+        // 返回包含完整统计数据的 DTO
+        return getUserProfileWithStats(user.getId());
     }
 
     /**

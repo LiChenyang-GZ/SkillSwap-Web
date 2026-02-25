@@ -38,6 +38,7 @@ public class UserProfileDto {
         dto.setBio(user.getBio());
         // 新用户初始 100 credits
         dto.setCreditBalance(100);
+        // 统计数据需要通过 service 层来获取
         dto.setTotalWorkshopsHosted(0L);
         dto.setTotalWorkshopsAttended(0L);
         dto.setRating(0.0);
