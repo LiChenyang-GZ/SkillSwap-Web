@@ -51,7 +51,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
 
   // Toggle mock vs real auth easily
-  const USE_SUPABASE = false;
+  const USE_SUPABASE = true;
 
   // --------------------------
   // Theme Initialization
@@ -114,25 +114,117 @@ export function AppProvider({ children }: { children: ReactNode }) {
     avatarUrl: sbUser.user_metadata?.avatar_url ?? mockUser.avatarUrl,
   });
 
+  async function fetchBackendProfile(accessToken: string) {
+    // 统一用一个 endpoint（建议你用后端的 /me）
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+    // ✅ 这里请改成你后端真实的 endpoint：
+    // 你之前 controller 是 /me，就用 `${base}/me`
+    // 你现在代码用的是 /api/users/current
+    const url = `${base}/me`;
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Fetch profile failed (${res.status}): ${text}`);
+    }
+
+    return res.json();
+  }
+
+  function mapBackendUser(userProfile: any): User {
+    return {
+      id: userProfile.id,
+      email: userProfile.email,
+      username: userProfile.username,
+      avatarUrl: userProfile.avatarUrl || "",
+      bio: userProfile.bio || "",
+      creditBalance: userProfile.creditBalance ?? 100,
+      skills: userProfile.skills || [],
+      totalWorkshopsHosted: userProfile.totalWorkshopsHosted || 0,
+      totalWorkshopsAttended: userProfile.totalWorkshopsAttended || 0,
+      rating: userProfile.rating || 0,
+      reviewCount: userProfile.reviewCount || 0,
+      createdAt: userProfile.createdAt || new Date().toISOString(),
+    };
+  }
+
   const checkSupabaseAuthState = async () => {
     console.log("🔍 Checking Supabase session...");
     const { data } = await supabase.auth.getSession();
     if (data.session) {
-      setUser(mapSupabaseUser(data.session.user));
+      console.log("✅ Supabase session found:", data.session.user.email);
+      
+      // 调用后端 API 获取完整的用户资料（包括 credits, workshops 统计等）
       try {
-        const backendWorkshops = await workshopAPI.getAll();
-        setWorkshops(backendWorkshops);
-      } catch (err) {
-        console.warn("⚠️ Failed to fetch workshops", err);
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/users/current`,
+          {
+            headers: {
+              Authorization: `Bearer ${data.session.access_token}`,
+            },
+          }
+        );
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch user profile: ${response.status}`);
+        }
+        
+        const userProfile = await response.json();
+        console.log("✅ User profile from backend:", userProfile);
+        
+        // 将后端返回的用户数据转换为前端格式
+        const mappedUser: User = {
+          id: userProfile.id,
+          email: userProfile.email,
+          username: userProfile.username,
+          avatarUrl: userProfile.avatarUrl || "",
+          bio: userProfile.bio || "",
+          creditBalance: userProfile.creditBalance || 100,
+          skills: userProfile.skills || [],
+          totalWorkshopsHosted: userProfile.totalWorkshopsHosted || 0,
+          totalWorkshopsAttended: userProfile.totalWorkshopsAttended || 0,
+          rating: userProfile.rating || 0,
+          reviewCount: userProfile.reviewCount || 0,
+          createdAt: userProfile.createdAt || new Date().toISOString(),
+        };
+        
+        setUser(mappedUser);
+        
+        try {
+          const backendWorkshops = await workshopAPI.getAll();
+          setWorkshops(backendWorkshops);
+          console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
+        } catch (err) {
+          console.warn("⚠️ Failed to fetch workshops", err);
+        }
+        
+        setTransactions(mockTransactions);
+        setIsAuthenticated(true);
+        setSessionToken(data.session.access_token || null);
+        localStorage.setItem("skill-swap-sessionToken", data.session.access_token || "");
+        localStorage.setItem("skill-swap-user", JSON.stringify(mappedUser));
+        setCurrentPage("home");
+      } catch (error) {
+        console.error("❌ Failed to fetch user profile from backend:", error);
+        // 降级方案：使用 Supabase 用户信息
+        const mappedUser = mapSupabaseUser(data.session.user);
+        setUser(mappedUser);
+        setIsAuthenticated(true);
+        setSessionToken(data.session.access_token || null);
+        localStorage.setItem("skill-swap-sessionToken", data.session.access_token || "");
+        localStorage.setItem("skill-swap-user", JSON.stringify(mappedUser));
+        setCurrentPage("home");
       }
-      setTransactions(mockTransactions);
-      setIsAuthenticated(true);
-      setSessionToken(data.session.access_token || null);
-      localStorage.setItem("skill-swap-sessionToken", data.session.access_token || "");
-      setCurrentPage("home");
     } else {
+      console.log("🚪 No Supabase session found");
       setSessionToken(null);
       localStorage.removeItem("skill-swap-sessionToken");
+      localStorage.removeItem("skill-swap-user");
       setCurrentPage("hero");
     }
     setIsLoading(false);
@@ -276,16 +368,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (USE_SUPABASE) {
       await supabase.auth.signOut();
     }
-  setUser(null);
-  setWorkshops([]);
-  setTransactions([]);
-  setIsAuthenticated(false);
-  setSessionToken(null);
-  localStorage.removeItem("skill-swap-auth");
-  localStorage.removeItem("skill-swap-user");
-  localStorage.removeItem("skill-swap-sessionToken");
-  setCurrentPage("hero");
-  toast.success("Signed out successfully");
+    setUser(null);
+    setWorkshops([]);
+    setTransactions([]);
+    setIsAuthenticated(false);
+    setSessionToken(null);
+    localStorage.removeItem("skill-swap-auth");
+    localStorage.removeItem("skill-swap-user");
+    localStorage.removeItem("skill-swap-sessionToken");
+    setCurrentPage("hero");
+    toast.success("Signed out successfully");
   };
 
   // --------------------------

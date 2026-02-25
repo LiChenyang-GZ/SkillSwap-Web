@@ -45,15 +45,15 @@ export const mockUser: User = {
   id: 'user-1',
   username: 'Sarah Chen',
   email: 'sarah.chen@example.com',
-  creditBalance: 85,
+  creditBalance: 100,
   avatarUrl:
     'https://images.unsplash.com/photo-1494790108755-2616b9349867?w=150&h=150&fit=crop&crop=face',
   bio: 'Product designer passionate about design systems and user research',
   skills: ['UI/UX Design', 'Figma', 'User Research', 'Design Systems'],
-  totalWorkshopsHosted: 12,
-  totalWorkshopsAttended: 28,
-  rating: 4.8,
-  reviewCount: 15,
+  totalWorkshopsHosted: 0,
+  totalWorkshopsAttended: 0,
+  rating: 0,
+  reviewCount: 0,
   createdAt: '2024-01-15',
 };
 
