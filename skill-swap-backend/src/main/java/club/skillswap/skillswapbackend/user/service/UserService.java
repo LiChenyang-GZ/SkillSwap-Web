@@ -80,7 +80,8 @@ public class UserService {
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
         dto.setSkills(skillNames);
-        dto.setCreditBalance(50);  // TODO: 从 credit 表获取
+        // 新用户初始 100 credits
+        dto.setCreditBalance(100);
         dto.setTotalWorkshopsHosted(workshopsHosted);
         dto.setTotalWorkshopsAttended(workshopsAttended);
         dto.setRating(rating);
@@ -125,7 +126,8 @@ public class UserService {
             return userRepository.save(newUser);
         });
 
-        return UserProfileDto.fromEntity(user);
+        // 返回包含完整统计数据的 DTO
+        return getUserProfileWithStats(user.getId());
     }
 
     /**

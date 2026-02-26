@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.web.bind.annotation.*;
@@ -30,15 +31,19 @@ public class WorkshopController {
             @RequestHeader(value = "X-Mock-User", required = false) String mockUserId) {
         // 支持 dev 下的 X-Mock-User 用于本地测试
         String facilitatorId;
+        // 1️⃣ dev 环境允许 mock
         if (mockUserId != null && env.acceptsProfiles(Profiles.of("dev"))) {
             facilitatorId = mockUserId;
-        } else if (authentication != null) {
-            facilitatorId = authentication.getName();
-        } else {
+        }
+        // 2️⃣ JWT 登录用户
+        else if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            facilitatorId = jwtAuth.getToken().getSubject(); // ✅ 直接取 sub
+        }
+        else {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
-
         WorkshopResponseDto createdWorkshop = workshopService.createWorkshop(createRequestDto, facilitatorId);
+        System.out.println("facilitatorId = " + facilitatorId);
         return new ResponseEntity<>(createdWorkshop, HttpStatus.CREATED);
     }
 

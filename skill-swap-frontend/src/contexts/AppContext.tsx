@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import { User, Workshop, CreditTransaction } from "../types";
@@ -49,9 +50,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  
+  // 防止标签页切换时重复初始化
+  const initializedRef = useRef(false);
 
   // Toggle mock vs real auth easily
-  const USE_SUPABASE = false;
+  const USE_SUPABASE = true;
 
   // --------------------------
   // Theme Initialization
@@ -74,33 +78,90 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // --------------------------
+  // Workshop Loading (only once)
+  // --------------------------
+  useEffect(() => {
+    // 只在挂载时加载一次，防止标签页切换时重复加载
+    const loadWorkshops = async () => {
+      try {
+        console.log("🔄 Loading workshops...");
+        const backendWorkshops = await workshopAPI.getAll();
+        setWorkshops(backendWorkshops);
+        console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
+      } catch (err) {
+        console.warn("⚠️ Failed to fetch workshops", err);
+        setWorkshops([]);
+      }
+    };
+
+    loadWorkshops();
+  }, []); // 空依赖数组，只在挂载时执行一次
+
+  // --------------------------
   // Auth Initialization
   // --------------------------
   useEffect(() => {
-    if (USE_SUPABASE) {
-      checkSupabaseAuthState();
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session) {
-          console.log("🔑 Auth state changed: logged in", session.user);
-          setUser(mapSupabaseUser(session.user));
-          setIsAuthenticated(true);
-          setCurrentPage("home");
-        } else {
-          console.log("🚪 Auth state changed: logged out");
-          setUser(null);
-          setIsAuthenticated(false);
-          setCurrentPage("hero");
-        }
-      });
-      return () => subscription.unsubscribe();
-    } else {
-      // 使用 IIFE 允许 await 异步操作
+    // 防止重复初始化（标签页切换时）
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    if (!USE_SUPABASE) {
       (async () => {
         await restoreAuthStateFromStorage();
       })();
+      return;
     }
+
+    // 1) 启动时恢复 session（刷新页面也能保持登录态）
+    checkSupabaseAuthState();
+
+    // 2) 订阅登录/登出变化
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        console.log("🔑 Auth state changed: logged in", session.user);
+
+        try {
+          const profile = await fetchBackendProfile(session.access_token);
+          const mapped = mapBackendUser(profile);
+
+          setUser(mapped);
+          setIsAuthenticated(true);
+          setSessionToken(session.access_token);
+
+          localStorage.setItem("skill-swap-sessionToken", session.access_token);
+          localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
+
+          setCurrentPage("home");
+          toast.success(`Welcome, ${mapped.username}!`);
+        } catch (e) {
+          console.error("❌ Failed to fetch backend profile after login:", e);
+
+          setUser(null);
+          setIsAuthenticated(false);
+          setSessionToken(null);
+
+          localStorage.removeItem("skill-swap-sessionToken");
+          localStorage.removeItem("skill-swap-user");
+
+          setCurrentPage("auth"); // 或 hero
+          toast.error("Login succeeded, but failed to load profile from backend.");
+        }
+      } else {
+        console.log("🚪 Auth state changed: logged out");
+        setUser(null);
+        setIsAuthenticated(false);
+        setSessionToken(null);
+
+        localStorage.removeItem("skill-swap-sessionToken");
+        localStorage.removeItem("skill-swap-user");
+
+        setCurrentPage("hero");
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // --------------------------
@@ -114,28 +175,99 @@ export function AppProvider({ children }: { children: ReactNode }) {
     avatarUrl: sbUser.user_metadata?.avatar_url ?? mockUser.avatarUrl,
   });
 
+  async function fetchBackendProfile(accessToken: string) {
+    // 统一用一个 endpoint（建议你用后端的 /me）
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+    // ✅ 这里请改成你后端真实的 endpoint：
+    // 你之前 controller 是 /me，就用 `${base}/me`
+    // 你现在代码用的是 /api/users/current
+    const url = `${base}/api/v1/users/me`;
+
+    // DEBUG: 解码并打印 JWT header 查看算法
+    try {
+      const headerBase64 = accessToken.split('.')[0];
+      const headerJson = atob(headerBase64);
+      console.log('🔍 JWT Header:', headerJson);
+    } catch (e) {
+      console.log('Failed to decode JWT header:', e);
+    }
+
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Fetch profile failed (${res.status}): ${text}`);
+    }
+
+    return res.json();
+  }
+
+  function mapBackendUser(userProfile: any): User {
+    return {
+      id: userProfile.id,
+      email: userProfile.email,
+      username: userProfile.username,
+      avatarUrl: userProfile.avatarUrl || "",
+      bio: userProfile.bio || "",
+      creditBalance: userProfile.creditBalance ?? 100,
+      skills: userProfile.skills || [],
+      totalWorkshopsHosted: userProfile.totalWorkshopsHosted || 0,
+      totalWorkshopsAttended: userProfile.totalWorkshopsAttended || 0,
+      rating: userProfile.rating || 0,
+      reviewCount: userProfile.reviewCount || 0,
+      createdAt: userProfile.createdAt || new Date().toISOString(),
+    };
+  }
+
   const checkSupabaseAuthState = async () => {
     console.log("🔍 Checking Supabase session...");
+
     const { data } = await supabase.auth.getSession();
-    if (data.session) {
-      setUser(mapSupabaseUser(data.session.user));
-      try {
-        const backendWorkshops = await workshopAPI.getAll();
-        setWorkshops(backendWorkshops);
-      } catch (err) {
-        console.warn("⚠️ Failed to fetch workshops", err);
-      }
-      setTransactions(mockTransactions);
-      setIsAuthenticated(true);
-      setSessionToken(data.session.access_token || null);
-      localStorage.setItem("skill-swap-sessionToken", data.session.access_token || "");
-      setCurrentPage("home");
-    } else {
+    
+    console.log("SESSION", data.session);
+    console.log("ACCESS_TOKEN", data.session?.access_token);
+    const session = data.session;
+    if (data.session?.access_token) {
+      const header = JSON.parse(atob(data.session.access_token.split(".")[0]));
+      console.log("JWT_HEADER", header); // ✅ 看 alg / kid / typ
+    }
+
+    if (!session) {
+      console.log("🚪 No Supabase session found");
+      setUser(null);
+      setIsAuthenticated(false);
       setSessionToken(null);
       localStorage.removeItem("skill-swap-sessionToken");
+      localStorage.removeItem("skill-swap-user");
       setCurrentPage("hero");
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    try {
+      const profile = await fetchBackendProfile(session.access_token);
+      const mapped = mapBackendUser(profile);
+
+      setUser(mapped);
+      setIsAuthenticated(true);
+      setSessionToken(session.access_token);
+
+      localStorage.setItem("skill-swap-sessionToken", session.access_token);
+      localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
+      setCurrentPage("home");
+    } catch (e) {
+      console.error("❌ Failed to fetch backend profile on startup:", e);
+      setUser(null);
+      setIsAuthenticated(false);
+      setSessionToken(null);
+      setCurrentPage("auth");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const restoreAuthStateFromStorage = async () => {
@@ -144,15 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem("skill-swap-user");
     const savedToken = localStorage.getItem("skill-swap-sessionToken");
     
-    // 不管有无登录，都从后端加载 workshops
-    try {
-      const backendWorkshops = await workshopAPI.getAll();
-      setWorkshops(backendWorkshops);
-      console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
-    } catch (err) {
-      console.warn("⚠️ Failed to fetch workshops", err);
-      setWorkshops([]);
-    }
+    // workshops 现在在 useEffect 顶部单独加载
     
     if (savedAuth === "true" && savedUser) {
       try {
@@ -276,16 +400,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (USE_SUPABASE) {
       await supabase.auth.signOut();
     }
-  setUser(null);
-  setWorkshops([]);
-  setTransactions([]);
-  setIsAuthenticated(false);
-  setSessionToken(null);
-  localStorage.removeItem("skill-swap-auth");
-  localStorage.removeItem("skill-swap-user");
-  localStorage.removeItem("skill-swap-sessionToken");
-  setCurrentPage("hero");
-  toast.success("Signed out successfully");
+    setUser(null);
+    setWorkshops([]);
+    setTransactions([]);
+    setIsAuthenticated(false);
+    setSessionToken(null);
+    localStorage.removeItem("skill-swap-auth");
+    localStorage.removeItem("skill-swap-user");
+    localStorage.removeItem("skill-swap-sessionToken");
+    setCurrentPage("hero");
+    toast.success("Signed out successfully");
   };
 
   // --------------------------
@@ -321,8 +445,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
       
-      // 调用后端 API
-      await workshopAPI.join(workshopId);
+      // 调用后端 API，传递 JWT token
+      await workshopAPI.join(workshopId, sessionToken);
       
       // 更新本地用户状态：扣除 credit
       const updatedUser = {
@@ -361,8 +485,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Workshop not found or has no credit cost");
       }
       
-      // 调用后端 API
-      await workshopAPI.leave(workshopId);
+      // 调用后端 API，传递 JWT token
+      await workshopAPI.leave(workshopId, sessionToken);
       
       // 更新本地用户状态：退还 credit
       const updatedUser = {
@@ -421,13 +545,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     try {
       console.log("🗑️ Attempting to delete workshop:", workshopId);
-      // 调用后端 API 删除 workshop
-      await workshopAPI.delete(workshopId);
+      // 调用后端 API 删除 workshop，传递 JWT token
+      await workshopAPI.delete(workshopId, sessionToken);
 
-      // 删除成功后，从本地状态中移除该 workshop
-      setWorkshops((prev) => prev.filter((w) => w.id !== workshopId));
+      // 删除成功后，从本地状态中移除该 workshop（处理 ID 类型不一致）
+      setWorkshops((prev) => 
+        prev.filter((w) => String(w.id) !== String(workshopId))
+      );
 
       toast.success("Workshop deleted successfully!");
+      console.log("✅ Workshop deleted from local state");
     } catch (error) {
       console.error("Failed to delete workshop:", error);
       toast.error("Failed to delete workshop: " + (error instanceof Error ? error.message : "Unknown error"));

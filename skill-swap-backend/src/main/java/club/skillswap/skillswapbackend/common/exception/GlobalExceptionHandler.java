@@ -122,10 +122,11 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDto> handleFK(DataIntegrityViolationException ex, HttpServletRequest req) {
-        ErrorResponseDto body = new ErrorResponseDto(
+        ErrorResponseDto body = new ErrorResponseDto(      
             Instant.now(), 409, "Conflict",
             "Cannot delete: related records exist.", req.getRequestURI()
         );
+        ex.printStackTrace();
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
