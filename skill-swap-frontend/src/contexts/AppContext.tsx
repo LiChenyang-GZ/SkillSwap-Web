@@ -77,6 +77,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Auth Initialization
   // --------------------------
   useEffect(() => {
+    // 无论 Supabase 还是 Mock，都要加载 workshops
+    const loadWorkshops = async () => {
+      try {
+        console.log("🔄 Loading workshops...");
+        const backendWorkshops = await workshopAPI.getAll();
+        setWorkshops(backendWorkshops);
+        console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
+      } catch (err) {
+        console.warn("⚠️ Failed to fetch workshops", err);
+        setWorkshops([]);
+      }
+    };
+
+    loadWorkshops();
+
     if (!USE_SUPABASE) {
       (async () => {
         await restoreAuthStateFromStorage();
@@ -248,15 +263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem("skill-swap-user");
     const savedToken = localStorage.getItem("skill-swap-sessionToken");
     
-    // 不管有无登录，都从后端加载 workshops
-    try {
-      const backendWorkshops = await workshopAPI.getAll();
-      setWorkshops(backendWorkshops);
-      console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
-    } catch (err) {
-      console.warn("⚠️ Failed to fetch workshops", err);
-      setWorkshops([]);
-    }
+    // workshops 现在在 useEffect 顶部单独加载
     
     if (savedAuth === "true" && savedUser) {
       try {
@@ -425,8 +432,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
       
-      // 调用后端 API
-      await workshopAPI.join(workshopId);
+      // 调用后端 API，传递 JWT token
+      await workshopAPI.join(workshopId, sessionToken);
       
       // 更新本地用户状态：扣除 credit
       const updatedUser = {
@@ -465,8 +472,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error("Workshop not found or has no credit cost");
       }
       
-      // 调用后端 API
-      await workshopAPI.leave(workshopId);
+      // 调用后端 API，传递 JWT token
+      await workshopAPI.leave(workshopId, sessionToken);
       
       // 更新本地用户状态：退还 credit
       const updatedUser = {
@@ -525,13 +532,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     try {
       console.log("🗑️ Attempting to delete workshop:", workshopId);
-      // 调用后端 API 删除 workshop
-      await workshopAPI.delete(workshopId);
+      // 调用后端 API 删除 workshop，传递 JWT token
+      await workshopAPI.delete(workshopId, sessionToken);
 
-      // 删除成功后，从本地状态中移除该 workshop
-      setWorkshops((prev) => prev.filter((w) => w.id !== workshopId));
+      // 删除成功后，从本地状态中移除该 workshop（处理 ID 类型不一致）
+      setWorkshops((prev) => 
+        prev.filter((w) => String(w.id) !== String(workshopId))
+      );
 
       toast.success("Workshop deleted successfully!");
+      console.log("✅ Workshop deleted from local state");
     } catch (error) {
       console.error("Failed to delete workshop:", error);
       toast.error("Failed to delete workshop: " + (error instanceof Error ? error.message : "Unknown error"));

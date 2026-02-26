@@ -300,6 +300,10 @@ export const workshopAPI = {
       return enriched;
     } catch (error) {
       console.error("❌ Backend request failed:", error);
+      console.error("❌ Workshop API error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        url: `${API_BASE_URL}/api/v1/workshops`
+      });
       return [];
     }
   },
@@ -335,12 +339,13 @@ export const workshopAPI = {
   },
 
   // 加入工作坊
-  join: async (workshopId: string): Promise<void> => {
+  join: async (workshopId: string, token?: string | null): Promise<void> => {
     try {
       const backendId = toBackendWorkshopId(workshopId);
       await apiCall<void>(
         `/api/v1/workshops/${backendId}/join`,
-        { method: "POST" }
+        { method: "POST" },
+        token
       );
       console.log("✅ Joined workshop:", workshopId);
     } catch (error) {
@@ -350,12 +355,13 @@ export const workshopAPI = {
   },
 
   // 离开工作坊
-  leave: async (workshopId: string): Promise<void> => {
+  leave: async (workshopId: string, token?: string | null): Promise<void> => {
     try {
       const backendId = toBackendWorkshopId(workshopId);
       await apiCall<void>(
         `/api/v1/workshops/${backendId}/leave`,
-        { method: "POST" }
+        { method: "POST" },
+        token
       );
       console.log("✅ Left workshop:", workshopId);
     } catch (error) {
@@ -365,12 +371,13 @@ export const workshopAPI = {
   },
 
   // 删除工作坊
-  delete: async (workshopId: string): Promise<void> => {
+  delete: async (workshopId: string, token?: string | null): Promise<void> => {
     try {
       const backendId = toBackendWorkshopId(workshopId);
       await apiCall<void>(
         `/api/v1/workshops/${backendId}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
+        token
       );
       console.log("✅ Deleted workshop:", workshopId);
     } catch (error) {
