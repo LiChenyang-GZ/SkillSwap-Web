@@ -25,6 +25,7 @@ public class Workshop {
     private Long id;
 
     private String title;
+    @Column(columnDefinition = "text")
     private String description;
     private String category;
     
