@@ -267,14 +267,11 @@ export const mockReviews: Review[] = [
 ];
 
 export const categories = [
-  'Development',
   'Design',
-  'Data Science',
-  'Marketing',
   'Business',
   'Creative',
-  'Leadership',
   'Technology',
+  'Health & Wellness',
 ];
 
 export const skillLevels = ['Beginner', 'Intermediate', 'Advanced'];

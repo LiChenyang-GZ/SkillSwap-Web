@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import { User, Workshop, CreditTransaction } from "../types";
@@ -49,6 +50,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  
+  // 防止标签页切换时重复初始化
+  const initializedRef = useRef(false);
 
   // Toggle mock vs real auth easily
   const USE_SUPABASE = true;
@@ -74,10 +78,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // --------------------------
-  // Auth Initialization
+  // Workshop Loading (only once)
   // --------------------------
   useEffect(() => {
-    // 无论 Supabase 还是 Mock，都要加载 workshops
+    // 只在挂载时加载一次，防止标签页切换时重复加载
     const loadWorkshops = async () => {
       try {
         console.log("🔄 Loading workshops...");
@@ -91,6 +95,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     loadWorkshops();
+  }, []); // 空依赖数组，只在挂载时执行一次
+
+  // --------------------------
+  // Auth Initialization
+  // --------------------------
+  useEffect(() => {
+    // 防止重复初始化（标签页切换时）
+    if (initializedRef.current) return;
+    initializedRef.current = true;
 
     if (!USE_SUPABASE) {
       (async () => {

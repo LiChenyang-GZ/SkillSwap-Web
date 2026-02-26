@@ -16,11 +16,12 @@ function getDefaultImage(category: string): string {
       "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800",
     Design:
       "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800",
-    Art: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800",
-    Music:
-      "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800",
+    Creative: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=800",
     Language:
       "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800",
+    'Health & Wellness':
+      "https://static1.bigstockphoto.com/0/7/2/large1500/270519103.jpg?w=800",
+      
   };
   return (
     images[category] ||
