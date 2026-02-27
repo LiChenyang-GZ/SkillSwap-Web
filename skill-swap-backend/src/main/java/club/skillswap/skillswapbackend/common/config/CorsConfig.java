@@ -21,7 +21,11 @@ public class CorsConfig {
             "http://localhost:5173",   // Vite 开发服务器
             "http://localhost:3000",   // 备用端口
             "http://127.0.0.1:5173",
-            "http://127.0.0.1:3000"
+            "http://127.0.0.1:3000",
+            "https://skill-swap-web-beta.vercel.app",
+            "https://skill-swap-web-git-main-lichenyang-gzs-projects.vercel.app",
+            "https://skill-swap-8svulzvb7-lichenyang-gzs-projects.vercel.app"
+
         ));
         
         // 允许的 HTTP 方法
