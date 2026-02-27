@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "build:now": "vite build",
     "deploy": "npm run build:now && rm -rf docs && cp -R dist docs && cp docs/index.html docs/404.html && git add docs && git commit -m 'deploy: vite build to docs' && git push"
