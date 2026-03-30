@@ -1,8 +1,8 @@
 package club.skillswap.controller;
 
 import club.skillswap.util.JwtTokenProvider;
-import club.skillswap.skillswapbackend.user.entity.UserAccount;
-import club.skillswap.skillswapbackend.user.repository.UserRepository;
+import club.skillswap.user.entity.UserAccount;
+import club.skillswap.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,14 +34,14 @@ public class DevAuthController {
             @RequestParam(value = "userId", required = false) UUID userId,
             @RequestParam(value = "username", required = false) String username) {
 
-        // 仅在开发环境允许
+        // 浠呭湪寮€鍙戠幆澧冨厑璁?
         if (!isDevProfile()) {
             return ResponseEntity.status(403).body(Map.of(
                     "error", "This endpoint is only available in development mode"
             ));
         }
 
-        // 如果没有提供参数，使用默认开发用户
+        // 濡傛灉娌℃湁鎻愪緵鍙傛暟锛屼娇鐢ㄩ粯璁ゅ紑鍙戠敤鎴?
         if (userId == null) {
             userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
         }
@@ -62,7 +62,7 @@ public class DevAuthController {
 
     @PostMapping("/auth/dev-login")
     public ResponseEntity<Map<String, Object>> devLogin(@RequestBody Map<String, String> body) {
-        // 仅在开发环境允许
+        // 浠呭湪寮€鍙戠幆澧冨厑璁?
         if (!isDevProfile()) {
             return ResponseEntity.status(403).body(Map.of(
                     "error", "This endpoint is only available in development mode"
@@ -78,20 +78,20 @@ public class DevAuthController {
             ));
         }
 
-        // 查找或创建用户
+        // 鏌ユ壘鎴栧垱寤虹敤鎴?
         UserAccount user = userRepository.findByEmail(email)
                 .orElseGet(() -> {
                     UserAccount newUser = new UserAccount();
                     newUser.setId(UUID.randomUUID());
                     newUser.setEmail(email);
                     newUser.setUsername(username);
-                    newUser.setCreditBalance(100); // 初始 100 积分
+                    newUser.setCreditBalance(100); // 鍒濆 100 绉垎
                     newUser.setAvatarUrl("https://i.pravatar.cc/150?img=" + new Random().nextInt(70));
                     newUser.setBio("Dev user");
                     return userRepository.save(newUser);
                 });
 
-        // 生成 JWT token
+        // 鐢熸垚 JWT token
         String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
 
         Map<String, Object> response = new HashMap<>();
@@ -115,3 +115,4 @@ public class DevAuthController {
                 .anyMatch("dev"::equalsIgnoreCase);
     }
 }
+
