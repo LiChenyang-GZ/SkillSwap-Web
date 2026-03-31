@@ -10,17 +10,15 @@ import {
   MapPin,
   Globe,
   ArrowLeft,
-  Trash2,
 } from 'lucide-react';
 import { Workshop } from '../types';
-import { toast } from 'sonner';
 
 interface WorkshopDetailsProps {
   workshopId: string;
 }
 
 export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
-  const { workshops, user, attendWorkshop, cancelWorkshopAttendance, deleteWorkshop, setCurrentPage } = useApp();
+  const { workshops, user, attendWorkshop, cancelWorkshopAttendance, setCurrentPage } = useApp();
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -65,7 +63,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   }
 
   const isUserAttending = workshop.participants?.some((p) => p.id === user?.id) || false;
-  const isFacilitator = user?.id === workshop.facilitator?.id;
   const isFull = (workshop.currentParticipants ?? 0) >= workshop.maxParticipants;
   // 积分系统已停用：不再根据余额限制报名。
   // const hasEnoughCredits = user && user.creditBalance >= workshop.creditCost;
@@ -76,17 +73,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
   const handleCancel = async () => {
     await cancelWorkshopAttendance(workshopId);
-  };
-
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this workshop?')) return;
-    try {
-      await deleteWorkshop(workshopId);
-      toast.success('Workshop deleted successfully');
-      setCurrentPage('dashboard');
-    } catch (error) {
-      toast.error('Failed to delete workshop');
-    }
   };
 
 
@@ -214,12 +200,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               <div className="mt-6">
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    {isFacilitator ? (
-                      <Button variant="destructive" onClick={handleDelete} className="w-full gap-2">
-                        <Trash2 className="w-4 h-4" />
-                        Delete Workshop
-                      </Button>
-                    ) : isUserAttending ? (
+                    {isUserAttending ? (
                       <Button variant="outline" onClick={handleCancel} className="w-full">
                         Cancel Attendance
                       </Button>

@@ -8,6 +8,7 @@ import {
   LayoutDashboard, 
   Trophy, 
   MessageSquare, 
+  ShieldCheck,
   Moon,
   Sun,
   Menu,
@@ -27,6 +28,8 @@ const navItems = [
 export function Navigation() {
   const { user, currentPage, setCurrentPage, isDarkMode, toggleDarkMode, isAuthenticated, signOut } = useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const adminItems = isAuthenticated ? [{ id: 'adminReview', label: 'Admin Review', icon: ShieldCheck }] : [];
+  const fullNavItems = [...navItems, ...adminItems];
 
   return (
     <>
@@ -43,7 +46,7 @@ export function Navigation() {
 
           {/* Navigation Links */}
           <div className="flex items-center space-x-1">
-            {navItems.slice(0, 6).map((item) => {
+            {fullNavItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Button
@@ -164,7 +167,7 @@ export function Navigation() {
         {isMobileMenuOpen && (
           <div className="absolute top-full left-0 right-0 bg-background border-b border-border">
             <div className="px-4 py-4 space-y-2">
-              {navItems.map((item) => {
+              {fullNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button

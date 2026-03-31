@@ -32,6 +32,18 @@ function isOldWorkshop(workshop: Workshop): boolean {
 
 export function PastWorkshops() {
   const { workshops, user, setCurrentPage } = useApp();
+  const normalizeStatus = (status?: string) => (status || 'pending').toLowerCase();
+  const displayStatus = (status?: string) => {
+    const normalized = normalizeStatus(status);
+    return normalized === 'approved' ? 'upcoming' : normalized;
+  };
+  const statusBadgeVariant = (status?: string) => {
+    const normalized = normalizeStatus(status);
+    if (normalized === 'rejected') return 'destructive';
+    if (normalized === 'approved' || normalized === 'upcoming') return 'default';
+    if (normalized === 'pending') return 'secondary';
+    return 'outline';
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
@@ -144,7 +156,9 @@ export function PastWorkshops() {
                   <div className="p-6">
                     <div className="flex items-start justify-between mb-3">
                       <Badge variant="secondary">{workshop.category}</Badge>
-                      <Badge variant="outline" className="capitalize">{workshop.status}</Badge>
+                      <Badge variant={statusBadgeVariant(workshop.status)} className="capitalize">
+                        {displayStatus(workshop.status)}
+                      </Badge>
                     </div>
 
                     <h3 className="font-semibold text-lg mb-2 line-clamp-2">{workshop.title}</h3>

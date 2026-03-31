@@ -21,6 +21,8 @@ public interface WorkshopService {
 
     List<WorkshopResponseDto> getMyWorkshops(String facilitatorId);
 
+    List<WorkshopResponseDto> getAllWorkshopsForAdmin(Authentication authentication);
+
     List<WorkshopResponseDto> getPendingWorkshops(Authentication authentication);
 
     WorkshopResponseDto updatePendingWorkshop(Long workshopId, WorkshopCreateRequestDto updateRequestDto, Authentication authentication);
@@ -28,6 +30,8 @@ public interface WorkshopService {
     WorkshopStatusUpdateResponseDto approveWorkshop(Long workshopId, Authentication authentication);
 
     WorkshopStatusUpdateResponseDto rejectWorkshop(Long workshopId, WorkshopReviewRequestDto reviewRequestDto, Authentication authentication);
+
+    WorkshopStatusUpdateResponseDto cancelWorkshop(Long workshopId, Authentication authentication);
     
     void deleteWorkshop(Long workshopId, Authentication authentication);
 

@@ -425,6 +425,12 @@ export const workshopAPI = {
     return data.map(enrichWorkshop);
   },
 
+  // 管理员：获取全部工作坊
+  getAllForAdmin: async (token?: string | null): Promise<Workshop[]> => {
+    const data = await apiCall<any[]>("/api/v1/admin/workshops", {}, token);
+    return data.map(enrichWorkshop);
+  },
+
   // 管理员：编辑待审核工作坊
   updatePendingByAdmin: async (workshopId: string, workshopData: Partial<Workshop>, token?: string | null): Promise<Workshop> => {
     const backendId = toBackendWorkshopId(workshopId);
@@ -459,6 +465,17 @@ export const workshopAPI = {
         method: "POST",
         body: JSON.stringify({ comment: comment || null }),
       },
+      token
+    );
+    return enrichWorkshop(data.workshop);
+  },
+
+  // 管理员：取消工作坊
+  cancelByAdmin: async (workshopId: string, token?: string | null): Promise<Workshop> => {
+    const backendId = toBackendWorkshopId(workshopId);
+    const data = await apiCall<{ message: string; workshop: any }>(
+      `/api/v1/admin/workshops/${backendId}/cancel`,
+      { method: "POST" },
       token
     );
     return enrichWorkshop(data.workshop);

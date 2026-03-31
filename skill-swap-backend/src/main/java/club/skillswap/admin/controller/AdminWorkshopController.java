@@ -25,6 +25,11 @@ public class AdminWorkshopController {
 
     private final WorkshopService workshopService;
 
+    @GetMapping
+    public ResponseEntity<List<WorkshopResponseDto>> getAllWorkshops(Authentication authentication) {
+        return ResponseEntity.ok(workshopService.getAllWorkshopsForAdmin(authentication));
+    }
+
     @GetMapping("/pending")
     public ResponseEntity<List<WorkshopResponseDto>> getPendingWorkshops(Authentication authentication) {
         return ResponseEntity.ok(workshopService.getPendingWorkshops(authentication));
@@ -51,5 +56,12 @@ public class AdminWorkshopController {
             @RequestBody(required = false) WorkshopReviewRequestDto request,
             Authentication authentication) {
         return ResponseEntity.ok(workshopService.rejectWorkshop(id, request, authentication));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<WorkshopStatusUpdateResponseDto> cancelWorkshop(
+            @PathVariable Long id,
+            Authentication authentication) {
+        return ResponseEntity.ok(workshopService.cancelWorkshop(id, authentication));
     }
 }
