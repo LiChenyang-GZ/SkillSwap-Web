@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Trophy,
   MessageSquare,
+  Bell,
   ShieldCheck,
   Moon,
   Sun,
@@ -33,7 +34,17 @@ const navItems = [
 ];
 
 export function Navigation() {
-  const { user, currentPage, setCurrentPage, isDarkMode, toggleDarkMode, isAuthenticated, isAdmin, signOut } = useApp();
+  const {
+    user,
+    currentPage,
+    setCurrentPage,
+    isDarkMode,
+    toggleDarkMode,
+    isAuthenticated,
+    isAdmin,
+    notificationsUnreadCount,
+    signOut
+  } = useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const fullNavItems = navItems;
 
@@ -113,6 +124,15 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => setCurrentPage('dashboard')}>
                     <LayoutDashboard className="w-4 h-4" />
                     Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setCurrentPage('notifications')}>
+                    <div className="relative">
+                      <Bell className="w-4 h-4" />
+                      {notificationsUnreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                      )}
+                    </div>
+                    Notifications
                   </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => setCurrentPage('adminReview')}>
@@ -219,6 +239,23 @@ export function Navigation() {
                     >
                       <LayoutDashboard className="w-4 h-4" />
                       <span>Dashboard</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCurrentPage('notifications');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start flex items-center space-x-3"
+                    >
+                      <div className="relative">
+                        <Bell className="w-4 h-4" />
+                        {notificationsUnreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                        )}
+                      </div>
+                      <span>Notifications</span>
                     </Button>
                     {isAdmin && (
                       <Button

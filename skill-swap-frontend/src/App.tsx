@@ -10,6 +10,7 @@ import { CreateWorkshop } from './components/CreateWorkshop';
 import { AuthPage } from './components/AuthPage';
 import { WorkshopDetails } from './components/WorkshopDetails';
 import { AdminReview } from './components/AdminReview';
+import { Notifications } from './components/Notifications';
 import { Toaster } from './components/ui/sonner';
 
 function AppContent() {
@@ -68,6 +69,8 @@ function AppContent() {
         return <PastWorkshops />;
       case 'adminReview':
         return <AdminReview />;
+      case 'notifications':
+        return <Notifications />;
       case 'feedback':
         return <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
           <div className="text-center">

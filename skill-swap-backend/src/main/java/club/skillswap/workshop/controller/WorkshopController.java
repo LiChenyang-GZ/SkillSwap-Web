@@ -48,15 +48,19 @@ public class WorkshopController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<WorkshopResponseDto> getWorkshopById(@PathVariable Long id) {
-        WorkshopResponseDto workshop = workshopService.getWorkshopById(id);
+    public ResponseEntity<WorkshopResponseDto> getWorkshopById(
+            @PathVariable Long id,
+            Authentication authentication) {
+        WorkshopResponseDto workshop = workshopService.getWorkshopById(id, authentication);
         return ResponseEntity.ok(workshop);
     }
     
     @GetMapping
-    public ResponseEntity<List<WorkshopResponseDto>> getAllWorkshops() {
-        List<WorkshopResponseDto> workshops = workshopService.getAllWorkshops();
-        return ResponseEntity.ok(workshops);
+    public ResponseEntity<List<WorkshopResponseDto>> getAllWorkshops(Authentication authentication) {
+        if (isAdmin(authentication)) {
+            return ResponseEntity.ok(workshopService.getAllWorkshopsForAdmin(authentication));
+        }
+        return ResponseEntity.ok(workshopService.getPublicWorkshops());
     }
 
     @GetMapping("/public")
@@ -74,6 +78,22 @@ public class WorkshopController {
         String facilitatorId = jwtAuth.getToken().getSubject();
         List<WorkshopResponseDto> workshops = workshopService.getMyWorkshops(facilitatorId);
         return ResponseEntity.ok(workshops);
+    }
+
+    @PostMapping("/{id}/request-approval")
+    public ResponseEntity<ApiMessageDto> requestWorkshopApproval(
+            @PathVariable Long id,
+            Authentication authentication) {
+        workshopService.requestWorkshopApproval(id, authentication);
+        return ResponseEntity.ok(new ApiMessageDto("Approval request sent."));
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
     }
 
     @DeleteMapping("/{id}")

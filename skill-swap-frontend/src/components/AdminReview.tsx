@@ -57,6 +57,7 @@ export function AdminReview() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPageState] = useState(1);
+  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(null);
   const pageSize = 8;
 
   const normalizeArray = (items: string[] | undefined) =>
@@ -162,6 +163,15 @@ export function AdminReview() {
   }, [sessionToken]);
 
   useEffect(() => {
+    const storedTarget = sessionStorage.getItem('adminReviewTargetId');
+    if (storedTarget) {
+      sessionStorage.removeItem('adminReviewTargetId');
+      setTargetWorkshopId(storedTarget);
+      setStatusFilter('pending');
+    }
+  }, []);
+
+  useEffect(() => {
     if (sortedWorkshops.length === 0) {
       setSelectedId(null);
       return;
@@ -176,6 +186,27 @@ export function AdminReview() {
   useEffect(() => {
     setCurrentPageState(1);
   }, [statusFilter]);
+
+  useEffect(() => {
+    if (!targetWorkshopId || sortedWorkshops.length === 0) {
+      return;
+    }
+
+    const targetIndex = sortedWorkshops.findIndex((w) => w.id === targetWorkshopId);
+    if (targetIndex === -1) {
+      return;
+    }
+
+    setSelectedId(targetWorkshopId);
+    setCurrentPageState(Math.floor(targetIndex / pageSize) + 1);
+
+    requestAnimationFrame(() => {
+      const targetElement = document.querySelector(`[data-workshop-id="${targetWorkshopId}"]`);
+      if (targetElement instanceof HTMLElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }, [sortedWorkshops, targetWorkshopId]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -344,6 +375,7 @@ export function AdminReview() {
                   <button
                     key={workshop.id}
                     onClick={() => setSelectedId(workshop.id)}
+                    data-workshop-id={workshop.id}
                     className={`w-full text-left border rounded-lg p-3 transition ${
                       selectedId === workshop.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'
                     }`}

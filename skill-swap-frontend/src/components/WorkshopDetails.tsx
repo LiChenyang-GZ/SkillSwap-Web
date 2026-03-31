@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
+import { workshopAPI } from '../lib/api';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -12,23 +13,56 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { Workshop } from '../types';
+import { toast } from 'sonner';
 
 interface WorkshopDetailsProps {
   workshopId: string;
 }
 
 export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
-  const { workshops, user, attendWorkshop, cancelWorkshopAttendance, setCurrentPage } = useApp();
+  const { workshops, user, isAdmin, sessionToken, attendWorkshop, cancelWorkshopAttendance, setCurrentPage, upsertWorkshop } = useApp();
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const lastFetchedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const found = workshops.find((w) => w.id === workshopId);
     if (found) {
       setWorkshop(found);
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [workshopId, workshops]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadWorkshop = async (force = false) => {
+      if (!force && lastFetchedIdRef.current === workshopId) {
+        return;
+      }
+      lastFetchedIdRef.current = workshopId;
+      setIsLoading(true);
+      try {
+        const latest = await workshopAPI.getById(workshopId, sessionToken);
+        if (latest && isMounted) {
+          setWorkshop(latest);
+          upsertWorkshop(latest);
+        }
+      } catch (error) {
+        console.warn("Failed to refresh workshop details", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadWorkshop();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [workshopId, sessionToken, upsertWorkshop]);
 
   if (isLoading) {
     return (
@@ -64,8 +98,38 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
   const isUserAttending = workshop.participants?.some((p) => p.id === user?.id) || false;
   const isFull = (workshop.currentParticipants ?? 0) >= workshop.maxParticipants;
+  const normalizedStatus = (workshop.status || "").toLowerCase();
+  const isCancelled = normalizedStatus === "cancelled";
+  const isPending = normalizedStatus === "pending";
+  const isRejected = normalizedStatus === "rejected";
+  const isHost = workshop.facilitator?.id === user?.id;
+  const canViewRestricted = isAdmin || isHost;
   // 积分系统已停用：不再根据余额限制报名。
   // const hasEnoughCredits = user && user.creditBalance >= workshop.creditCost;
+
+  if ((isPending || isRejected) && !canViewRestricted) {
+    return (
+      <div className="min-h-screen bg-background pt-20 lg:pt-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCurrentPage('explore')}
+            className="mb-6"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Explore
+          </Button>
+          <div className="text-center py-12">
+            <h3 className="text-xl font-semibold mb-2">Workshop not found</h3>
+            <p className="text-muted-foreground">
+              The workshop you're looking for doesn't exist.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleAttend = async () => {
     await attendWorkshop(workshopId);
@@ -73,6 +137,20 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
   const handleCancel = async () => {
     await cancelWorkshopAttendance(workshopId);
+  };
+
+  const handleRequestApproval = async () => {
+    if (!sessionToken) {
+      toast.error("Please sign in to request approval");
+      return;
+    }
+    try {
+      await workshopAPI.requestApproval(workshopId, sessionToken);
+      toast.success("Approval request sent to admins");
+    } catch (error) {
+      console.error("Failed to request approval", error);
+      toast.error("Failed to send approval request");
+    }
   };
 
 
@@ -200,7 +278,24 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               <div className="mt-6">
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    {isUserAttending ? (
+                    {isCancelled ? (
+                      <Button disabled variant="outline" className="w-full">
+                        Workshop Cancelled
+                      </Button>
+                    ) : isRejected ? (
+                      <Button disabled variant="outline" className="w-full">
+                        Workshop Rejected
+                      </Button>
+                    ) : isPending ? (
+                      <Button
+                        variant="outline"
+                        onClick={isHost ? handleRequestApproval : undefined}
+                        disabled={!isHost}
+                        className="w-full"
+                      >
+                        {isHost ? "Request Approval" : "Pending Approval"}
+                      </Button>
+                    ) : isUserAttending ? (
                       <Button variant="outline" onClick={handleCancel} className="w-full">
                         Cancel Attendance
                       </Button>

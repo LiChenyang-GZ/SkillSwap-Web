@@ -282,7 +282,19 @@ export function Dashboard() {
                     {hostedWorkshops.length > 0 ? (
                       <div className="space-y-4">
                         {hostedWorkshops.map((workshop) => (
-                          <div key={workshop.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                          <div
+                            key={workshop.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setCurrentPage(`workshop-${workshop.id}`);
+                              }
+                            }}
+                            className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                          >
                             <div className="flex-1">
                               <h3 className="font-semibold mb-1">{workshop.title}</h3>
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
