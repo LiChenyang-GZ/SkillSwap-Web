@@ -23,6 +23,7 @@ interface AppContextType {
   authTab: "signin" | "signup";
   isDarkMode: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   sessionToken: string | null;
   setCurrentPage: (page: string, authTab?: "signin" | "signup") => void;
@@ -47,6 +48,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   
@@ -55,6 +57,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Toggle mock vs real auth easily
   const USE_SUPABASE = true;
+
+  const decodeJwtPayload = (token: string | null) => {
+    if (!token) return null;
+    try {
+      const payload = token.split(".")[1];
+      if (!payload) return null;
+      const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=");
+      return JSON.parse(atob(padded));
+    } catch (error) {
+      console.warn("Failed to decode JWT payload", error);
+      return null;
+    }
+  };
+
+  const computeIsAdmin = (token: string | null) => {
+    const payload = decodeJwtPayload(token);
+    if (!payload) return false;
+
+    const roleValue = payload.role || payload.roles;
+    const appMetadata = payload.app_metadata || payload.appMetadata || {};
+    const appRoles = appMetadata.roles || appMetadata.role;
+
+    const rawRoles = ([] as string[]).concat(
+      Array.isArray(roleValue) ? roleValue : roleValue ? [roleValue] : [],
+      Array.isArray(appRoles) ? appRoles : appRoles ? [appRoles] : []
+    );
+
+    const normalized = rawRoles.map((role) => String(role).toLowerCase());
+    return normalized.includes("admin") || normalized.includes("role_admin");
+  };
 
   // --------------------------
   // Theme Initialization
@@ -162,6 +195,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    setIsAdmin(computeIsAdmin(sessionToken));
+  }, [sessionToken]);
 
   // --------------------------
   // Helpers
@@ -413,6 +450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTransactions([]);
     setIsAuthenticated(false);
     setSessionToken(null);
+    setIsAdmin(false);
     localStorage.removeItem("skill-swap-auth");
     localStorage.removeItem("skill-swap-user");
     localStorage.removeItem("skill-swap-sessionToken");
@@ -576,6 +614,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         authTab,
         isDarkMode,
         isAuthenticated,
+        isAdmin,
         isLoading,
         sessionToken,
         setCurrentPage,
