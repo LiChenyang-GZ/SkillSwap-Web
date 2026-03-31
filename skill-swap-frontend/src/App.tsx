@@ -6,8 +6,6 @@ import { HomePage } from './components/HomePage';
 import { ExploreWorkshops } from './components/ExploreWorkshops';
 import { PastWorkshops } from './components/PastWorkshops';
 import { Dashboard } from './components/Dashboard';
-// 积分系统已停用：保留 Credits 页面文件，但不再作为主导航页面。
-// import { Credits } from './components/Credits';
 import { CreateWorkshop } from './components/CreateWorkshop';
 import { AuthPage } from './components/AuthPage';
 import { WorkshopDetails } from './components/WorkshopDetails';

@@ -254,18 +254,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                   <Badge variant="outline" className="text-base">{workshop.skillLevel}</Badge>
                 </div>
 
-                {/* Participation */}
+                {/* Access */}
                 <div>
-                  {/* 积分系统已停用：保留原积分展示。 */}
-                  {/*
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Cost</p>
-                  <div className="flex items-center space-x-2">
-                    <CreditCard className="w-5 h-5 text-primary" />
-                    <span className="text-lg font-semibold">{workshop.creditCost} credits</span>
-                  </div>
-                  */}
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Participation</p>
-                  <span className="text-lg font-semibold">Open access</span>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Access</p>
+                  <span className="text-lg font-semibold">Open to all members</span>
                 </div>
 
                 {/* Date */}
