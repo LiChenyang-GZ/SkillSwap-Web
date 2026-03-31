@@ -24,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -244,7 +246,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getDescription(),
             workshop.getCategory(),
             workshop.getSkillLevel(),
-            workshop.getStatus(),
+            resolveEffectiveStatus(workshop),
             workshop.getDate(),
             workshop.getTime(),
             workshop.getDuration(),
@@ -261,6 +263,31 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getRequirements(),
             workshop.getCreatedAt()
             );
+    }
+
+    private String resolveEffectiveStatus(Workshop workshop) {
+        String status = workshop.getStatus();
+        if (status == null) {
+            return "upcoming";
+        }
+
+        String normalized = status.toLowerCase();
+        if ("cancelled".equals(normalized) || "completed".equals(normalized)) {
+            return normalized;
+        }
+
+        LocalDate date = workshop.getDate();
+        LocalTime time = workshop.getTime();
+        if (date == null) {
+            return normalized;
+        }
+
+        LocalDateTime startDateTime = LocalDateTime.of(date, time != null ? time : LocalTime.MIDNIGHT);
+        if (startDateTime.isBefore(LocalDateTime.now())) {
+            return "completed";
+        }
+
+        return normalized;
     }
 
     private String extractUserId(Authentication authentication) {

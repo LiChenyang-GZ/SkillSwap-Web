@@ -4,6 +4,7 @@ import { Navigation } from './components/Navigation';
 import { HeroPage } from './components/Hero';
 import { HomePage } from './components/HomePage';
 import { ExploreWorkshops } from './components/ExploreWorkshops';
+import { PastWorkshops } from './components/PastWorkshops';
 import { Dashboard } from './components/Dashboard';
 // 积分系统已停用：保留 Credits 页面文件，但不再作为主导航页面。
 // import { Credits } from './components/Credits';
@@ -64,13 +65,8 @@ function AppContent() {
         return <CreateWorkshop />;
       case 'auth':
         return <AuthPage />;
-      case 'leaderboard':
-        return <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Leaderboard</h1>
-            <p className="text-muted-foreground">Coming soon! Track top contributors and workshop hosts.</p>
-          </div>
-        </div>;
+      case 'pastWorkshops':
+        return <PastWorkshops />;
       case 'feedback':
         return <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
           <div className="text-center">

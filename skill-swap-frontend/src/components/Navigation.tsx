@@ -20,7 +20,7 @@ const navItems = [
   { id: 'explore', label: 'Explore', icon: Search },
   { id: 'create', label: 'Create', icon: Plus },
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+  { id: 'pastWorkshops', label: 'Past Workshops', icon: Trophy },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },
 ];
 
