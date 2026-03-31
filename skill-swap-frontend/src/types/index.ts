@@ -70,10 +70,10 @@ export interface Review {
 export interface NotificationItem {
   id: string;
   userId: string;
-  type: 'workshop_approved' | 'workshop_rejected' | 'workshop_reminder' | 'credit_earned' | 'workshop_cancelled' | 'new_review';
+  type: string;
   title: string;
   message: string;
-  timestamp: string;
+  timestamp?: string;
   read: boolean;
   actionUrl?: string;
   workshopId?: string | null;

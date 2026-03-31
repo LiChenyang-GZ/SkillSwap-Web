@@ -33,6 +33,9 @@ public class UserAccount {
     @Column(name = "bio")
     private String bio;
 
+    @Column(name = "role")
+    private String role;
+
     @Column(name = "credit_balance")
     private Integer creditBalance;
 

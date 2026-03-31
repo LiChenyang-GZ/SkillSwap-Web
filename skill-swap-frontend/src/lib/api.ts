@@ -505,8 +505,14 @@ export const transactionAPI = {
 export const notificationAPI = {
   getAll: async (token?: string | null): Promise<NotificationItem[]> => {
     const data = await apiCall<NotificationItem[]>("/api/v1/notifications", {}, token);
-    return data.map((item) => ({
-      ...item,
+    return data.map((item: any) => ({
+      id: String(item.id),
+      userId: item.userId || item.recipientId,
+      type: item.type,
+      title: item.title,
+      message: item.message,
+      timestamp: item.timestamp || item.createdAt,
+      read: item.read ?? item.isRead ?? false,
       workshopId: item.workshopId ?? null,
     }));
   },
@@ -522,7 +528,16 @@ export const notificationAPI = {
       { method: "POST" },
       token
     );
-    return data;
+    return {
+      id: String((data as any).id),
+      userId: (data as any).userId || (data as any).recipientId,
+      type: (data as any).type,
+      title: (data as any).title,
+      message: (data as any).message,
+      timestamp: (data as any).timestamp || (data as any).createdAt,
+      read: (data as any).read ?? (data as any).isRead ?? false,
+      workshopId: (data as any).workshopId ?? null,
+    };
   },
 
   markAllRead: async (token?: string | null): Promise<void> => {

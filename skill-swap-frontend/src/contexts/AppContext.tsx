@@ -11,7 +11,7 @@ import {
   // mockWorkshops,
   // mockTransactions,
 } from "../lib/mock-data";
-import { authAPI, workshopAPI } from "../lib/api";
+import { authAPI, notificationAPI, workshopAPI } from "../lib/api";
 import { supabase } from "../utils/supabase/supabase";
 import { toast } from "sonner";
 
@@ -24,6 +24,8 @@ interface AppContextType {
   isDarkMode: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  notificationsUnreadCount: number;
+  refreshNotificationsUnreadCount: () => Promise<void>;
   isLoading: boolean;
   sessionToken: string | null;
   setCurrentPage: (page: string, authTab?: "signin" | "signup") => void;
@@ -49,6 +51,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [notificationsUnreadCount, setNotificationsUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   
@@ -198,6 +201,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setIsAdmin(computeIsAdmin(sessionToken));
+  }, [sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken) {
+      setNotificationsUnreadCount(0);
+      return;
+    }
+
+    refreshNotificationsUnreadCount();
   }, [sessionToken]);
 
   // --------------------------
@@ -378,6 +390,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // 积分系统已停用：不再加载 mock 交易历史。
     // setTransactions(mockTransactions);
     setTransactions([]);
+  };
+
+  const refreshNotificationsUnreadCount = async () => {
+    if (!sessionToken) {
+      setNotificationsUnreadCount(0);
+      return;
+    }
+    try {
+      const count = await notificationAPI.getUnreadCount(sessionToken);
+      setNotificationsUnreadCount(count);
+    } catch (error) {
+      console.warn("Failed to fetch notification count", error);
+    }
   };
 
   // --------------------------
@@ -615,6 +640,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isDarkMode,
         isAuthenticated,
         isAdmin,
+        notificationsUnreadCount,
+        refreshNotificationsUnreadCount,
         isLoading,
         sessionToken,
         setCurrentPage,

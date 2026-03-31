@@ -81,6 +81,23 @@ public class WorkshopServiceImpl implements WorkshopService {
         // 3. 淇濆瓨鍒版暟鎹簱
         Workshop savedWorkshop = workshopRepository.save(workshop);
 
+        List<UserAccount> admins = userService.findAdmins();
+        for (UserAccount admin : admins) {
+            if (admin == null || admin.getId() == null) {
+                continue;
+            }
+            if (admin.getId().equals(facilitator.getId())) {
+                continue;
+            }
+            notificationService.createNotification(
+                    admin.getId(),
+                    "workshop_submission",
+                    "New workshop submitted: " + savedWorkshop.getTitle(),
+                    "A new workshop (" + savedWorkshop.getTitle() + ") is awaiting your review.",
+                    savedWorkshop.getId()
+            );
+        }
+
         // 4. 灏嗕繚瀛樺悗鐨?Entity 杞崲鍥?Response DTO 骞惰繑鍥?
         return mapToDto(savedWorkshop);
     }
@@ -174,6 +191,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setRequirements(updateRequestDto.requirements());
 
         Workshop saved = workshopRepository.save(workshop);
+        notifyWorkshopAdminUpdate(saved);
         return mapToDto(saved);
     }
 
@@ -197,7 +215,8 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedBy(extractUserUuid(authentication));
 
         Workshop saved = workshopRepository.save(workshop);
-        notifyWorkshopReview(saved, "workshop_approved", "Workshop approved", "Your workshop has been approved and is now visible to others.");
+        notifyWorkshopReview(saved, "workshop_approved", "Workshop approved: " + saved.getTitle(),
+            "Your workshop (" + saved.getTitle() + ") has been approved and is now visible to others.");
         return new WorkshopStatusUpdateResponseDto("Workshop approved successfully.", mapToDto(saved));
     }
 
@@ -221,7 +240,8 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedBy(extractUserUuid(authentication));
 
         Workshop saved = workshopRepository.save(workshop);
-        notifyWorkshopReview(saved, "workshop_rejected", "Workshop rejected", "Your workshop submission was rejected. You can review the details and submit again.");
+        notifyWorkshopReview(saved, "workshop_rejected", "Workshop rejected: " + saved.getTitle(),
+            "Your workshop submission (" + saved.getTitle() + ") was rejected. You can review the details and submit again.");
         return new WorkshopStatusUpdateResponseDto("Workshop rejected successfully.", mapToDto(saved));
     }
 
@@ -246,7 +266,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedBy(extractUserUuid(authentication));
 
         Workshop saved = workshopRepository.save(workshop);
-        notifyWorkshopReview(saved, "workshop_cancelled", "Workshop cancelled", "Your workshop was cancelled by an administrator.");
+        notifyWorkshopCancelled(saved);
         return new WorkshopStatusUpdateResponseDto("Workshop cancelled successfully.", mapToDto(saved));
     }
 
@@ -499,6 +519,79 @@ public class WorkshopServiceImpl implements WorkshopService {
                 message,
                 workshop.getId()
         );
+    }
+
+    private void notifyWorkshopCancelled(Workshop workshop) {
+        if (workshop == null) {
+            return;
+        }
+
+        UserAccount facilitator = workshop.getFacilitator();
+        if (facilitator != null) {
+            notificationService.createNotification(
+                    facilitator.getId(),
+                    "workshop_cancelled",
+                    "Workshop cancelled: " + workshop.getTitle(),
+                    "Your workshop (" + workshop.getTitle() + ") was cancelled by an administrator.",
+                    workshop.getId()
+            );
+        }
+
+        List<WorkshopParticipant> participants = participantRepository.findByWorkshopId(workshop.getId());
+        for (WorkshopParticipant participant : participants) {
+            if (participant.getUser() == null) {
+                continue;
+            }
+            if (facilitator != null && facilitator.getId().equals(participant.getUser().getId())) {
+                continue;
+            }
+            notificationService.createNotification(
+                    participant.getUser().getId(),
+                    "workshop_cancelled",
+                    "Workshop cancelled: " + workshop.getTitle(),
+                    "The workshop (" + workshop.getTitle() + ") you joined was cancelled by an administrator.",
+                    workshop.getId()
+            );
+        }
+    }
+
+    private void notifyWorkshopAdminUpdate(Workshop workshop) {
+        if (workshop == null) {
+            return;
+        }
+
+        UserAccount facilitator = workshop.getFacilitator();
+        if (facilitator != null) {
+            notificationService.createNotification(
+                    facilitator.getId(),
+                    "workshop_updated_by_admin",
+                    "Workshop updated: " + workshop.getTitle(),
+                    "An administrator updated your workshop (" + workshop.getTitle() + ").",
+                    workshop.getId()
+            );
+        }
+
+        String status = normalizeStatus(workshop.getStatus());
+        if (!"approved".equals(status)) {
+            return;
+        }
+
+        List<WorkshopParticipant> participants = participantRepository.findByWorkshopId(workshop.getId());
+        for (WorkshopParticipant participant : participants) {
+            if (participant.getUser() == null) {
+                continue;
+            }
+            if (facilitator != null && facilitator.getId().equals(participant.getUser().getId())) {
+                continue;
+            }
+            notificationService.createNotification(
+                    participant.getUser().getId(),
+                    "workshop_updated",
+                    "Workshop updated: " + workshop.getTitle(),
+                    "An administrator updated the workshop (" + workshop.getTitle() + "). Please review the latest schedule and information.",
+                    workshop.getId()
+            );
+        }
     }
 
     private String extractUserId(Authentication authentication) {

@@ -17,6 +17,7 @@ public class UserProfileDto {
     private String email;
     private String avatarUrl;
     private String bio;
+    private String role;
     private List<String> skills;
     private Integer creditBalance;
     private Long totalWorkshopsHosted;
@@ -36,6 +37,7 @@ public class UserProfileDto {
         dto.setEmail(user.getEmail());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
+        dto.setRole(user.getRole());
         // 鏂扮敤鎴峰垵濮?100 credits
         dto.setCreditBalance(100);
         // 缁熻鏁版嵁闇€瑕侀€氳繃 service 灞傛潵鑾峰彇

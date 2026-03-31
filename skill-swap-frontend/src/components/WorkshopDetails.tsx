@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
+import { workshopAPI } from '../lib/api';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -23,11 +24,35 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const found = workshops.find((w) => w.id === workshopId);
-    if (found) {
-      setWorkshop(found);
-    }
-    setIsLoading(false);
+    let isMounted = true;
+
+    const loadWorkshop = async () => {
+      setIsLoading(true);
+
+      const found = workshops.find((w) => w.id === workshopId);
+      if (found && isMounted) {
+        setWorkshop(found);
+      }
+
+      try {
+        const latest = await workshopAPI.getById(workshopId);
+        if (latest && isMounted) {
+          setWorkshop(latest);
+        }
+      } catch (error) {
+        console.warn("Failed to refresh workshop details", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadWorkshop();
+
+    return () => {
+      isMounted = false;
+    };
   }, [workshopId, workshops]);
 
   if (isLoading) {
@@ -64,6 +89,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
   const isUserAttending = workshop.participants?.some((p) => p.id === user?.id) || false;
   const isFull = (workshop.currentParticipants ?? 0) >= workshop.maxParticipants;
+  const isCancelled = (workshop.status || "").toLowerCase() === "cancelled";
   // 积分系统已停用：不再根据余额限制报名。
   // const hasEnoughCredits = user && user.creditBalance >= workshop.creditCost;
 
@@ -200,7 +226,11 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               <div className="mt-6">
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    {isUserAttending ? (
+                    {isCancelled ? (
+                      <Button disabled variant="outline" className="w-full">
+                        Workshop Cancelled
+                      </Button>
+                    ) : isUserAttending ? (
                       <Button variant="outline" onClick={handleCancel} className="w-full">
                         Cancel Attendance
                       </Button>

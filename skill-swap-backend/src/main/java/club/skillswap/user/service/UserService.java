@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -82,6 +83,7 @@ public class UserService {
         dto.setEmail(user.getEmail());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
+        dto.setRole(user.getRole());
         dto.setSkills(skillNames);
         // 积分系统已停用：不再展示/初始化 100 积分。
         // dto.setCreditBalance(100);
@@ -117,6 +119,7 @@ public class UserService {
         UUID userId = UUID.fromString(jwt.getSubject());
         String jwtEmail = extractEmailFromJwt(jwt);
         requireVerifiedEmail(jwt, jwtEmail);
+        String roleFromJwt = extractRoleFromJwt(jwt);
         
         UserAccount user = userRepository.findById(userId).orElseGet(() -> {
             UserAccount newUser = new UserAccount();
@@ -129,6 +132,7 @@ public class UserService {
             }
             newUser.setUsername(finalUsername);
             newUser.setEmail(jwtEmail);
+            newUser.setRole(roleFromJwt);
             return userRepository.save(newUser);
         });
 
@@ -138,8 +142,18 @@ public class UserService {
             user = userRepository.save(user);
         }
 
+        if (roleFromJwt != null && !roleFromJwt.equalsIgnoreCase(user.getRole())) {
+            user.setRole(roleFromJwt);
+            user = userRepository.save(user);
+        }
+
         // 杩斿洖鍖呭惈瀹屾暣缁熻鏁版嵁鐨?DTO
         return getUserProfileWithStats(user.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserAccount> findAdmins() {
+        return userRepository.findByRoleIgnoreCase("admin");
     }
 
     /**
@@ -267,6 +281,37 @@ public class UserService {
         if (!verifiedByConfirmedAt && !verifiedByTimestamp && !verifiedByBoolean && !verifiedByMetadata && !verifiedByRawMetadata) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email before accessing profile.");
         }
+    }
+
+    private String extractRoleFromJwt(Jwt jwt) {
+        Map<String, Object> appMetadata = jwt.getClaimAsMap("app_metadata");
+        if (appMetadata == null) {
+            return "member";
+        }
+
+        List<String> roles = new ArrayList<>();
+        Object roleList = appMetadata.get("roles");
+        if (roleList instanceof List<?> rawRoles) {
+            for (Object role : rawRoles) {
+                if (role instanceof String roleValue && !roleValue.isBlank()) {
+                    roles.add(roleValue);
+                }
+            }
+        }
+
+        Object singleRole = appMetadata.get("role");
+        if (singleRole instanceof String roleValue && !roleValue.isBlank()) {
+            roles.add(roleValue);
+        }
+
+        for (String role : roles) {
+            String normalized = role.trim().toLowerCase(Locale.ROOT);
+            if ("admin".equals(normalized) || "role_admin".equals(normalized)) {
+                return "admin";
+            }
+        }
+
+        return "member";
     }
 
     private boolean hasText(String value) {
