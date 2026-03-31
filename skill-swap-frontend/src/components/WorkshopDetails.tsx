@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { workshopAPI } from '../lib/api';
 import { Button } from './ui/button';
@@ -22,18 +22,25 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const { workshops, user, attendWorkshop, cancelWorkshopAttendance, setCurrentPage, upsertWorkshop } = useApp();
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const lastFetchedIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const found = workshops.find((w) => w.id === workshopId);
+    if (found) {
+      setWorkshop(found);
+      setIsLoading(false);
+    }
+  }, [workshopId, workshops]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadWorkshop = async () => {
-      setIsLoading(true);
-
-      const found = workshops.find((w) => w.id === workshopId);
-      if (found && isMounted) {
-        setWorkshop(found);
+    const loadWorkshop = async (force = false) => {
+      if (!force && lastFetchedIdRef.current === workshopId) {
+        return;
       }
-
+      lastFetchedIdRef.current = workshopId;
+      setIsLoading(true);
       try {
         const latest = await workshopAPI.getById(workshopId);
         if (latest && isMounted) {
@@ -54,7 +61,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
     return () => {
       isMounted = false;
     };
-  }, [workshopId, workshops]);
+  }, [workshopId, upsertWorkshop]);
 
   if (isLoading) {
     return (

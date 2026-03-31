@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   useRef,
+  useCallback,
   ReactNode,
 } from "react";
 import { User, Workshop, CreditTransaction } from "../types";
@@ -406,7 +407,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const upsertWorkshop = (workshop: Workshop) => {
+  const upsertWorkshop = useCallback((workshop: Workshop) => {
     setWorkshops((prev) => {
       const index = prev.findIndex((item) => item.id === workshop.id);
       if (index === -1) {
@@ -416,7 +417,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       next[index] = workshop;
       return next;
     });
-  };
+  }, []);
 
   // --------------------------
   // Auth Actions
