@@ -19,7 +19,7 @@ interface WorkshopDetailsProps {
 }
 
 export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
-  const { workshops, user, attendWorkshop, cancelWorkshopAttendance, setCurrentPage } = useApp();
+  const { workshops, user, attendWorkshop, cancelWorkshopAttendance, setCurrentPage, upsertWorkshop } = useApp();
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -38,6 +38,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
         const latest = await workshopAPI.getById(workshopId);
         if (latest && isMounted) {
           setWorkshop(latest);
+          upsertWorkshop(latest);
         }
       } catch (error) {
         console.warn("Failed to refresh workshop details", error);

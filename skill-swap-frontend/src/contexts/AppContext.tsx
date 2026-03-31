@@ -38,6 +38,7 @@ interface AppContextType {
   signOut: () => Promise<void>;
   refreshData: () => Promise<void>;
   clearCache: () => void;
+  upsertWorkshop: (workshop: Workshop) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -405,6 +406,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const upsertWorkshop = (workshop: Workshop) => {
+    setWorkshops((prev) => {
+      const index = prev.findIndex((item) => item.id === workshop.id);
+      if (index === -1) {
+        return [workshop, ...prev];
+      }
+      const next = [...prev];
+      next[index] = workshop;
+      return next;
+    });
+  };
+
   // --------------------------
   // Auth Actions
   // --------------------------
@@ -660,6 +673,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         signOut,
         refreshData,
         clearCache,
+        upsertWorkshop,
       }}
     >
       {children}
