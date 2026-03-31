@@ -27,7 +27,7 @@ export interface Workshop {
   description: string;
   category: string;
   skillLevel: 'Beginner' | 'Intermediate' | 'Advanced';
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  status: 'pending' | 'approved' | 'rejected' | 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   date: string;
   time: string;
   duration?: number; // in minutes

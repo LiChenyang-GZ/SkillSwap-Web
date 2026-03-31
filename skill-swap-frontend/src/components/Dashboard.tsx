@@ -19,7 +19,10 @@ import {
 
 export function Dashboard() {
   const { user, workshops, setCurrentPage, cancelWorkshopAttendance, deleteWorkshop } = useApp();
-  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
+  const isUpcoming = (status?: string) => {
+    const normalized = (status || '').toLowerCase();
+    return normalized === 'upcoming' || normalized === 'approved';
+  };
 
   // Early return if no user
   if (!user) {

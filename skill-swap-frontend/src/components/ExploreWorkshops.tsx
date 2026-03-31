@@ -23,7 +23,10 @@ export function ExploreWorkshops() {
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
 
-  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
+  const isUpcoming = (status?: string) => {
+    const normalized = (status || '').toLowerCase();
+    return normalized === 'upcoming' || normalized === 'approved';
+  };
 
   // Filter workshops based on search and filters
   // matchesSearch, matchesCategory, matchesSkillLevel, matchesLocation

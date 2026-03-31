@@ -319,6 +319,28 @@ export const workshopAPI = {
     }
   },
 
+  // 获取公开可展示工作坊（通过审核）
+  getPublic: async (): Promise<Workshop[]> => {
+    try {
+      const data = await apiCall<any[]>("/api/v1/workshops/public");
+      return data.map(enrichWorkshop);
+    } catch (error) {
+      console.error("❌ Failed to fetch public workshops:", error);
+      return [];
+    }
+  },
+
+  // 获取当前用户创建的工作坊（需要登录）
+  getMine: async (token?: string | null): Promise<Workshop[]> => {
+    try {
+      const data = await apiCall<any[]>("/api/v1/workshops/mine", {}, token);
+      return data.map(enrichWorkshop);
+    } catch (error) {
+      console.error("❌ Failed to fetch my workshops:", error);
+      return [];
+    }
+  },
+
   // 获取单个工作坊
   getById: async (id: string): Promise<Workshop | null> => {
     try {
@@ -395,6 +417,51 @@ export const workshopAPI = {
       console.error("❌ Failed to delete workshop:", error);
       throw error;
     }
+  },
+
+  // 管理员：获取待审核工作坊
+  getPendingForAdmin: async (token?: string | null): Promise<Workshop[]> => {
+    const data = await apiCall<any[]>("/api/v1/admin/workshops/pending", {}, token);
+    return data.map(enrichWorkshop);
+  },
+
+  // 管理员：编辑待审核工作坊
+  updatePendingByAdmin: async (workshopId: string, workshopData: Partial<Workshop>, token?: string | null): Promise<Workshop> => {
+    const backendId = toBackendWorkshopId(workshopId);
+    const data = await apiCall<any>(
+      `/api/v1/admin/workshops/${backendId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(workshopData),
+      },
+      token
+    );
+    return enrichWorkshop(data);
+  },
+
+  // 管理员：通过待审核工作坊
+  approveByAdmin: async (workshopId: string, token?: string | null): Promise<Workshop> => {
+    const backendId = toBackendWorkshopId(workshopId);
+    const data = await apiCall<{ message: string; workshop: any }>(
+      `/api/v1/admin/workshops/${backendId}/approve`,
+      { method: "POST" },
+      token
+    );
+    return enrichWorkshop(data.workshop);
+  },
+
+  // 管理员：拒绝待审核工作坊
+  rejectByAdmin: async (workshopId: string, comment?: string, token?: string | null): Promise<Workshop> => {
+    const backendId = toBackendWorkshopId(workshopId);
+    const data = await apiCall<{ message: string; workshop: any }>(
+      `/api/v1/admin/workshops/${backendId}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify({ comment: comment || null }),
+      },
+      token
+    );
+    return enrichWorkshop(data.workshop);
   },
 };
 

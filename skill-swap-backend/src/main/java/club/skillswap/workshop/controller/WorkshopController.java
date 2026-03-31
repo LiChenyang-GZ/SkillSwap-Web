@@ -59,6 +59,23 @@ public class WorkshopController {
         return ResponseEntity.ok(workshops);
     }
 
+    @GetMapping("/public")
+    public ResponseEntity<List<WorkshopResponseDto>> getPublicWorkshops() {
+        List<WorkshopResponseDto> workshops = workshopService.getPublicWorkshops();
+        return ResponseEntity.ok(workshops);
+    }
+
+    @GetMapping("/mine")
+    public ResponseEntity<List<WorkshopResponseDto>> getMyWorkshops(Authentication authentication) {
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
+
+        String facilitatorId = jwtAuth.getToken().getSubject();
+        List<WorkshopResponseDto> workshops = workshopService.getMyWorkshops(facilitatorId);
+        return ResponseEntity.ok(workshops);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiMessageDto> deleteWorkshop(@PathVariable Long id, Authentication authentication,
                                                         @RequestHeader(value = "X-Mock-User", required = false) String mockUserId) {

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Component
@@ -28,19 +29,24 @@ public class JwtConverter implements Converter<Jwt, AbstractAuthenticationToken>
     private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
         // Supabase 灏嗚鑹蹭俊鎭斁鍦?"app_metadata" claim 涓?
         Map<String, Object> appMetadata = jwt.getClaimAsMap("app_metadata");
-        
-        if (appMetadata != null && appMetadata.get("roles") instanceof List) {
-            @SuppressWarnings("unchecked")
-            List<String> roles = (List<String>) appMetadata.get("roles");
-            
-            // 灏嗚鑹插瓧绗︿覆锛堝 "ADMIN"锛夎浆鎹负 Spring Security 鐨?GrantedAuthority 瀵硅薄
-            // 鍏抽敭锛歋pring Security 鐨?"hasRole" 鏂规硶闇€瑕佹潈闄愪互 "ROLE_" 寮€澶?
-            return roles.stream()
+
+        if (appMetadata == null) {
+            return List.of();
+        }
+
+        if (appMetadata.get("roles") instanceof List<?> rawRoles) {
+            return rawRoles.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .map(role -> role.toUpperCase(Locale.ROOT))
                     .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                     .collect(Collectors.toList());
         }
-        
-        // 濡傛灉娌℃湁瑙掕壊淇℃伅锛岃繑鍥炰竴涓┖鍒楄〃
+
+        if (appMetadata.get("role") instanceof String singleRole && !singleRole.isBlank()) {
+            return List.of(new SimpleGrantedAuthority("ROLE_" + singleRole.toUpperCase(Locale.ROOT)));
+        }
+
         return List.of();
     }
 }

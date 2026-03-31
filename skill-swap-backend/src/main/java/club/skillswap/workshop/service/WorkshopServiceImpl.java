@@ -6,7 +6,9 @@ import club.skillswap.credit.repository.CreditTransactionRepository;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
+import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
+import club.skillswap.workshop.dto.WorkshopStatusUpdateResponseDto;
 import club.skillswap.workshop.dto.FacilitatorDto;
 import club.skillswap.workshop.dto.WorkshopParticipantDto;
 import club.skillswap.workshop.entity.Workshop;
@@ -28,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +68,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setMaterials(createRequestDto.materials());
         workshop.setRequirements(createRequestDto.requirements());
         workshop.setFacilitator(facilitator);
+        workshop.setStatus("pending");
+        workshop.setReviewedBy(null);
+        workshop.setReviewedAt(null);
+        workshop.setReviewComment(null);
+        workshop.setApprovedAt(null);
 
         // ... 璋冪敤绉垎鏈嶅姟 ...
 
@@ -88,6 +96,120 @@ public class WorkshopServiceImpl implements WorkshopService {
     @Transactional(readOnly = true)
     public List<WorkshopResponseDto> getAllWorkshops() {
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
+        preloadCollections(workshops);
+        return workshops.stream().map(this::mapToDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkshopResponseDto> getPublicWorkshops() {
+        List<Workshop> workshops = workshopRepository.findAllPublicApprovedWithFacilitator();
+        preloadCollections(workshops);
+        return workshops.stream().map(this::mapToDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkshopResponseDto> getMyWorkshops(String facilitatorId) {
+        UUID facilitatorUuid;
+        try {
+            facilitatorUuid = UUID.fromString(facilitatorId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
+        }
+
+        List<Workshop> workshops = workshopRepository.findAllByFacilitatorIdWithFacilitator(facilitatorUuid);
+        preloadCollections(workshops);
+        return workshops.stream().map(this::mapToDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkshopResponseDto> getPendingWorkshops(Authentication authentication) {
+        requireAdmin(authentication);
+        List<Workshop> workshops = workshopRepository.findAllPendingWithFacilitator();
+        preloadCollections(workshops);
+        return workshops.stream().map(this::mapToDto).toList();
+    }
+
+    @Override
+    @Transactional
+    public WorkshopResponseDto updatePendingWorkshop(Long workshopId, WorkshopCreateRequestDto updateRequestDto, Authentication authentication) {
+        requireAdmin(authentication);
+
+        Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        String currentStatus = normalizeStatus(workshop.getStatus());
+        if (!"pending".equals(currentStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending workshops can be edited by admin.");
+        }
+
+        workshop.setTitle(updateRequestDto.title());
+        workshop.setDescription(updateRequestDto.description());
+        workshop.setCategory(updateRequestDto.category());
+        workshop.setSkillLevel(updateRequestDto.skillLevel());
+        workshop.setDuration(updateRequestDto.duration());
+        workshop.setDate(updateRequestDto.date());
+        workshop.setTime(updateRequestDto.time());
+        workshop.setIsOnline(updateRequestDto.isOnline());
+        workshop.setLocation(updateRequestDto.location());
+        workshop.setMaxParticipants(updateRequestDto.maxParticipants());
+        workshop.setTags(updateRequestDto.tags());
+        workshop.setMaterials(updateRequestDto.materials());
+        workshop.setRequirements(updateRequestDto.requirements());
+
+        Workshop saved = workshopRepository.save(workshop);
+        return mapToDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public WorkshopStatusUpdateResponseDto approveWorkshop(Long workshopId, Authentication authentication) {
+        requireAdmin(authentication);
+
+        Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        String currentStatus = normalizeStatus(workshop.getStatus());
+        if (!"pending".equals(currentStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending workshops can be approved.");
+        }
+
+        workshop.setStatus("approved");
+        workshop.setApprovedAt(LocalDateTime.now());
+        workshop.setReviewedAt(LocalDateTime.now());
+        workshop.setReviewComment(null);
+        workshop.setReviewedBy(extractUserUuid(authentication));
+
+        Workshop saved = workshopRepository.save(workshop);
+        return new WorkshopStatusUpdateResponseDto("Workshop approved successfully.", mapToDto(saved));
+    }
+
+    @Override
+    @Transactional
+    public WorkshopStatusUpdateResponseDto rejectWorkshop(Long workshopId, WorkshopReviewRequestDto reviewRequestDto, Authentication authentication) {
+        requireAdmin(authentication);
+
+        Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        String currentStatus = normalizeStatus(workshop.getStatus());
+        if (!"pending".equals(currentStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending workshops can be rejected.");
+        }
+
+        workshop.setStatus("rejected");
+        workshop.setApprovedAt(null);
+        workshop.setReviewedAt(LocalDateTime.now());
+        workshop.setReviewComment(reviewRequestDto != null ? reviewRequestDto.comment() : null);
+        workshop.setReviewedBy(extractUserUuid(authentication));
+
+        Workshop saved = workshopRepository.save(workshop);
+        return new WorkshopStatusUpdateResponseDto("Workshop rejected successfully.", mapToDto(saved));
+    }
+
+    private void preloadCollections(List<Workshop> workshops) {
         // 瑙﹀彂鎳掑姞杞斤紙娣诲姞 null 妫€鏌ワ級
         workshops.forEach(w -> {
             if (w.getLocation() != null) w.getLocation().size();
@@ -95,7 +217,6 @@ public class WorkshopServiceImpl implements WorkshopService {
             if (w.getMaterials() != null) w.getMaterials().size();
             if (w.getRequirements() != null) w.getRequirements().size();
         });
-        return workshops.stream().map(this::mapToDto).toList();
     }
 
     @Override
@@ -268,11 +389,14 @@ public class WorkshopServiceImpl implements WorkshopService {
     private String resolveEffectiveStatus(Workshop workshop) {
         String status = workshop.getStatus();
         if (status == null) {
-            return "upcoming";
+            return "pending";
         }
 
-        String normalized = status.toLowerCase();
-        if ("cancelled".equals(normalized) || "completed".equals(normalized)) {
+        String normalized = normalizeStatus(status);
+        if ("cancelled".equals(normalized)
+                || "completed".equals(normalized)
+                || "pending".equals(normalized)
+                || "rejected".equals(normalized)) {
             return normalized;
         }
 
@@ -288,6 +412,29 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         return normalized;
+    }
+
+    private String normalizeStatus(String status) {
+        return status == null ? "pending" : status.toLowerCase();
+    }
+
+    private void requireAdmin(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
+        if (!isAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required.");
+        }
+    }
+
+    private UUID extractUserUuid(Authentication authentication) {
+        try {
+            return UUID.fromString(extractUserId(authentication));
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private String extractUserId(Authentication authentication) {
