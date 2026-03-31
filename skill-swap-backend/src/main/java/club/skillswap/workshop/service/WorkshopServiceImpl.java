@@ -3,6 +3,7 @@ package club.skillswap.workshop.service;
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.credit.entity.CreditTransaction;
 import club.skillswap.credit.repository.CreditTransactionRepository;
+import club.skillswap.notification.service.NotificationService;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
@@ -40,6 +41,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final UserService userService;
     private final WorkshopParticipantRepository participantRepository;
     private final CreditTransactionRepository creditTransactionRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -183,6 +185,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedBy(extractUserUuid(authentication));
 
         Workshop saved = workshopRepository.save(workshop);
+        notifyWorkshopReview(saved, "workshop_approved", "Workshop approved", "Your workshop has been approved and is now visible to others.");
         return new WorkshopStatusUpdateResponseDto("Workshop approved successfully.", mapToDto(saved));
     }
 
@@ -206,6 +209,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedBy(extractUserUuid(authentication));
 
         Workshop saved = workshopRepository.save(workshop);
+        notifyWorkshopReview(saved, "workshop_rejected", "Workshop rejected", "Your workshop submission was rejected. You can review the details and submit again.");
         return new WorkshopStatusUpdateResponseDto("Workshop rejected successfully.", mapToDto(saved));
     }
 
@@ -435,6 +439,19 @@ public class WorkshopServiceImpl implements WorkshopService {
         } catch (IllegalArgumentException ex) {
             return null;
         }
+    }
+
+    private void notifyWorkshopReview(Workshop workshop, String type, String title, String message) {
+        if (workshop == null || workshop.getFacilitator() == null) {
+            return;
+        }
+        notificationService.createNotification(
+                workshop.getFacilitator().getId(),
+                type,
+                title,
+                message,
+                workshop.getId()
+        );
     }
 
     private String extractUserId(Authentication authentication) {

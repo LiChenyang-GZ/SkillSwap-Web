@@ -1,6 +1,6 @@
 // lib/api.ts
 
-import { Workshop, User } from '@/types';
+import { NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
 import { mockUser, mockUsers, mockTransactions } from './mock-data';
 
@@ -479,5 +479,36 @@ export const transactionAPI = {
     };
     mockTransactions.push(newTx);
     return newTx;
+  },
+};
+
+// ----------------------
+// NOTIFICATION API
+// ----------------------
+export const notificationAPI = {
+  getAll: async (token?: string | null): Promise<NotificationItem[]> => {
+    const data = await apiCall<NotificationItem[]>("/api/v1/notifications", {}, token);
+    return data.map((item) => ({
+      ...item,
+      workshopId: item.workshopId ?? null,
+    }));
+  },
+
+  getUnreadCount: async (token?: string | null): Promise<number> => {
+    const data = await apiCall<{ count: number }>("/api/v1/notifications/unread-count", {}, token);
+    return data.count;
+  },
+
+  markRead: async (notificationId: string, token?: string | null): Promise<NotificationItem> => {
+    const data = await apiCall<NotificationItem>(
+      `/api/v1/notifications/${notificationId}/read`,
+      { method: "POST" },
+      token
+    );
+    return data;
+  },
+
+  markAllRead: async (token?: string | null): Promise<void> => {
+    await apiCall<void>("/api/v1/notifications/read-all", { method: "POST" }, token);
   },
 };
