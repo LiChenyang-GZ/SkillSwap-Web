@@ -1,8 +1,6 @@
 package club.skillswap.workshop.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
-import club.skillswap.credit.entity.CreditTransaction;
-import club.skillswap.credit.repository.CreditTransactionRepository;
 import club.skillswap.notification.service.NotificationService;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
@@ -42,7 +40,6 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final WorkshopRepository workshopRepository;
     private final UserService userService;
     private final WorkshopParticipantRepository participantRepository;
-    private final CreditTransactionRepository creditTransactionRepository;
     private final NotificationService notificationService;
 
     @Override
@@ -101,7 +98,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop workshop = workshopRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + id));
         enforceWorkshopVisibility(workshop, authentication);
-        return mapToDto(workshop);
+        return mapToDto(workshop, isAdmin(authentication));
     }
 
     @Override
@@ -116,8 +113,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     @Transactional(readOnly = true)
     public List<WorkshopResponseDto> getPublicWorkshops() {
         List<Workshop> workshops = workshopRepository.findAllPublicApprovedWithFacilitator();
-        preloadCollections(workshops);
-        return mapToDtoList(workshops);
+        return workshops.stream().map(this::mapToSummaryDto).toList();
     }
 
     @Override
@@ -131,8 +127,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         List<Workshop> workshops = workshopRepository.findAllByFacilitatorIdWithFacilitator(facilitatorUuid);
-        preloadCollections(workshops);
-        return mapToDtoList(workshops);
+        return workshops.stream().map(this::mapToSummaryDto).toList();
     }
 
     @Override
@@ -448,16 +443,57 @@ public class WorkshopServiceImpl implements WorkshopService {
         // creditTransactionRepository.save(transaction);
     }
 
+    private WorkshopResponseDto mapToSummaryDto(Workshop workshop) {
+        FacilitatorDto facilitatorDto = null;
+        if (workshop.getFacilitator() != null) {
+            facilitatorDto = new FacilitatorDto(
+                workshop.getFacilitator().getId().toString(),
+                workshop.getFacilitator().getUsername(),
+                workshop.getFacilitator().getAvatarUrl()
+            );
+        }
+
+        return new WorkshopResponseDto(
+            workshop.getId().toString(),
+            workshop.getTitle(),
+            workshop.getDescription(),
+            workshop.getCategory(),
+            workshop.getSkillLevel(),
+            resolveEffectiveStatus(workshop),
+            workshop.getDate(),
+            workshop.getTime(),
+            workshop.getDuration(),
+            workshop.getIsOnline(),
+            null,
+            workshop.getMaxParticipants(),
+            0,
+            workshop.getCreditCost(),
+            workshop.getCreditReward(),
+            facilitatorDto,
+            List.of(),
+            java.util.Set.of(),
+            java.util.Set.of(),
+            java.util.Set.of(),
+            workshop.getCreatedAt()
+        );
+    }
+
     // 绉佹湁杈呭姪鏂规硶锛岀敤浜庡皢 Entity 鏄犲皠鍒?DTO
     private WorkshopResponseDto mapToDto(Workshop workshop) {
-        List<WorkshopParticipantDto> participants = participantRepository.findByWorkshopIdWithUser(workshop.getId())
-            .stream()
-            .map(p -> new WorkshopParticipantDto(
-                p.getUser().getId().toString(),
-                p.getUser().getUsername(),
-                p.getUser().getAvatarUrl()
-            ))
-            .toList();
+        return mapToDto(workshop, false);
+    }
+
+    private WorkshopResponseDto mapToDto(Workshop workshop, boolean includeParticipants) {
+        List<WorkshopParticipantDto> participants = includeParticipants
+            ? participantRepository.findByWorkshopIdWithUser(workshop.getId())
+                .stream()
+                .map(p -> new WorkshopParticipantDto(
+                    p.getUser().getId().toString(),
+                    p.getUser().getUsername(),
+                    p.getUser().getAvatarUrl()
+                ))
+                .toList()
+            : List.of();
 
         return mapToDto(workshop, participants);
     }

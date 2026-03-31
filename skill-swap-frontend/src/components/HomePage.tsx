@@ -3,9 +3,9 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { 
+import {
   Calendar,
-  Users, 
+  Users,
   TrendingUp,
   Clock,
   MapPin,
@@ -22,16 +22,10 @@ export function HomePage() {
     return normalized === 'upcoming' || normalized === 'approved';
   };
 
-  // Get upcoming workshops the user is attending
-  const upcomingWorkshops = workshops.filter(w => 
-    isUpcoming(w.status) && 
-    (w.participants ?? []).some(p => p.id === user?.id)
-  );
+  // Home 首屏仅展示公开的即将开始 workshop，不依赖参与者明细。
+  const upcomingWorkshops = workshops.filter((w) => isUpcoming(w.status));
 
-  // Get featured workshops (newest or most popular)
-  const featuredWorkshops = workshops
-    .filter(w => isUpcoming(w.status))
-    .slice(0, 3);
+  const featuredWorkshops = upcomingWorkshops.slice(0, 3);
 
   // Quick stats
   const stats = [
@@ -119,7 +113,7 @@ export function HomePage() {
           {/* Upcoming Workshops */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Your Upcoming Workshops</h2>
+              <h2 className="text-2xl font-semibold">Upcoming Workshops</h2>
               <Button 
                 variant="ghost"
                 onClick={() => setCurrentPage('dashboard')}
