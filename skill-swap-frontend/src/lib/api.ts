@@ -342,14 +342,27 @@ export const workshopAPI = {
   },
 
   // 获取单个工作坊
-  getById: async (id: string): Promise<Workshop | null> => {
+  getById: async (id: string, token?: string | null): Promise<Workshop | null> => {
     try {
-      const data = await apiCall<Workshop>(`/api/v1/workshops/${toBackendWorkshopId(id)}`);
+      const data = await apiCall<Workshop>(
+        `/api/v1/workshops/${toBackendWorkshopId(id)}`,
+        {},
+        token
+      );
       return enrichWorkshop(data);
     } catch (error) {
       console.warn("⚠️ Backend unavailable for workshop", id);
       return null;
     }
+  },
+
+  requestApproval: async (workshopId: string, token?: string | null): Promise<void> => {
+    const backendId = toBackendWorkshopId(workshopId);
+    await apiCall<void>(
+      `/api/v1/workshops/${backendId}/request-approval`,
+      { method: "POST" },
+      token
+    );
   },
 
   // 创建工作坊

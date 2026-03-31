@@ -13,7 +13,7 @@ public interface WorkshopService {
     
     WorkshopResponseDto createWorkshop(WorkshopCreateRequestDto createRequestDto, String facilitatorId);
 
-    WorkshopResponseDto getWorkshopById(Long id);
+    WorkshopResponseDto getWorkshopById(Long id, Authentication authentication);
 
     List<WorkshopResponseDto> getAllWorkshops();
 
@@ -38,4 +38,6 @@ public interface WorkshopService {
     void joinWorkshop(Long workshopId, String userId);
 
     void leaveWorkshop(Long workshopId, String userId);
+
+    void requestWorkshopApproval(Long workshopId, Authentication authentication);
 }

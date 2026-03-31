@@ -114,15 +114,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const fetchVisibleWorkshops = useCallback(async () => {
+    if (isAdmin && sessionToken) {
+      return workshopAPI.getAllForAdmin(sessionToken);
+    }
+
+    if (isAuthenticated && sessionToken && user) {
+      const [publicWorkshops, myWorkshops] = await Promise.all([
+        workshopAPI.getPublic(),
+        workshopAPI.getMine(sessionToken),
+      ]);
+      const merged = new Map<string, Workshop>();
+      [...publicWorkshops, ...myWorkshops].forEach((workshop) => {
+        merged.set(workshop.id, workshop);
+      });
+      return Array.from(merged.values());
+    }
+
+    return workshopAPI.getPublic();
+  }, [isAdmin, isAuthenticated, sessionToken, user]);
+
   // --------------------------
-  // Workshop Loading (only once)
+  // Workshop Loading
   // --------------------------
   useEffect(() => {
-    // 只在挂载时加载一次，防止标签页切换时重复加载
     const loadWorkshops = async () => {
       try {
         console.log("🔄 Loading workshops...");
-        const backendWorkshops = await workshopAPI.getAll();
+        const backendWorkshops = await fetchVisibleWorkshops();
         setWorkshops(backendWorkshops);
         console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
       } catch (err) {
@@ -132,7 +151,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     loadWorkshops();
-  }, []); // 空依赖数组，只在挂载时执行一次
+  }, [fetchVisibleWorkshops]);
 
   // --------------------------
   // Auth Initialization
@@ -384,7 +403,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   const refreshData = async () => {
     try {
-      const backendWorkshops = await workshopAPI.getAll();
+      const backendWorkshops = await fetchVisibleWorkshops();
       setWorkshops(backendWorkshops);
     } catch (err) {
       console.warn("⚠️ Failed to fetch workshops", err);
@@ -458,7 +477,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         // 设置本地登录状态
         setUser(userData);
-        const latestWorkshops = await workshopAPI.getAll();
+        const latestWorkshops = await fetchVisibleWorkshops();
         setWorkshops(latestWorkshops);
         // 积分系统已停用：不再加载 mock 交易历史。
         // setTransactions(mockTransactions);
@@ -544,7 +563,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
       
       // 成功后以服务端数据为准刷新，避免本地状态与后端不一致。
-      const updatedWorkshops = await workshopAPI.getAll();
+      const updatedWorkshops = await fetchVisibleWorkshops();
       setWorkshops(updatedWorkshops);
       // toast.success(`Joined "${workshop.title}"! -${workshop.creditCost} credits`);
       toast.success(`Joined "${workshop.title}"!`);
@@ -555,7 +574,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (alreadyParticipant) {
         // 若后端返回“已参加”，将其视为幂等成功并刷新列表。
-        const updatedWorkshops = await workshopAPI.getAll();
+        const updatedWorkshops = await fetchVisibleWorkshops();
         setWorkshops(updatedWorkshops);
         toast.success("You are already attending this workshop.");
         return;
@@ -587,7 +606,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
       
       // 成功后以服务端数据为准刷新，避免本地状态与后端不一致。
-      const updatedWorkshops = await workshopAPI.getAll();
+      const updatedWorkshops = await fetchVisibleWorkshops();
       setWorkshops(updatedWorkshops);
       toast.success("Workshop attendance cancelled");
     } catch (error) {
@@ -607,7 +626,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await workshopAPI.create(workshopData, sessionToken);
       
       // 创建成功后，重新从后端拉取所有 workshops
-      const updatedWorkshops = await workshopAPI.getAll();
+      const updatedWorkshops = await fetchVisibleWorkshops();
       setWorkshops(updatedWorkshops);
       
       toast.success("Workshop created successfully!");
