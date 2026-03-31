@@ -108,9 +108,9 @@ export function AdminReview() {
   const sortedWorkshops = useMemo(() => {
     const list = [...filteredWorkshops];
     list.sort((a, b) => {
-      const aTime = new Date(`${a.date || '9999-12-31'}T${a.time || '23:59'}`).getTime();
-      const bTime = new Date(`${b.date || '9999-12-31'}T${b.time || '23:59'}`).getTime();
-      return aTime - bTime;
+      const aTime = new Date(`${a.date || '0000-01-01'}T${a.time || '00:00'}`).getTime();
+      const bTime = new Date(`${b.date || '0000-01-01'}T${b.time || '00:00'}`).getTime();
+      return bTime - aTime;
     });
     return list;
   }, [filteredWorkshops]);

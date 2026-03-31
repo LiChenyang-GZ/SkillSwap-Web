@@ -95,7 +95,7 @@ export function Navigation() {
             </Button>
 
             {user ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center space-x-2">
                     <Avatar className="w-8 h-8">
