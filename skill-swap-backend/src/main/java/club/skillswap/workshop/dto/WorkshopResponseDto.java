@@ -3,6 +3,7 @@ package club.skillswap.workshop.dto;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Set;
 
 public record WorkshopResponseDto(
@@ -18,9 +19,11 @@ public record WorkshopResponseDto(
     Boolean isOnline,
     Set<String> location,
     Integer maxParticipants,
+    Integer currentParticipants,
     Integer creditCost,
     Integer creditReward,
     FacilitatorDto facilitator,
+    List<WorkshopParticipantDto> participants,
     Set<String> tags,
     Set<String> materials,
     Set<String> requirements,

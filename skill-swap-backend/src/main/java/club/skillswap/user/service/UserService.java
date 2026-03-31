@@ -4,6 +4,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import club.skillswap.common.exception.DomainException;
 import club.skillswap.common.exception.ResourceNotFoundException;
@@ -21,6 +23,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Locale;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -80,8 +83,9 @@ public class UserService {
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
         dto.setSkills(skillNames);
-        // 鏂扮敤鎴峰垵濮?100 credits
-        dto.setCreditBalance(100);
+        // 积分系统已停用：不再展示/初始化 100 积分。
+        // dto.setCreditBalance(100);
+        dto.setCreditBalance(0);
         dto.setTotalWorkshopsHosted(workshopsHosted);
         dto.setTotalWorkshopsAttended(workshopsAttended);
         dto.setRating(rating);
@@ -111,20 +115,28 @@ public class UserService {
     @Transactional
     public UserProfileDto findOrCreateCurrentUserProfile(Jwt jwt) {
         UUID userId = UUID.fromString(jwt.getSubject());
+        String jwtEmail = extractEmailFromJwt(jwt);
+        requireVerifiedEmail(jwt, jwtEmail);
         
         UserAccount user = userRepository.findById(userId).orElseGet(() -> {
             UserAccount newUser = new UserAccount();
             newUser.setId(userId);
-            String email = jwt.getClaimAsString("email");
-            String baseUsername = email.split("@")[0].replaceAll("[^a-zA-Z0-9]", "_");
+            String baseUsername = buildBaseUsername(userId, jwtEmail);
             
             String finalUsername = baseUsername;
             while (userRepository.findByUsername(finalUsername).isPresent()) {
                 finalUsername = baseUsername + "_" + RandomStringUtils.randomAlphanumeric(4);
             }
             newUser.setUsername(finalUsername);
+            newUser.setEmail(jwtEmail);
             return userRepository.save(newUser);
         });
+
+        // Backfill email for existing records created before email persistence was implemented.
+        if ((user.getEmail() == null || user.getEmail().isBlank()) && jwtEmail != null && !jwtEmail.isBlank()) {
+            user.setEmail(jwtEmail);
+            user = userRepository.save(user);
+        }
 
         // 杩斿洖鍖呭惈瀹屾暣缁熻鏁版嵁鐨?DTO
         return getUserProfileWithStats(user.getId());
@@ -228,5 +240,48 @@ public class UserService {
         if (skill == null || skill.isBlank()) {
             throw new DomainException("Skill name must not be blank.");
         }
+    }
+
+    private String extractEmailFromJwt(Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        return (email == null || email.isBlank()) ? null : email;
+    }
+
+    private void requireVerifiedEmail(Jwt jwt, String email) {
+        if (email == null || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email is missing in auth token. Please sign in again.");
+        }
+
+        // Supabase deployments may expose either `confirmed_at` or `email_confirmed_at`.
+        boolean verifiedByConfirmedAt = hasText(jwt.getClaimAsString("confirmed_at"));
+        boolean verifiedByTimestamp = hasText(jwt.getClaimAsString("email_confirmed_at"));
+        Boolean emailVerified = jwt.getClaimAsBoolean("email_verified");
+        boolean verifiedByBoolean = Boolean.TRUE.equals(emailVerified);
+
+        Map<String, Object> userMetadata = jwt.getClaimAsMap("user_metadata");
+        boolean verifiedByMetadata = userMetadata != null && Boolean.TRUE.equals(userMetadata.get("email_verified"));
+
+        Map<String, Object> rawUserMetadata = jwt.getClaimAsMap("raw_user_meta_data");
+        boolean verifiedByRawMetadata = rawUserMetadata != null && Boolean.TRUE.equals(rawUserMetadata.get("email_verified"));
+
+        if (!verifiedByConfirmedAt && !verifiedByTimestamp && !verifiedByBoolean && !verifiedByMetadata && !verifiedByRawMetadata) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email before accessing profile.");
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String buildBaseUsername(UUID userId, String email) {
+        if (email != null && !email.isBlank()) {
+            String localPart = email.split("@")[0];
+            String sanitized = localPart.replaceAll("[^a-zA-Z0-9]", "_");
+            if (!sanitized.isBlank()) {
+                return sanitized;
+            }
+        }
+
+        return "user_" + userId.toString().replace("-", "").substring(0, 8);
     }
 }

@@ -6,8 +6,8 @@ import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { Calendar, Users, Clock, ArrowRight, Menu, X, Eye, EyeOff } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Calendar, Users, Clock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
 export function HeroPage() {
@@ -19,11 +19,10 @@ const stats = {
   skills: 25,
   workshops: 100,
 };  
-  const { setCurrentPage, user, workshops } = useApp();
+  const { setCurrentPage, workshops } = useApp();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Use real workshops from AppContext, showing first 3 as featured
   const featuredWorkshops = workshops.slice(0, 3);
@@ -83,7 +82,7 @@ const stats = {
             
             <p className="text-h3 lg:text-2xl text-muted-foreground mb-8 leading-relaxed">
               Learn new skills, teach what you know, and grow together.<br />
-              <span className="text-secondary">Earn credits by teaching • Spend credits by learning</span>
+              <span className="text-secondary">Join workshops to learn • Host workshops to share</span>
             </p>
 
             {/* CTA Buttons */}
@@ -159,7 +158,7 @@ const stats = {
                   />
                   <div className="absolute top-4 right-4">
                     <Badge className="bg-secondary text-secondary-foreground">
-                      {workshop.creditCost} credits
+                      Open Access
                     </Badge>
                   </div>
                 </div>
@@ -226,7 +225,7 @@ const stats = {
               How It <span className="text-secondary">Works</span>
             </h2>
             <p className="text-body text-muted-foreground max-w-2xl mx-auto">
-              Our credit-based system makes skill sharing fair and engaging for everyone.
+              A community-first model that keeps learning and teaching simple for everyone.
             </p>
           </div>
 
@@ -237,7 +236,7 @@ const stats = {
               </div>
               <h3 className="text-h3 mb-2 text-foreground">Sign Up</h3>
               <p className="text-caption text-muted-foreground">
-                Join with your Google account and get started with free credits
+                Join with your Google account and set up your profile in minutes
               </p>
             </div>
             
@@ -247,7 +246,7 @@ const stats = {
               </div>
               <h3 className="text-h3 mb-2 text-foreground">Learn Skills</h3>
               <p className="text-caption text-muted-foreground">
-                Use credits to attend workshops and learn from community experts
+                Attend workshops and learn directly from community experts
               </p>
             </div>
             
@@ -257,7 +256,7 @@ const stats = {
               </div>
               <h3 className="text-h3 mb-2 text-foreground">Teach Others</h3>
               <p className="text-caption text-muted-foreground">
-                Host workshops in your expertise and earn credits for teaching
+                Host workshops in your area of expertise and help others grow
               </p>
             </div>
             

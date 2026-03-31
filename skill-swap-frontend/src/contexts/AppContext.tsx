@@ -8,9 +8,8 @@ import {
 } from "react";
 import { User, Workshop, CreditTransaction } from "../types";
 import {
-  mockUser,
   // mockWorkshops,
-  mockTransactions,
+  // mockTransactions,
 } from "../lib/mock-data";
 import { authAPI, workshopAPI } from "../lib/api";
 import { supabase } from "../utils/supabase/supabase";
@@ -167,13 +166,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   // Helpers
   // --------------------------
-  const mapSupabaseUser = (sbUser: any): User => ({
-    ...mockUser, // fallback defaults
-    id: sbUser.id,
-    email: sbUser.email ?? "",
-    username: sbUser.user_metadata?.full_name ?? sbUser.email?.split("@")[0],
-    avatarUrl: sbUser.user_metadata?.avatar_url ?? mockUser.avatarUrl,
-  });
+  // 历史保留：Supabase user 映射函数当前未被调用。
+  // const mapSupabaseUser = (sbUser: any): User => ({
+  //   ...mockUser, // fallback defaults
+  //   id: sbUser.id,
+  //   email: sbUser.email ?? "",
+  //   username: sbUser.user_metadata?.full_name ?? sbUser.email?.split("@")[0],
+  //   avatarUrl: sbUser.user_metadata?.avatar_url ?? mockUser.avatarUrl,
+  // });
 
   async function fetchBackendProfile(accessToken: string) {
     // 统一用一个 endpoint（建议你用后端的 /me）
@@ -213,7 +213,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       username: userProfile.username,
       avatarUrl: userProfile.avatarUrl || "",
       bio: userProfile.bio || "",
-      creditBalance: userProfile.creditBalance ?? 100,
+      // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
+      // creditBalance: userProfile.creditBalance ?? 100,
+      creditBalance: userProfile.creditBalance ?? 0,
       skills: userProfile.skills || [],
       totalWorkshopsHosted: userProfile.totalWorkshopsHosted || 0,
       totalWorkshopsAttended: userProfile.totalWorkshopsAttended || 0,
@@ -282,7 +284,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const userData = JSON.parse(savedUser);
         setUser(userData);
-        setTransactions(mockTransactions);
+        // 积分系统已停用：不再加载 mock 交易历史。
+        // setTransactions(mockTransactions);
+        setTransactions([]);
         setIsAuthenticated(true);
         setSessionToken(savedToken || null);
         setCurrentPage("home");
@@ -334,7 +338,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn("⚠️ Failed to fetch workshops", err);
     }
-    setTransactions(mockTransactions);
+    // 积分系统已停用：不再加载 mock 交易历史。
+    // setTransactions(mockTransactions);
+    setTransactions([]);
   };
 
   // --------------------------
@@ -378,7 +384,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUser(userData);
         const latestWorkshops = await workshopAPI.getAll();
         setWorkshops(latestWorkshops);
-        setTransactions(mockTransactions);
+        // 积分系统已停用：不再加载 mock 交易历史。
+        // setTransactions(mockTransactions);
+        setTransactions([]);
         setIsAuthenticated(true);
         setSessionToken(loginResult.access_token);
         localStorage.setItem("skill-swap-auth", "true");
@@ -425,7 +433,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.log("🎯 Attempting to join workshop:", workshopId);
       console.log("📊 Available workshops:", workshops.map(w => ({ id: w.id, title: w.title })));
       
-      // 查找要 join 的 workshop，获取 creditCost
+      // 查找要 join 的 workshop
       // 尝试精确匹配，也支持数字ID格式
       let workshop = workshops.find((w) => w.id === workshopId);
       
@@ -439,39 +447,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
         throw new Error(`Workshop with ID "${workshopId}" not found in loaded workshops`);
       }
       
-      if (workshop.creditCost === undefined || workshop.creditCost === null) {
-        throw new Error("Workshop has no credit cost defined");
-      }
-      
-      console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
+      // 积分系统已停用：不再依赖 creditCost。
+      // if (workshop.creditCost === undefined || workshop.creditCost === null) {
+      //   throw new Error("Workshop has no credit cost defined");
+      // }
+      //
+      // console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
+      console.log("✅ Found workshop:", workshop.title);
       
       // 调用后端 API，传递 JWT token
       await workshopAPI.join(workshopId, sessionToken);
       
-      // 更新本地用户状态：扣除 credit
-      const updatedUser = {
-        ...user,
-        creditBalance: (user.creditBalance || 0) - workshop.creditCost,
-      };
-      setUser(updatedUser);
-      localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
+      // 积分系统已停用：不再扣减本地余额。
+      // const updatedUser = {
+      //   ...user,
+      //   creditBalance: (user.creditBalance || 0) - workshop.creditCost,
+      // };
+      // setUser(updatedUser);
+      // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
       
-      // 更新本地 workshop 状态
-      setWorkshops((prev) =>
-        prev.map((w) =>
-          w.id === workshopId || String(w.id) === String(workshopId)
-            ? {
-                ...w,
-                currentParticipants: (w.currentParticipants || 0) + 1,
-                participants: [...(w.participants || []), user],
-              }
-            : w
-        )
-      );
-      toast.success(`Joined "${workshop.title}"! -${workshop.creditCost} credits`);
+      // 成功后以服务端数据为准刷新，避免本地状态与后端不一致。
+      const updatedWorkshops = await workshopAPI.getAll();
+      setWorkshops(updatedWorkshops);
+      // toast.success(`Joined "${workshop.title}"! -${workshop.creditCost} credits`);
+      toast.success(`Joined "${workshop.title}"!`);
     } catch (error) {
       console.error("Failed to join workshop:", error);
-      toast.error("Failed to join workshop: " + (error instanceof Error ? error.message : "Unknown error"));
+      const message = error instanceof Error ? error.message : "Unknown error";
+      const alreadyParticipant = message.toLowerCase().includes("already a participant");
+
+      if (alreadyParticipant) {
+        // 若后端返回“已参加”，将其视为幂等成功并刷新列表。
+        const updatedWorkshops = await workshopAPI.getAll();
+        setWorkshops(updatedWorkshops);
+        toast.success("You are already attending this workshop.");
+        return;
+      }
+
+      toast.error("Failed to join workshop: " + message);
     }
   };
 
@@ -479,35 +492,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || !user) return;
     
     try {
-      // 查找要 leave 的 workshop，获取 creditCost（退还）
+      // 查找要 leave 的 workshop
       const workshop = workshops.find((w) => w.id === workshopId);
-      if (!workshop || !workshop.creditCost) {
-        throw new Error("Workshop not found or has no credit cost");
+      if (!workshop) {
+        throw new Error("Workshop not found");
       }
       
       // 调用后端 API，传递 JWT token
       await workshopAPI.leave(workshopId, sessionToken);
       
-      // 更新本地用户状态：退还 credit
-      const updatedUser = {
-        ...user,
-        creditBalance: (user.creditBalance || 0) + workshop.creditCost,
-      };
-      setUser(updatedUser);
-      localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
+      // 积分系统已停用：不再返还本地余额。
+      // const updatedUser = {
+      //   ...user,
+      //   creditBalance: (user.creditBalance || 0) + workshop.creditCost,
+      // };
+      // setUser(updatedUser);
+      // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
       
-      // 更新本地 workshop 状态
-      setWorkshops((prev) =>
-        prev.map((w) =>
-          w.id === workshopId
-            ? {
-                ...w,
-                currentParticipants: (w.currentParticipants || 1) - 1,
-                participants: (w.participants || []).filter((p) => p.id !== user.id),
-              }
-            : w
-        )
-      );
+      // 成功后以服务端数据为准刷新，避免本地状态与后端不一致。
+      const updatedWorkshops = await workshopAPI.getAll();
+      setWorkshops(updatedWorkshops);
       toast.success("Workshop attendance cancelled");
     } catch (error) {
       console.error("Failed to leave workshop:", error);
