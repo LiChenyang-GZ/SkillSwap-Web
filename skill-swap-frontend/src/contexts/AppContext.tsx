@@ -37,7 +37,7 @@ interface AppContextType {
   deleteWorkshop: (workshopId: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshData: () => Promise<void>;
+  refreshData: (mode?: "public" | "full") => Promise<void>;
   clearCache: () => void;
   upsertWorkshop: (workshop: Workshop) => void;
 }
@@ -59,7 +59,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   // 防止标签页切换时重复初始化
   const initializedRef = useRef(false);
-  const refreshInFlightRef = useRef<Promise<void> | null>(null);
+  const refreshInFlightRef = useRef<{ mode: "public" | "full"; task: Promise<void> } | null>(null);
+  const notificationsInFlightRef = useRef<Promise<void> | null>(null);
+  const profileInFlightRef = useRef<Promise<User> | null>(null);
+  const profileInFlightTokenRef = useRef<string | null>(null);
+  const lastAppliedProfileTokenRef = useRef<string | null>(null);
+  const bootstrapAuthInProgressRef = useRef(false);
+  const hasBackendProfileRef = useRef(false);
+  const recentProfileCacheRef = useRef<{ subject: string | null; user: User; at: number } | null>(null);
 
   // Toggle mock vs real auth easily
   const USE_SUPABASE = true;
@@ -95,6 +102,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return normalized.includes("admin") || normalized.includes("role_admin");
   };
 
+  const fetchBackendUser = useCallback(async (accessToken: string): Promise<User> => {
+    const payload = decodeJwtPayload(accessToken) as { sub?: string } | null;
+    const tokenSubject = payload?.sub ?? null;
+    const cached = recentProfileCacheRef.current;
+    if (cached && cached.subject && cached.subject === tokenSubject && Date.now() - cached.at < 15000) {
+      return cached.user;
+    }
+
+    if (
+      profileInFlightRef.current &&
+      profileInFlightTokenRef.current === accessToken
+    ) {
+      return profileInFlightRef.current;
+    }
+
+    const task = (async () => {
+      const profile = await fetchBackendProfile(accessToken);
+      const mapped = mapBackendUser(profile);
+      recentProfileCacheRef.current = {
+        subject: tokenSubject,
+        user: mapped,
+        at: Date.now(),
+      };
+      return mapped;
+    })();
+
+    profileInFlightRef.current = task;
+    profileInFlightTokenRef.current = accessToken;
+
+    try {
+      return await task;
+    } finally {
+      if (profileInFlightTokenRef.current === accessToken) {
+        profileInFlightRef.current = null;
+        profileInFlightTokenRef.current = null;
+      }
+    }
+  }, []);
+
   // --------------------------
   // Theme Initialization
   // --------------------------
@@ -116,10 +162,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchVisibleWorkshops = useCallback(async () => {
-    if (isAdmin && sessionToken) {
-      return workshopAPI.getAllForAdmin(sessionToken);
-    }
-
     if (isAuthenticated && sessionToken) {
       const [publicWorkshops, myWorkshops] = await Promise.all([
         workshopAPI.getPublic(),
@@ -133,7 +175,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     return workshopAPI.getPublic();
-  }, [isAdmin, isAuthenticated, sessionToken]);
+  }, [isAuthenticated, sessionToken]);
+
+  const fetchPublicWorkshops = useCallback(async () => {
+    return workshopAPI.getPublic();
+  }, []);
 
   // --------------------------
   // Auth Initialization
@@ -151,7 +197,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     // 1) 启动时恢复 session（刷新页面也能保持登录态）
-    checkSupabaseAuthState();
+    void checkSupabaseAuthState();
 
     // 2) 订阅登录/登出变化
     const {
@@ -166,18 +212,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSessionToken(session.access_token);
         localStorage.setItem("skill-swap-sessionToken", session.access_token);
 
+        if (
+          bootstrapAuthInProgressRef.current &&
+          event !== "USER_UPDATED"
+        ) {
+          return;
+        }
+
         // token 轮换时仅更新 token，不重复拉 profile/页面跳转。
         if (event === "TOKEN_REFRESHED") {
           return;
         }
 
+        if (hasBackendProfileRef.current && event !== "USER_UPDATED") {
+          lastAppliedProfileTokenRef.current = session.access_token;
+          return;
+        }
+
+        if (
+          event !== "USER_UPDATED" &&
+          lastAppliedProfileTokenRef.current === session.access_token
+        ) {
+          return;
+        }
+
         try {
-          const profile = await fetchBackendProfile(session.access_token);
-          const mapped = mapBackendUser(profile);
+          const mapped = await fetchBackendUser(session.access_token);
 
           setUser(mapped);
           setIsAuthenticated(true);
           setSessionToken(session.access_token);
+          lastAppliedProfileTokenRef.current = session.access_token;
+          hasBackendProfileRef.current = true;
 
           localStorage.setItem("skill-swap-sessionToken", session.access_token);
           localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
@@ -195,6 +261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setWorkshops([]);
           setNotificationsUnreadCount(0);
           setIsAdmin(false);
+          hasBackendProfileRef.current = false;
 
           localStorage.removeItem("skill-swap-sessionToken");
           localStorage.removeItem("skill-swap-user");
@@ -206,9 +273,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setIsAuthenticated(false);
         setSessionToken(null);
+        lastAppliedProfileTokenRef.current = null;
         setWorkshops([]);
         setNotificationsUnreadCount(0);
         setIsAdmin(false);
+        hasBackendProfileRef.current = false;
+        recentProfileCacheRef.current = null;
 
         localStorage.removeItem("skill-swap-sessionToken");
         localStorage.removeItem("skill-swap-user");
@@ -227,11 +297,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!sessionToken) {
       setNotificationsUnreadCount(0);
+    } else if (currentPage !== "notifications") {
+      // 非通知页面不主动请求未读数，避免影响首页首屏速度。
+      setNotificationsUnreadCount(0);
+    }
+  }, [sessionToken, currentPage]);
+
+  useEffect(() => {
+    if (currentPage !== "notifications" || !sessionToken) {
       return;
     }
 
-    refreshNotificationsUnreadCount();
-  }, [sessionToken]);
+    void refreshNotificationsUnreadCount();
+  }, [currentPage, sessionToken]);
 
   // --------------------------
   // Helpers
@@ -287,7 +365,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }
 
+  function mapSessionUser(session: any): User {
+    const sbUser = session?.user;
+    const metadata = sbUser?.user_metadata || {};
+    const email = sbUser?.email || "";
+    const fallbackName = email.includes("@") ? email.split("@")[0] : "Member";
+    const username = metadata.full_name || metadata.name || fallbackName;
+
+    return {
+      id: sbUser?.id || "",
+      email,
+      username,
+      avatarUrl: metadata.avatar_url || "",
+      bio: "",
+      creditBalance: 0,
+      skills: [],
+      totalWorkshopsHosted: 0,
+      totalWorkshopsAttended: 0,
+      rating: 0,
+      reviewCount: 0,
+      createdAt: sbUser?.created_at || new Date().toISOString(),
+    };
+  }
+
   const checkSupabaseAuthState = async () => {
+    bootstrapAuthInProgressRef.current = true;
     const { data } = await supabase.auth.getSession();
     const session = data.session;
 
@@ -295,39 +397,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
       setSessionToken(null);
+      lastAppliedProfileTokenRef.current = null;
       setWorkshops([]);
       setNotificationsUnreadCount(0);
       setIsAdmin(false);
+      hasBackendProfileRef.current = false;
+      recentProfileCacheRef.current = null;
       localStorage.removeItem("skill-swap-sessionToken");
       localStorage.removeItem("skill-swap-user");
       setCurrentPage("hero");
       setIsLoading(false);
+      bootstrapAuthInProgressRef.current = false;
       return;
     }
 
-    try {
-      const profile = await fetchBackendProfile(session.access_token);
-      const mapped = mapBackendUser(profile);
+    setIsAuthenticated(true);
+    setSessionToken(session.access_token);
+    lastAppliedProfileTokenRef.current = session.access_token;
+    localStorage.setItem("skill-swap-sessionToken", session.access_token);
 
-      setUser(mapped);
-      setIsAuthenticated(true);
-      setSessionToken(session.access_token);
-
-      localStorage.setItem("skill-swap-sessionToken", session.access_token);
-      localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
-      setCurrentPage("home");
-    } catch (e) {
-      console.error("❌ Failed to fetch backend profile on startup:", e);
-      setUser(null);
-      setIsAuthenticated(false);
-      setSessionToken(null);
-      setWorkshops([]);
-      setNotificationsUnreadCount(0);
-      setIsAdmin(false);
-      setCurrentPage("auth");
-    } finally {
-      setIsLoading(false);
+    const savedUser = localStorage.getItem("skill-swap-user");
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        hasBackendProfileRef.current = true;
+      } catch {
+        const fallback = mapSessionUser(session);
+        setUser(fallback);
+        localStorage.setItem("skill-swap-user", JSON.stringify(fallback));
+        hasBackendProfileRef.current = false;
+      }
+    } else {
+      const fallback = mapSessionUser(session);
+      setUser(fallback);
+      localStorage.setItem("skill-swap-user", JSON.stringify(fallback));
+      hasBackendProfileRef.current = false;
     }
+
+    setCurrentPage("home");
+    bootstrapAuthInProgressRef.current = false;
+    setIsLoading(false);
   };
 
   const restoreAuthStateFromStorage = async () => {
@@ -387,14 +497,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   // Data
   // --------------------------
-  const refreshData = useCallback(async () => {
-    if (refreshInFlightRef.current) {
-      return refreshInFlightRef.current;
+  const refreshData = useCallback(async (mode: "public" | "full" = "full") => {
+    if (refreshInFlightRef.current && refreshInFlightRef.current.mode === mode) {
+      return refreshInFlightRef.current.task;
     }
 
     const task = (async () => {
       try {
-        const backendWorkshops = await fetchVisibleWorkshops();
+        const backendWorkshops = mode === "public"
+          ? await fetchPublicWorkshops()
+          : await fetchVisibleWorkshops();
         setWorkshops(backendWorkshops);
       } catch (err) {
         console.warn("⚠️ Failed to fetch workshops", err);
@@ -405,26 +517,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTransactions([]);
     })();
 
-    refreshInFlightRef.current = task;
+    refreshInFlightRef.current = { mode, task };
     try {
       await task;
     } finally {
-      refreshInFlightRef.current = null;
+      if (refreshInFlightRef.current?.task === task) {
+        refreshInFlightRef.current = null;
+      }
     }
-  }, [fetchVisibleWorkshops]);
+  }, [fetchPublicWorkshops, fetchVisibleWorkshops]);
 
-  const refreshNotificationsUnreadCount = async () => {
+  const refreshNotificationsUnreadCount = useCallback(async () => {
     if (!sessionToken) {
       setNotificationsUnreadCount(0);
       return;
     }
-    try {
-      const count = await notificationAPI.getUnreadCount(sessionToken);
-      setNotificationsUnreadCount(count);
-    } catch (error) {
-      console.warn("Failed to fetch notification count", error);
+
+    if (notificationsInFlightRef.current) {
+      return notificationsInFlightRef.current;
     }
-  };
+
+    const task = (async () => {
+      try {
+        const count = await notificationAPI.getUnreadCount(sessionToken);
+        setNotificationsUnreadCount(count);
+      } catch (error) {
+        console.warn("Failed to fetch notification count", error);
+      }
+    })();
+
+    notificationsInFlightRef.current = task;
+    try {
+      await task;
+    } finally {
+      notificationsInFlightRef.current = null;
+    }
+  }, [sessionToken]);
 
   const upsertWorkshop = useCallback((workshop: Workshop) => {
     setWorkshops((prev) => {
@@ -506,6 +634,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
     setSessionToken(null);
     setIsAdmin(false);
+    hasBackendProfileRef.current = false;
+    lastAppliedProfileTokenRef.current = null;
+    recentProfileCacheRef.current = null;
     localStorage.removeItem("skill-swap-auth");
     localStorage.removeItem("skill-swap-user");
     localStorage.removeItem("skill-swap-sessionToken");

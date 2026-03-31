@@ -28,14 +28,15 @@ function AppContent() {
   }, [isDarkMode]);
 
   React.useEffect(() => {
-    // 仅在依赖 workshop 列表的页面切换时按需拉取最新数据。
-    if (
-      currentPage === 'home' ||
-      currentPage === 'explore' ||
-      currentPage === 'dashboard' ||
-      currentPage === 'pastWorkshops'
-    ) {
-      void refreshData();
+    // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
+    if (currentPage === 'home' || currentPage === 'explore') {
+      void refreshData('public');
+      return;
+    }
+
+    // Dashboard / PastWorkshops 需要个人相关数据，才拉 full。
+    if (currentPage === 'dashboard' || currentPage === 'pastWorkshops') {
+      void refreshData('full');
     }
   }, [currentPage, refreshData]);
 
