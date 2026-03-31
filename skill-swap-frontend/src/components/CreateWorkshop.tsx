@@ -12,7 +12,6 @@ import {
   Plus,
   X,
   Users,
-  Award,
   Globe,
   Info,
   Upload
@@ -30,8 +29,9 @@ export function CreateWorkshop() {
     skillLevel: '',
     duration: '',
     maxParticipants: '',
-    creditCost: '',      // 参与者付出的积分
-    creditReward: '',    // 讲师获得的积分（自动计算）
+    // 积分系统已停用：保留字段仅用于兼容历史结构。
+    creditCost: '',
+    creditReward: '',
     date: '',
     time: '',
     location: '',
@@ -100,18 +100,19 @@ export function CreateWorkshop() {
     }));
   };
 
-  const calculateEarnedCredits = () => {
-    const baseCost = parseInt(formData.creditCost) || 0;
-    const duration = parseInt(formData.duration) || 0;
-    
-    // Formula: base cost * 1.5 + (duration bonus) + (skill level bonus)
-    let earned = Math.floor(baseCost * 1.5); // 1.5x multiplier for hosting
-    
-    if (duration >= 120) earned += 10; // Bonus for longer workshops
-    if (formData.skillLevel === 'Advanced') earned += 5;
-    
-    return earned;
-  };
+  // 积分系统已停用：不再计算 host 奖励积分。
+  // const calculateEarnedCredits = () => {
+  //   const baseCost = parseInt(formData.creditCost) || 0;
+  //   const duration = parseInt(formData.duration) || 0;
+  //
+  //   // Formula: base cost * 1.5 + (duration bonus) + (skill level bonus)
+  //   let earned = Math.floor(baseCost * 1.5); // 1.5x multiplier for hosting
+  //
+  //   if (duration >= 120) earned += 10; // Bonus for longer workshops
+  //   if (formData.skillLevel === 'Advanced') earned += 5;
+  //
+  //   return earned;
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,8 +124,11 @@ export function CreateWorkshop() {
         skillLevel: formData.skillLevel,
         duration: parseInt(formData.duration),
         maxParticipants: parseInt(formData.maxParticipants),
-        creditCost: parseInt(formData.creditCost),
-        creditReward: calculateEarnedCredits(),
+        // 积分系统已停用：请求中统一发送 0。
+        // creditCost: parseInt(formData.creditCost),
+        // creditReward: calculateEarnedCredits(),
+        creditCost: 0,
+        creditReward: 0,
         date: formData.date,
         time: formData.time,
         location: formData.isOnline ? ['Virtual'] : [formData.location],
@@ -145,7 +149,8 @@ export function CreateWorkshop() {
            formData.skillLevel && 
            formData.duration && 
            formData.maxParticipants && 
-           formData.creditCost && 
+           // 积分系统已停用：创建 workshop 不再要求填写积分。
+           // formData.creditCost &&
            formData.date && 
            formData.time &&
            (formData.isOnline || formData.location);
@@ -158,7 +163,7 @@ export function CreateWorkshop() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-4">Create Workshop</h1>
           <p className="text-lg text-muted-foreground">
-            Share your expertise and earn credits by hosting a workshop for the community.
+            Share your expertise by hosting a workshop for the community.
           </p>
         </div>
 
@@ -259,6 +264,9 @@ export function CreateWorkshop() {
                     </div>
 
                     <div>
+                      <Label>Access Policy</Label>
+                      {/* 积分系统已停用：隐藏原有积分输入框。 */}
+                      {/*
                       <Label htmlFor="creditCost">Credit Cost *</Label>
                       <Input
                         id="creditCost"
@@ -270,6 +278,10 @@ export function CreateWorkshop() {
                       />
                       <p className="text-xs text-muted-foreground mt-1">
                         Cost for participants to attend
+                      </p>
+                      */}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Open access. Participants can join without credits.
                       </p>
                     </div>
                   </div>
@@ -480,7 +492,7 @@ export function CreateWorkshop() {
                         <span>0/{formData.maxParticipants || '0'}</span>
                       </div>
                       <Badge variant="secondary" className="text-xs">
-                        {formData.creditCost || '0'} credits
+                        Free to join
                       </Badge>
                     </div>
                     
@@ -492,28 +504,31 @@ export function CreateWorkshop() {
                 </CardContent>
               </Card>
 
-              {/* Earnings */}
+              {/* Access */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center space-x-2">
-                    <Award className="w-5 h-5" />
-                    <span>Earnings</span>
-                  </CardTitle>
+                  <CardTitle className="text-lg">Participation</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
+                    {/* 积分系统已停用：保留历史收益展示逻辑。 */}
+                    {/*
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">You'll earn:</span>
                       <span className="font-bold text-secondary">
                         +{calculateEarnedCredits()} credits
                       </span>
                     </div>
-                    
+
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p>• Base rate: {Math.floor((parseInt(formData.creditCost) || 0) * 1.5)} credits</p>
                       {parseInt(formData.duration) >= 120 && <p>• Long workshop bonus: +10 credits</p>}
                       {formData.skillLevel === 'Advanced' && <p>• Advanced level bonus: +5 credits</p>}
                     </div>
+                    */}
+                    <p className="text-sm text-muted-foreground">
+                      Credit system is disabled. Hosting and joining workshops no longer changes points.
+                    </p>
                   </div>
                 </CardContent>
               </Card>

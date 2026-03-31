@@ -5,7 +5,8 @@ import { HeroPage } from './components/Hero';
 import { HomePage } from './components/HomePage';
 import { ExploreWorkshops } from './components/ExploreWorkshops';
 import { Dashboard } from './components/Dashboard';
-import { Credits } from './components/Credits';
+// 积分系统已停用：保留 Credits 页面文件，但不再作为主导航页面。
+// import { Credits } from './components/Credits';
 import { CreateWorkshop } from './components/CreateWorkshop';
 import { AuthPage } from './components/AuthPage';
 import { WorkshopDetails } from './components/WorkshopDetails';
@@ -56,7 +57,9 @@ function AppContent() {
       case 'dashboard':
         return <Dashboard />;
       case 'credits':
-        return <Credits />;
+        // 积分系统已停用：原本跳转 Credits 页面。
+        // return <Credits />;
+        return <Dashboard />;
       case 'create':
         return <CreateWorkshop />;
       case 'auth':

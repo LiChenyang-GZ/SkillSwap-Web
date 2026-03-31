@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -8,15 +8,11 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { 
   Search, 
-  Filter, 
   Calendar, 
   Users, 
-  Star, 
   Clock,
   MapPin,
-  CreditCard,
   Globe,
-  MapIcon
 } from 'lucide-react';
 import { categories, skillLevels } from '../lib/mock-data';
 
@@ -26,6 +22,8 @@ export function ExploreWorkshops() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
+
+  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
 
   // Filter workshops based on search and filters
   // matchesSearch, matchesCategory, matchesSkillLevel, matchesLocation
@@ -41,7 +39,7 @@ export function ExploreWorkshops() {
                           (selectedLocation === 'online' && workshop.isOnline) ||
                           (selectedLocation === 'in-person' && !workshop.isOnline);
     
-    return matchesSearch && matchesCategory && matchesSkillLevel && matchesLocation && workshop.status === 'upcoming';
+    return matchesSearch && matchesCategory && matchesSkillLevel && matchesLocation && isUpcoming(workshop.status);
   });
 
   const isUserAttending = (workshopId: string) => {
@@ -142,10 +140,14 @@ export function ExploreWorkshops() {
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
                       <Badge variant="secondary">{workshop.category}</Badge>
+                      {/* 积分系统已停用：隐藏 workshop 积分价格。 */}
+                      {/*
                       <Badge variant="outline" className="text-primary">
                         <CreditCard className="w-3 h-3 mr-1" />
                         {workshop.creditCost}
                       </Badge>
+                      */}
+                      <Badge variant="outline">Open Access</Badge>
                     </div>
 
                     {/* Title & Description */}
@@ -225,10 +227,6 @@ export function ExploreWorkshops() {
                       ) : (workshop.currentParticipants ?? 0) >= workshop.maxParticipants ? (
                         <Badge variant="outline" className="px-3 py-1">
                           Full
-                        </Badge>
-                      ) : user && user.creditBalance < workshop.creditCost ? (
-                        <Badge variant="outline" className="px-3 py-1 text-muted-foreground">
-                          Not Enough Credits
                         </Badge>
                       ) : (
                         <Button 

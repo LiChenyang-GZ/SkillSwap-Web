@@ -1,18 +1,13 @@
-import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Badge } from './ui/badge';
 import { 
   Home, 
   Search, 
-  Calendar, 
   Plus, 
   LayoutDashboard, 
-  CreditCard, 
   Trophy, 
   MessageSquare, 
-  Settings,
   Moon,
   Sun,
   Menu,
@@ -67,6 +62,8 @@ export function Navigation() {
 
           {/* User Section */}
           <div className="flex items-center space-x-4">
+            {/* 积分系统已停用：导航栏不再展示积分入口。 */}
+            {/*
             {user && (
               <Badge 
                 variant="secondary" 
@@ -77,6 +74,7 @@ export function Navigation() {
                 <span>{user.creditBalance}</span>
               </Badge>
             )}
+            */}
             
             <Button
               variant="ghost"
@@ -137,6 +135,8 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center space-x-3">
+            {/* 积分系统已停用：移动端导航不再展示积分入口。 */}
+            {/*
             {user && (
               <Badge 
                 variant="secondary" 
@@ -147,6 +147,7 @@ export function Navigation() {
                 <span>{user.creditBalance}</span>
               </Badge>
             )}
+            */}
 
             <Button
               variant="ghost"

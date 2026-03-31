@@ -1,14 +1,12 @@
-import React from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { 
   Calendar,
   Users, 
-  Star, 
-  TrendingUp, 
+  TrendingUp,
   Clock,
   MapPin,
   ArrowRight,
@@ -19,23 +17,24 @@ import {
 
 export function HomePage() {
   const { user, workshops, setCurrentPage } = useApp();
+  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
 
   // Get upcoming workshops the user is attending
   const upcomingWorkshops = workshops.filter(w => 
-    w.status === 'upcoming' && 
+    isUpcoming(w.status) && 
     (w.participants ?? []).some(p => p.id === user?.id)
   );
 
   // Get featured workshops (newest or most popular)
   const featuredWorkshops = workshops
-    .filter(w => w.status === 'upcoming')
+    .filter(w => isUpcoming(w.status))
     .slice(0, 3);
 
   // Quick stats
   const stats = [
     {
-      title: 'Available Credits',
-      value: user?.creditBalance ?? 0,
+      title: 'Upcoming Workshops',
+      value: upcomingWorkshops.length,
       icon: Award,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
@@ -66,7 +65,7 @@ export function HomePage() {
               Welcome back, {user?.username?.split(' ')[0] ?? 'Guest'}! 👋
             </h1>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl">
-              Ready to learn something new or share your expertise? Discover workshops, earn credits, and grow your skills with our community.
+              Ready to learn something new or share your expertise? Discover workshops and grow your skills with our community.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
@@ -225,8 +224,14 @@ export function HomePage() {
                         <Users className="w-3 h-3" />
                         <span>{workshop.currentParticipants}/{workshop.maxParticipants}</span>
                       </div>
+                      {/* 积分系统已停用：隐藏原 workshop 积分展示。 */}
+                      {/*
                       <Badge variant="secondary" className="text-xs">
                         {workshop.creditCost} credits
+                      </Badge>
+                      */}
+                      <Badge variant="secondary" className="text-xs">
+                        Open Access
                       </Badge>
                     </div>
                     <div className="flex items-center space-x-2">

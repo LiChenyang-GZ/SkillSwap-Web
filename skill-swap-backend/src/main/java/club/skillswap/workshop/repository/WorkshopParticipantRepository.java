@@ -15,5 +15,8 @@ public interface WorkshopParticipantRepository extends JpaRepository<WorkshopPar
 
     // 鏌ヨ鐢ㄦ埛鍦ㄧ壒瀹氬伐浣滃潑鐨勫弬涓庤褰?
     List<WorkshopParticipant> findByUserIdAndWorkshopId(UUID userId, Long workshopId);
+
+    // 根据 workshop ID 查询参与者记录
+    List<WorkshopParticipant> findByWorkshopId(Long workshopId);
 }
 

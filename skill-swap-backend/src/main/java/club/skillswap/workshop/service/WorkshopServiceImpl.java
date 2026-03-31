@@ -8,6 +8,7 @@ import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.dto.FacilitatorDto;
+import club.skillswap.workshop.dto.WorkshopParticipantDto;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.entity.WorkshopParticipant;
 import club.skillswap.workshop.repository.WorkshopRepository;
@@ -53,8 +54,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setIsOnline(createRequestDto.isOnline());
         workshop.setLocation(createRequestDto.location());
         workshop.setMaxParticipants(createRequestDto.maxParticipants());
-        workshop.setCreditCost(createRequestDto.creditCost());
-        workshop.setCreditReward(createRequestDto.creditReward());
+        // 积分系统已停用：创建 workshop 时不再使用请求中的积分配置。
+        // workshop.setCreditCost(createRequestDto.creditCost());
+        // workshop.setCreditReward(createRequestDto.creditReward());
+        workshop.setCreditCost(0);
+        workshop.setCreditReward(0);
         workshop.setTags(createRequestDto.tags());
         workshop.setMaterials(createRequestDto.materials());
         workshop.setRequirements(createRequestDto.requirements());
@@ -139,16 +143,16 @@ public class WorkshopServiceImpl implements WorkshopService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is already a participant in this workshop");
         }
 
-        // 4. 妫€鏌ョ敤鎴锋槸鍚︽湁瓒冲鐨勭Н鍒?
-        Integer creditCost = workshop.getCreditCost();
-        if (creditCost == null) creditCost = 0;
-        
-        Integer userCreditBalance = user.getCreditBalance();
-        if (userCreditBalance == null) userCreditBalance = 0;
-        
-        if (userCreditBalance < creditCost) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient credits to join this workshop");
-        }
+        // 4. 积分系统已停用：不再校验用户积分是否充足。
+        // Integer creditCost = workshop.getCreditCost();
+        // if (creditCost == null) creditCost = 0;
+        //
+        // Integer userCreditBalance = user.getCreditBalance();
+        // if (userCreditBalance == null) userCreditBalance = 0;
+        //
+        // if (userCreditBalance < creditCost) {
+        //     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Insufficient credits to join this workshop");
+        // }
 
         // 5. 娣诲姞鍙備笌鑰呰褰?
         WorkshopParticipant participant = new WorkshopParticipant();
@@ -157,18 +161,18 @@ public class WorkshopServiceImpl implements WorkshopService {
         participant.setRegistrationDate(LocalDateTime.now());
         participantRepository.save(participant);
 
-        // 6. 鎵ｉ櫎绉垎
-        user.setCreditBalance(userCreditBalance - creditCost);
-        userService.saveUser(user);
+        // 6. 积分系统已停用：不再扣减积分。
+        // user.setCreditBalance(userCreditBalance - creditCost);
+        // userService.saveUser(user);
 
-        // 7. 璁板綍绉垎浜ゆ槗
-        CreditTransaction transaction = new CreditTransaction();
-        transaction.setUser(user);
-        transaction.setWorkshop(workshop);
-        transaction.setCreditAmount(-creditCost);
-        transaction.setTransactionType("JOIN");
-        transaction.setDescription("Joined workshop: " + workshop.getTitle());
-        creditTransactionRepository.save(transaction);
+        // 7. 积分系统已停用：不再记录积分交易。
+        // CreditTransaction transaction = new CreditTransaction();
+        // transaction.setUser(user);
+        // transaction.setWorkshop(workshop);
+        // transaction.setCreditAmount(-creditCost);
+        // transaction.setTransactionType("JOIN");
+        // transaction.setDescription("Joined workshop: " + workshop.getTitle());
+        // creditTransactionRepository.save(transaction);
     }
 
     @Override
@@ -192,24 +196,24 @@ public class WorkshopServiceImpl implements WorkshopService {
         // 4. 鍒犻櫎鍙備笌璁板綍
         participantRepository.deleteAll(participations);
 
-        // 5. 閫€杩樼Н鍒?
-        Integer creditCost = workshop.getCreditCost();
-        if (creditCost == null) creditCost = 0;
+        // 5. 积分系统已停用：退出 workshop 时不再返还积分。
+        // Integer creditCost = workshop.getCreditCost();
+        // if (creditCost == null) creditCost = 0;
+        //
+        // Integer userCreditBalance = user.getCreditBalance();
+        // if (userCreditBalance == null) userCreditBalance = 0;
+        //
+        // user.setCreditBalance(userCreditBalance + creditCost);
+        // userService.saveUser(user);
 
-        Integer userCreditBalance = user.getCreditBalance();
-        if (userCreditBalance == null) userCreditBalance = 0;
-
-        user.setCreditBalance(userCreditBalance + creditCost);
-        userService.saveUser(user);
-
-        // 6. 璁板綍绉垎浜ゆ槗锛堥€€杩橈級
-        CreditTransaction transaction = new CreditTransaction();
-        transaction.setUser(user);
-        transaction.setWorkshop(workshop);
-        transaction.setCreditAmount(creditCost);
-        transaction.setTransactionType("LEAVE");
-        transaction.setDescription("Left workshop: " + workshop.getTitle());
-        creditTransactionRepository.save(transaction);
+        // 6. 积分系统已停用：不再记录积分交易（退出返还）。
+        // CreditTransaction transaction = new CreditTransaction();
+        // transaction.setUser(user);
+        // transaction.setWorkshop(workshop);
+        // transaction.setCreditAmount(creditCost);
+        // transaction.setTransactionType("LEAVE");
+        // transaction.setDescription("Left workshop: " + workshop.getTitle());
+        // creditTransactionRepository.save(transaction);
     }
 
     // 绉佹湁杈呭姪鏂规硶锛岀敤浜庡皢 Entity 鏄犲皠鍒?DTO
@@ -225,6 +229,15 @@ public class WorkshopServiceImpl implements WorkshopService {
             );
         }
 
+        List<WorkshopParticipantDto> participants = participantRepository.findByWorkshopId(workshop.getId())
+            .stream()
+            .map(p -> new WorkshopParticipantDto(
+                p.getUser().getId().toString(),
+                p.getUser().getUsername(),
+                p.getUser().getAvatarUrl()
+            ))
+            .toList();
+
         return new WorkshopResponseDto(
             workshop.getId().toString(),
             workshop.getTitle(),
@@ -238,9 +251,11 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getIsOnline(),
             workshop.getLocation(),
             workshop.getMaxParticipants(),
+            participants.size(),
             workshop.getCreditCost(),
             workshop.getCreditReward(),
             facilitatorDto,
+            participants,
             workshop.getTags(),
             workshop.getMaterials(),
             workshop.getRequirements(),

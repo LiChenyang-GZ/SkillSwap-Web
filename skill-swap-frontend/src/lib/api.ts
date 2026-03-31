@@ -38,10 +38,20 @@ function enrichWorkshop(workshop: any): Workshop {
     ? {
         id: workshop.facilitator.id,
         name: workshop.facilitator.username || workshop.facilitator.name,
-        avatarUrl: workshop.facilitator.avatarUrl || workshop.facilitator.avatar_url,
+        avatarUrl: workshop.facilitator.avatarUrl || workshop.facilitator.avatar_url || workshop.facilitator.avatar,
         bio: workshop.facilitator.bio,
       }
     : null;
+
+  const participants = Array.isArray(workshop.participants)
+    ? workshop.participants.map((p: any) => ({
+        id: String(p.id),
+        username: p.username || p.name || 'Unknown',
+        avatarUrl: p.avatarUrl || p.avatar_url || p.avatar,
+      }))
+    : [];
+
+  const normalizedStatus = String(workshop.status || '').toLowerCase();
 
   return {
     id: String(workshop.id),
@@ -49,21 +59,21 @@ function enrichWorkshop(workshop: any): Workshop {
     description: workshop.description,
     category: workshop.category,
     skillLevel: workshop.skillLevel,
-    status: workshop.status,
+    status: normalizedStatus as Workshop['status'],
     date: workshop.date,
     time: workshop.time,
     duration: workshop.duration,
     isOnline: workshop.isOnline,
     location: workshop.location || workshop.locations || [],
     maxParticipants: workshop.maxParticipants,
-    currentParticipants: workshop.currentParticipants,
+    currentParticipants: workshop.currentParticipants ?? participants.length,
     creditCost: workshop.creditCost,
     creditReward: workshop.creditReward,
     facilitator,
     tags: workshop.tags || [],
     image: workshop.image || getDefaultImage(workshop.category),
     createdAt: workshop.createdAt,
-    participants: workshop.participants,
+    participants: participants as any,
     materials: workshop.materials,
     requirements: workshop.requirements,
   };

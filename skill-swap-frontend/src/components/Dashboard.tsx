@@ -1,29 +1,25 @@
-import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Progress } from './ui/progress';
 import { 
   Calendar, 
   Users, 
   Star, 
   Clock,
   MapPin,
-  Award,
   BookOpen,
   Target,
-  TrendingUp,
   Globe,
-  CreditCard,
   Edit,
   Trash2
 } from 'lucide-react';
 
 export function Dashboard() {
-  const { user, workshops, transactions, setCurrentPage, cancelWorkshopAttendance, deleteWorkshop } = useApp();
+  const { user, workshops, setCurrentPage, cancelWorkshopAttendance, deleteWorkshop } = useApp();
+  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
 
   // Early return if no user
   if (!user) {
@@ -42,12 +38,9 @@ export function Dashboard() {
   // Get user's hosted workshops
   const hostedWorkshops = workshops.filter(w => w.facilitator?.id === user.id);
 
-  // Recent transactions
-  const recentTransactions = transactions.slice(0, 5);
-
   // Calculate stats  ?? better to store numbers in database and fetch 
-  const upcomingAttended = attendedWorkshops.filter(w => w.status === 'upcoming').length;
-  const upcomingHosted = hostedWorkshops.filter(w => w.status === 'upcoming').length;
+  const upcomingAttended = attendedWorkshops.filter(w => isUpcoming(w.status)).length;
+  const upcomingHosted = hostedWorkshops.filter(w => isUpcoming(w.status)).length;
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
@@ -117,12 +110,18 @@ export function Dashboard() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
+                      {/* 积分系统已停用：原图标为 CreditCard。 */}
+                      {/*
                       <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                         <CreditCard className="w-5 h-5 text-primary" />
                       </div>
+                      */}
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-primary" />
+                      </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Credits</p>
-                        <p className="text-xl font-bold">{user.creditBalance}</p>
+                        <p className="text-sm text-muted-foreground">Upcoming</p>
+                        <p className="text-xl font-bold">{upcomingAttended + upcomingHosted}</p>
                       </div>
                     </div>
                   </div>
@@ -166,15 +165,12 @@ export function Dashboard() {
           {/* Main Content */}
           <div className="lg:col-span-3">
             <Tabs defaultValue="attending" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="attending">
                   Attending ({upcomingAttended})
                 </TabsTrigger>
                 <TabsTrigger value="hosting">
                   Hosting ({upcomingHosted})
-                </TabsTrigger>
-                <TabsTrigger value="activity">
-                  Activity
                 </TabsTrigger>
               </TabsList>
 
@@ -226,11 +222,11 @@ export function Dashboard() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Badge 
-                                variant={workshop.status === 'upcoming' ? 'default' : 'secondary'}
+                                variant={isUpcoming(workshop.status) ? 'default' : 'secondary'}
                               >
                                 {workshop.status}
                               </Badge>
-                              {workshop.status === 'upcoming' && (
+                              {isUpcoming(workshop.status) && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -289,15 +285,19 @@ export function Dashboard() {
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Badge variant="secondary">{workshop.category}</Badge>
+                                {/* 积分系统已停用：隐藏 host 奖励展示。 */}
+                                {/*
                                 <Badge variant="outline" className="text-primary">
                                   <Award className="w-3 h-3 mr-1" />
                                   +{workshop.creditReward} credits
                                 </Badge>
+                                */}
+                                <Badge variant="outline">Open Access</Badge>
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Badge 
-                                variant={workshop.status === 'upcoming' ? 'default' : 'secondary'}
+                                variant={isUpcoming(workshop.status) ? 'default' : 'secondary'}
                               >
                                 {workshop.status}
                               </Badge>
@@ -327,7 +327,7 @@ export function Dashboard() {
                         <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="font-semibold mb-2">No workshops hosted yet</h3>
                         <p className="text-muted-foreground mb-4">
-                          Share your expertise and earn credits by hosting workshops
+                          Share your expertise by hosting workshops
                         </p>
                         <Button onClick={() => setCurrentPage('create')}>
                           Host a Workshop
@@ -338,58 +338,6 @@ export function Dashboard() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="activity" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Recent Activity</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {recentTransactions.length > 0 ? (
-                      <div className="space-y-4">
-                        {recentTransactions.map((transaction) => (
-                          <div key={transaction.id} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
-                            <div className="flex items-center space-x-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                transaction.type === 'earned' 
-                                  ? 'bg-secondary/10 text-secondary' 
-                                  : 'bg-primary/10 text-primary'
-                              }`}>
-                                {transaction.type === 'earned' ? (
-                                  <TrendingUp className="w-4 h-4" />
-                                ) : (
-                                  <CreditCard className="w-4 h-4" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="font-medium">{transaction.description}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {new Date(transaction.timestamp).toLocaleDateString()}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <span className={`font-medium ${
-                                transaction.type === 'earned' ? 'text-secondary' : 'text-primary'
-                              }`}>
-                                {transaction.type === 'earned' ? '+' : '-'}{transaction.amount}
-                              </span>
-                              <span className="text-sm text-muted-foreground">credits</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="font-semibold mb-2">No activity yet</h3>
-                        <p className="text-muted-foreground">
-                          Your workshop activities will appear here
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
             </Tabs>
           </div>
         </div>

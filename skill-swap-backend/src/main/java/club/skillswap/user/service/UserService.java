@@ -80,8 +80,9 @@ public class UserService {
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
         dto.setSkills(skillNames);
-        // 鏂扮敤鎴峰垵濮?100 credits
-        dto.setCreditBalance(100);
+        // 积分系统已停用：不再展示/初始化 100 积分。
+        // dto.setCreditBalance(100);
+        dto.setCreditBalance(0);
         dto.setTotalWorkshopsHosted(workshopsHosted);
         dto.setTotalWorkshopsAttended(workshopsAttended);
         dto.setRating(rating);

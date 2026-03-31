@@ -85,7 +85,9 @@ public class DevAuthController {
                     newUser.setId(UUID.randomUUID());
                     newUser.setEmail(email);
                     newUser.setUsername(username);
-                    newUser.setCreditBalance(100); // 鍒濆 100 绉垎
+                    // 积分系统已停用：不再给新用户初始化 100 积分。
+                    // newUser.setCreditBalance(100); // 鍒濆 100 绉垎
+                    newUser.setCreditBalance(0);
                     newUser.setAvatarUrl("https://i.pravatar.cc/150?img=" + new Random().nextInt(70));
                     newUser.setBio("Dev user");
                     return userRepository.save(newUser);

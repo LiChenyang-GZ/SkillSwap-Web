@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -10,7 +10,6 @@ import {
   MapPin,
   Globe,
   ArrowLeft,
-  CreditCard,
   Trash2,
 } from 'lucide-react';
 import { Workshop } from '../types';
@@ -68,7 +67,8 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const isUserAttending = workshop.participants?.some((p) => p.id === user?.id) || false;
   const isFacilitator = user?.id === workshop.facilitator?.id;
   const isFull = (workshop.currentParticipants ?? 0) >= workshop.maxParticipants;
-  const hasEnoughCredits = user && user.creditBalance >= workshop.creditCost;
+  // 积分系统已停用：不再根据余额限制报名。
+  // const hasEnoughCredits = user && user.creditBalance >= workshop.creditCost;
 
   const handleAttend = async () => {
     await attendWorkshop(workshopId);
@@ -227,10 +227,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                       <Button disabled variant="outline" className="w-full">
                         Workshop Full
                       </Button>
-                    ) : !hasEnoughCredits ? (
-                      <Button disabled variant="outline" className="w-full">
-                        Not Enough Credits ({user?.creditBalance ?? 0} / {workshop.creditCost})
-                      </Button>
                     ) : (
                       <Button onClick={handleAttend} className="w-full" size="lg">
                         Attend Workshop
@@ -258,13 +254,18 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                   <Badge variant="outline" className="text-base">{workshop.skillLevel}</Badge>
                 </div>
 
-                {/* Credit Cost */}
+                {/* Participation */}
                 <div>
+                  {/* 积分系统已停用：保留原积分展示。 */}
+                  {/*
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Cost</p>
                   <div className="flex items-center space-x-2">
                     <CreditCard className="w-5 h-5 text-primary" />
                     <span className="text-lg font-semibold">{workshop.creditCost} credits</span>
                   </div>
+                  */}
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Participation</p>
+                  <span className="text-lg font-semibold">Open access</span>
                 </div>
 
                 {/* Date */}
