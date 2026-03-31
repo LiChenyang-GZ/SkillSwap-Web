@@ -305,7 +305,7 @@ export function AdminReview() {
             <p className="text-muted-foreground">Review, edit, approve, or cancel workshops before they start.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={setStatusFilter} modal={false}>
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="Filter status" />
               </SelectTrigger>
@@ -426,7 +426,7 @@ export function AdminReview() {
                     </div>
                     <div>
                       <Label htmlFor="category">Category</Label>
-                      <Select value={formData.category} onValueChange={(value: string) => handleInputChange('category', value)}>
+                      <Select value={formData.category} onValueChange={(value: string) => handleInputChange('category', value)} modal={false}>
                         <SelectTrigger className="mt-1" disabled={!canEdit}>
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -439,7 +439,7 @@ export function AdminReview() {
                     </div>
                     <div>
                       <Label htmlFor="skillLevel">Skill Level</Label>
-                      <Select value={formData.skillLevel} onValueChange={(value: Workshop['skillLevel']) => handleInputChange('skillLevel', value)}>
+                      <Select value={formData.skillLevel} onValueChange={(value: Workshop['skillLevel']) => handleInputChange('skillLevel', value)} modal={false}>
                         <SelectTrigger className="mt-1" disabled={!canEdit}>
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>

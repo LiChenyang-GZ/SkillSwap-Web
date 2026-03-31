@@ -95,7 +95,7 @@ export function PastWorkshops() {
               />
             </div>
 
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory} modal={false}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
@@ -107,7 +107,7 @@ export function PastWorkshops() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedSkillLevel} onValueChange={setSelectedSkillLevel}>
+            <Select value={selectedSkillLevel} onValueChange={setSelectedSkillLevel} modal={false}>
               <SelectTrigger>
                 <SelectValue placeholder="Skill Level" />
               </SelectTrigger>
@@ -119,7 +119,7 @@ export function PastWorkshops() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation} modal={false}>
               <SelectTrigger>
                 <SelectValue placeholder="Location" />
               </SelectTrigger>

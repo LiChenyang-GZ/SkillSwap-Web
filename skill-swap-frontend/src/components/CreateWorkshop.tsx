@@ -182,7 +182,7 @@ export function CreateWorkshop() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="category">Category *</Label>
-                      <Select value={formData.category} onValueChange={(value: string) => handleInputChange('category', value)}>
+                      <Select value={formData.category} onValueChange={(value: string) => handleInputChange('category', value)} modal={false}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -196,7 +196,7 @@ export function CreateWorkshop() {
 
                     <div>
                       <Label htmlFor="skillLevel">Skill Level *</Label>
-                      <Select value={formData.skillLevel} onValueChange={(value: string) => handleInputChange('skillLevel', value)}>
+                      <Select value={formData.skillLevel} onValueChange={(value: string) => handleInputChange('skillLevel', value)} modal={false}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Select skill level" />
                         </SelectTrigger>
