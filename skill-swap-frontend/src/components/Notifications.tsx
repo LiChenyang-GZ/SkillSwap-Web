@@ -37,6 +37,10 @@ export function Notifications() {
         return;
       }
 
+      if (!sessionToken) {
+        return;
+      }
+
       try {
         const data = await notificationAPI.getAll(sessionToken);
         if (isMounted) {

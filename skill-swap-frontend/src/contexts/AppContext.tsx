@@ -59,6 +59,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   // 防止标签页切换时重复初始化
   const initializedRef = useRef(false);
+  const refreshInFlightRef = useRef<Promise<void> | null>(null);
 
   // Toggle mock vs real auth easily
   const USE_SUPABASE = true;
@@ -119,7 +120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return workshopAPI.getAllForAdmin(sessionToken);
     }
 
-    if (isAuthenticated && sessionToken && user) {
+    if (isAuthenticated && sessionToken) {
       const [publicWorkshops, myWorkshops] = await Promise.all([
         workshopAPI.getPublic(),
         workshopAPI.getMine(sessionToken),
@@ -132,26 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     return workshopAPI.getPublic();
-  }, [isAdmin, isAuthenticated, sessionToken, user]);
-
-  // --------------------------
-  // Workshop Loading
-  // --------------------------
-  useEffect(() => {
-    const loadWorkshops = async () => {
-      try {
-        console.log("🔄 Loading workshops...");
-        const backendWorkshops = await fetchVisibleWorkshops();
-        setWorkshops(backendWorkshops);
-        console.log("✅ Loaded workshops from backend:", backendWorkshops.length);
-      } catch (err) {
-        console.warn("⚠️ Failed to fetch workshops", err);
-        setWorkshops([]);
-      }
-    };
-
-    loadWorkshops();
-  }, [fetchVisibleWorkshops]);
+  }, [isAdmin, isAuthenticated, sessionToken]);
 
   // --------------------------
   // Auth Initialization
@@ -174,9 +156,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // 2) 订阅登录/登出变化
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // INITIAL_SESSION 已由 checkSupabaseAuthState 处理，避免重复拉取。
+      if (event === "INITIAL_SESSION") {
+        return;
+      }
+
       if (session) {
-        console.log("🔑 Auth state changed: logged in", session.user);
+        setSessionToken(session.access_token);
+        localStorage.setItem("skill-swap-sessionToken", session.access_token);
+
+        // token 轮换时仅更新 token，不重复拉 profile/页面跳转。
+        if (event === "TOKEN_REFRESHED") {
+          return;
+        }
+
+        console.log("🔑 Auth state changed:", event, session.user);
 
         try {
           const profile = await fetchBackendProfile(session.access_token);
@@ -189,14 +184,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           localStorage.setItem("skill-swap-sessionToken", session.access_token);
           localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
 
-          setCurrentPage("home");
-          toast.success(`Welcome, ${mapped.username}!`);
+          if (event === "SIGNED_IN") {
+            setCurrentPage("home");
+            toast.success(`Welcome, ${mapped.username}!`);
+          }
         } catch (e) {
           console.error("❌ Failed to fetch backend profile after login:", e);
 
           setUser(null);
           setIsAuthenticated(false);
           setSessionToken(null);
+          setWorkshops([]);
+          setNotificationsUnreadCount(0);
+          setIsAdmin(false);
 
           localStorage.removeItem("skill-swap-sessionToken");
           localStorage.removeItem("skill-swap-user");
@@ -209,6 +209,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setIsAuthenticated(false);
         setSessionToken(null);
+        setWorkshops([]);
+        setNotificationsUnreadCount(0);
+        setIsAdmin(false);
 
         localStorage.removeItem("skill-swap-sessionToken");
         localStorage.removeItem("skill-swap-user");
@@ -266,6 +269,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const res = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -313,6 +317,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
       setSessionToken(null);
+      setWorkshops([]);
+      setNotificationsUnreadCount(0);
+      setIsAdmin(false);
       localStorage.removeItem("skill-swap-sessionToken");
       localStorage.removeItem("skill-swap-user");
       setCurrentPage("hero");
@@ -336,6 +343,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setIsAuthenticated(false);
       setSessionToken(null);
+      setWorkshops([]);
+      setNotificationsUnreadCount(0);
+      setIsAdmin(false);
       setCurrentPage("auth");
     } finally {
       setIsLoading(false);
@@ -401,17 +411,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   // Data
   // --------------------------
-  const refreshData = async () => {
-    try {
-      const backendWorkshops = await fetchVisibleWorkshops();
-      setWorkshops(backendWorkshops);
-    } catch (err) {
-      console.warn("⚠️ Failed to fetch workshops", err);
+  const refreshData = useCallback(async () => {
+    if (refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
     }
-    // 积分系统已停用：不再加载 mock 交易历史。
-    // setTransactions(mockTransactions);
-    setTransactions([]);
-  };
+
+    const task = (async () => {
+      try {
+        const backendWorkshops = await fetchVisibleWorkshops();
+        setWorkshops(backendWorkshops);
+      } catch (err) {
+        console.warn("⚠️ Failed to fetch workshops", err);
+      }
+
+      // 积分系统已停用：不再加载 mock 交易历史。
+      // setTransactions(mockTransactions);
+      setTransactions([]);
+    })();
+
+    refreshInFlightRef.current = task;
+    try {
+      await task;
+    } finally {
+      refreshInFlightRef.current = null;
+    }
+  }, [fetchVisibleWorkshops]);
 
   const refreshNotificationsUnreadCount = async () => {
     if (!sessionToken) {
@@ -562,20 +586,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // setUser(updatedUser);
       // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
       
-      // 成功后以服务端数据为准刷新，避免本地状态与后端不一致。
-      const updatedWorkshops = await fetchVisibleWorkshops();
-      setWorkshops(updatedWorkshops);
-      // toast.success(`Joined "${workshop.title}"! -${workshop.creditCost} credits`);
       toast.success(`Joined "${workshop.title}"!`);
+
+      // 成功后后台刷新，避免 toast 被全量拉取阻塞。
+      void refreshData();
     } catch (error) {
       console.error("Failed to join workshop:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
       const alreadyParticipant = message.toLowerCase().includes("already a participant");
 
       if (alreadyParticipant) {
-        // 若后端返回“已参加”，将其视为幂等成功并刷新列表。
-        const updatedWorkshops = await fetchVisibleWorkshops();
-        setWorkshops(updatedWorkshops);
+        // 若后端返回“已参加”，将其视为幂等成功并后台刷新列表。
+        void refreshData();
         toast.success("You are already attending this workshop.");
         return;
       }
@@ -605,10 +627,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // setUser(updatedUser);
       // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
       
-      // 成功后以服务端数据为准刷新，避免本地状态与后端不一致。
-      const updatedWorkshops = await fetchVisibleWorkshops();
-      setWorkshops(updatedWorkshops);
       toast.success("Workshop attendance cancelled");
+
+      // 后台刷新，避免操作反馈被阻塞。
+      void refreshData();
     } catch (error) {
       console.error("Failed to leave workshop:", error);
       toast.error("Failed to leave workshop: " + (error instanceof Error ? error.message : "Unknown error"));
@@ -623,14 +645,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     try {
       // 调用后端 API 创建 workshop
-      await workshopAPI.create(workshopData, sessionToken);
-      
-      // 创建成功后，重新从后端拉取所有 workshops
-      const updatedWorkshops = await fetchVisibleWorkshops();
-      setWorkshops(updatedWorkshops);
+      const createdWorkshop = await workshopAPI.create(workshopData, sessionToken);
+      upsertWorkshop(createdWorkshop);
       
       toast.success("Workshop created successfully!");
       setCurrentPage("dashboard");
+
+      // 切页后由页面按需刷新，这里额外后台拉一次保证全局列表最终一致。
+      void refreshData();
     } catch (error) {
       console.error("Failed to create workshop:", error);
       toast.error("Failed to create workshop: " + (error instanceof Error ? error.message : "Unknown error"));

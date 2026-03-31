@@ -104,10 +104,14 @@ async function apiCall<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${tokenToUse}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const method = (options.method || "GET").toUpperCase();
+  const requestOptions: RequestInit = {
     ...options,
     headers,
-  });
+    cache: options.cache ?? (method === "GET" ? "no-store" : undefined),
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
 
   if (!response.ok) {
     const error = await response.text();

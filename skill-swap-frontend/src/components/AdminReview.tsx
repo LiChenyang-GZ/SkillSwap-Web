@@ -55,7 +55,7 @@ export function AdminReview() {
   const [isSaving, setIsSaving] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const [currentPage, setCurrentPageState] = useState(1);
   const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(null);
   const pageSize = 8;
@@ -134,7 +134,7 @@ export function AdminReview() {
     return JSON.stringify(baseline) !== JSON.stringify(current);
   }, [formData, selectedWorkshop]);
 
-  const loadWorkshops = async () => {
+  const loadWorkshops = async (mode: 'pending' | 'all') => {
     if (!sessionToken) {
       setErrorMessage('Please sign in to review workshops.');
       return;
@@ -144,7 +144,10 @@ export function AdminReview() {
     setErrorMessage(null);
 
     try {
-      const data = await workshopAPI.getAllForAdmin(sessionToken);
+      const data =
+        mode === 'pending'
+          ? await workshopAPI.getPendingForAdmin(sessionToken)
+          : await workshopAPI.getAllForAdmin(sessionToken);
       setWorkshops(data);
       if (data.length > 0 && !selectedId) {
         setSelectedId(data[0].id);
@@ -159,8 +162,9 @@ export function AdminReview() {
   };
 
   useEffect(() => {
-    loadWorkshops();
-  }, [sessionToken]);
+    const mode = statusFilter === 'pending' ? 'pending' : 'all';
+    void loadWorkshops(mode);
+  }, [sessionToken, statusFilter]);
 
   useEffect(() => {
     const storedTarget = sessionStorage.getItem('adminReviewTargetId');
@@ -349,7 +353,14 @@ export function AdminReview() {
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={loadWorkshops} disabled={isLoading}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const mode = statusFilter === 'pending' ? 'pending' : 'all';
+                void loadWorkshops(mode);
+              }}
+              disabled={isLoading}
+            >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>

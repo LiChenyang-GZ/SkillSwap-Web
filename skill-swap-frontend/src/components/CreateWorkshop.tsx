@@ -20,6 +20,7 @@ import { categories, skillLevels } from '../lib/mock-data';
 
 export function CreateWorkshop() {
   const { user, setCurrentPage, createWorkshop } = useApp();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Workshop form state
   const [formData, setFormData] = useState({
@@ -99,6 +100,9 @@ export function CreateWorkshop() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
       await createWorkshop({
         title: formData.title,
@@ -120,6 +124,8 @@ export function CreateWorkshop() {
       });
     } catch (error) {
       // Error is handled in the context
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -493,10 +499,10 @@ export function CreateWorkshop() {
             </Button>
             <Button 
               type="submit" 
-              disabled={!isFormValid()}
+              disabled={!isFormValid() || isSubmitting}
               className="min-w-[120px]"
             >
-              Create Workshop
+              {isSubmitting ? 'Creating...' : 'Create Workshop'}
             </Button>
           </div>
         </form>

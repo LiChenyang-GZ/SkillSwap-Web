@@ -14,7 +14,7 @@ import { Notifications } from './components/Notifications';
 import { Toaster } from './components/ui/sonner';
 
 function AppContent() {
-  const { currentPage, isLoading, isDarkMode, isAuthenticated } = useApp();
+  const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData } = useApp();
 
   // Apply theme class to html element
   React.useEffect(() => {
@@ -26,6 +26,18 @@ function AppContent() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  React.useEffect(() => {
+    // 仅在依赖 workshop 列表的页面切换时按需拉取最新数据。
+    if (
+      currentPage === 'home' ||
+      currentPage === 'explore' ||
+      currentPage === 'dashboard' ||
+      currentPage === 'pastWorkshops'
+    ) {
+      void refreshData();
+    }
+  }, [currentPage, refreshData]);
 
   if (isLoading) {
     return (
