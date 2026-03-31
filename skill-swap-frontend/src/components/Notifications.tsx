@@ -154,7 +154,7 @@ export function Notifications() {
           </Button>
         </div>
 
-        <div className="rounded-xl border border-border bg-card divide-y divide-border">
+        <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
           {isLoading ? (
             <div className="p-6 text-center text-muted-foreground">Loading notifications...</div>
           ) : sortedNotifications.length === 0 ? (
