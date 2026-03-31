@@ -379,7 +379,21 @@ export function AdminReview() {
               <CardTitle>Workshops</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {sortedWorkshops.length === 0 && !isLoading ? (
+              {isLoading && sortedWorkshops.length === 0 ? (
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Loading workshop submissions...
+                  </div>
+                  {Array.from({ length: 4 }).map((_, idx) => (
+                    <div key={idx} className="border rounded-lg p-3 animate-pulse">
+                      <div className="h-4 w-2/3 bg-muted rounded mb-2" />
+                      <div className="h-3 w-1/3 bg-muted rounded mb-2" />
+                      <div className="h-3 w-1/2 bg-muted rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : sortedWorkshops.length === 0 && !isLoading ? (
                 <div className="text-sm text-muted-foreground">No workshops match this filter.</div>
               ) : (
                 pagedWorkshops.map((workshop) => (
@@ -439,7 +453,12 @@ export function AdminReview() {
               <CardTitle>Submission Details</CardTitle>
             </CardHeader>
             <CardContent>
-              {!selectedWorkshop ? (
+              {isLoading && !selectedWorkshop ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Loading submission details...
+                </div>
+              ) : !selectedWorkshop ? (
                 <div className="text-sm text-muted-foreground">Select a submission to review.</div>
               ) : (
                 <div className="space-y-6">

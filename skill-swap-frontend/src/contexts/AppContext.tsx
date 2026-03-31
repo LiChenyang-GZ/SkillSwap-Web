@@ -171,8 +171,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        console.log("🔑 Auth state changed:", event, session.user);
-
         try {
           const profile = await fetchBackendProfile(session.access_token);
           const mapped = mapBackendUser(profile);
@@ -205,7 +203,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           toast.error("Login succeeded, but failed to load profile from backend.");
         }
       } else {
-        console.log("🚪 Auth state changed: logged out");
         setUser(null);
         setIsAuthenticated(false);
         setSessionToken(null);
@@ -257,15 +254,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // 你现在代码用的是 /api/users/current
     const url = `${base}/api/v1/users/me`;
 
-    // DEBUG: 解码并打印 JWT header 查看算法
-    try {
-      const headerBase64 = accessToken.split('.')[0];
-      const headerJson = atob(headerBase64);
-      console.log('🔍 JWT Header:', headerJson);
-    } catch (e) {
-      console.log('Failed to decode JWT header:', e);
-    }
-
     const res = await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -300,20 +288,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const checkSupabaseAuthState = async () => {
-    console.log("🔍 Checking Supabase session...");
-
     const { data } = await supabase.auth.getSession();
-    
-    console.log("SESSION", data.session);
-    console.log("ACCESS_TOKEN", data.session?.access_token);
     const session = data.session;
-    if (data.session?.access_token) {
-      const header = JSON.parse(atob(data.session.access_token.split(".")[0]));
-      console.log("JWT_HEADER", header); // ✅ 看 alg / kid / typ
-    }
 
     if (!session) {
-      console.log("🚪 No Supabase session found");
       setUser(null);
       setIsAuthenticated(false);
       setSessionToken(null);
@@ -353,7 +331,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const restoreAuthStateFromStorage = async () => {
-    console.log("🔍 Checking mock auth...");
     const savedAuth = localStorage.getItem("skill-swap-auth");
     const savedUser = localStorage.getItem("skill-swap-user");
     const savedToken = localStorage.getItem("skill-swap-sessionToken");
@@ -388,7 +365,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Cache
   // --------------------------
   const clearCache = () => {
-    console.log("🧹 Clearing cache...");
     localStorage.clear();
     sessionStorage.clear();
     setUser(null);
@@ -467,13 +443,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   const signIn = async (email: string, password: string) => {
     if (USE_SUPABASE) {
-      console.log("🔐 Supabase login via Google should be handled separately");
       toast.info("Use Google login button for Supabase auth");
       return;
     }
 
     // --- Mock Sign-In ---
-    console.log("🔐 Mock sign in with email:", email);
     if (["demo", "password", "123456"].includes(password)) {
       const usernamePart = email
         .split("@")[0]
@@ -512,7 +486,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("skill-swap-user", JSON.stringify(userData));
         localStorage.setItem("skill-swap-sessionToken", loginResult.access_token);
         setCurrentPage("home");
-        console.log("✅ Dev login successful, JWT token obtained");
         toast.success(`Welcome, ${userData.username}!`);
       } catch (error) {
         console.error("❌ Dev login failed:", error);
@@ -550,9 +523,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      console.log("🎯 Attempting to join workshop:", workshopId);
-      console.log("📊 Available workshops:", workshops.map(w => ({ id: w.id, title: w.title })));
-      
       // 查找要 join 的 workshop
       // 尝试精确匹配，也支持数字ID格式
       let workshop = workshops.find((w) => w.id === workshopId);
@@ -573,7 +543,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // }
       //
       // console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
-      console.log("✅ Found workshop:", workshop.title);
       
       // 调用后端 API，传递 JWT token
       await workshopAPI.join(workshopId, sessionToken);
@@ -589,7 +558,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast.success(`Joined "${workshop.title}"!`);
 
       // 成功后后台刷新，避免 toast 被全量拉取阻塞。
-      void refreshData();
+      setTimeout(() => {
+        void refreshData();
+      }, 0);
     } catch (error) {
       console.error("Failed to join workshop:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -630,7 +601,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast.success("Workshop attendance cancelled");
 
       // 后台刷新，避免操作反馈被阻塞。
-      void refreshData();
+      setTimeout(() => {
+        void refreshData();
+      }, 0);
     } catch (error) {
       console.error("Failed to leave workshop:", error);
       toast.error("Failed to leave workshop: " + (error instanceof Error ? error.message : "Unknown error"));
@@ -652,7 +625,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentPage("dashboard");
 
       // 切页后由页面按需刷新，这里额外后台拉一次保证全局列表最终一致。
-      void refreshData();
+      setTimeout(() => {
+        void refreshData();
+      }, 0);
     } catch (error) {
       console.error("Failed to create workshop:", error);
       toast.error("Failed to create workshop: " + (error instanceof Error ? error.message : "Unknown error"));
@@ -666,7 +641,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log("🗑️ Attempting to delete workshop:", workshopId);
       // 调用后端 API 删除 workshop，传递 JWT token
       await workshopAPI.delete(workshopId, sessionToken);
 
@@ -676,7 +650,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
 
       toast.success("Workshop deleted successfully!");
-      console.log("✅ Workshop deleted from local state");
     } catch (error) {
       console.error("Failed to delete workshop:", error);
       toast.error("Failed to delete workshop: " + (error instanceof Error ? error.message : "Unknown error"));

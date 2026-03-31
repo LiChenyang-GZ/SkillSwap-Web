@@ -2,6 +2,8 @@ package club.skillswap.workshop.repository;
 
 import club.skillswap.workshop.entity.WorkshopParticipant;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
@@ -18,5 +20,20 @@ public interface WorkshopParticipantRepository extends JpaRepository<WorkshopPar
 
     // 根据 workshop ID 查询参与者记录
     List<WorkshopParticipant> findByWorkshopId(Long workshopId);
+
+    @Query("""
+        select wp from WorkshopParticipant wp
+        join fetch wp.user
+        where wp.workshop.id = :workshopId
+        """)
+    List<WorkshopParticipant> findByWorkshopIdWithUser(@Param("workshopId") Long workshopId);
+
+    @Query("""
+        select wp from WorkshopParticipant wp
+        join fetch wp.user
+        join fetch wp.workshop
+        where wp.workshop.id in :workshopIds
+        """)
+    List<WorkshopParticipant> findByWorkshopIdInWithUser(@Param("workshopIds") List<Long> workshopIds);
 }
 

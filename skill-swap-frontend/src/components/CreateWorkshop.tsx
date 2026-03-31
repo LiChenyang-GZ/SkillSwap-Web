@@ -17,6 +17,7 @@ import {
   Upload
 } from 'lucide-react';
 import { categories, skillLevels } from '../lib/mock-data';
+import { toast } from 'sonner';
 
 export function CreateWorkshop() {
   const { user, setCurrentPage, createWorkshop } = useApp();
@@ -103,6 +104,7 @@ export function CreateWorkshop() {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+    const loadingToastId = toast.loading('Creating workshop...');
     try {
       await createWorkshop({
         title: formData.title,
@@ -122,8 +124,10 @@ export function CreateWorkshop() {
         materials: formData.materials,
         requirements: formData.requirements,
       });
+      toast.dismiss(loadingToastId);
     } catch (error) {
       // Error is handled in the context
+      toast.dismiss(loadingToastId);
     } finally {
       setIsSubmitting(false);
     }

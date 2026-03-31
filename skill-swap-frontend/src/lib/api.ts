@@ -31,8 +31,6 @@ function getDefaultImage(category: string): string {
 
 // 后端返回的数据直接映射，转换字段名，添加 image 字段
 function enrichWorkshop(workshop: any): Workshop {
-  console.log("📦 Raw workshop data from backend:", workshop);
-  
   // 处理后端返回的蛇形命名字段，转换为驼峰命名
   const facilitator = workshop.facilitator 
     ? {
@@ -307,18 +305,10 @@ export const workshopAPI = {
   // 获取所有工作坊
   getAll: async (): Promise<Workshop[]> => {
     try {
-      console.log("🔄 Fetching workshops from backend...");
       const data = await apiCall<any[]>("/api/v1/workshops");
-      console.log("✅ Fetched workshops from backend:", data.length, data);
-      const enriched = data.map(enrichWorkshop);
-      console.log("✅ Enriched workshops:", enriched);
-      return enriched;
+      return data.map(enrichWorkshop);
     } catch (error) {
-      console.error("❌ Backend request failed:", error);
-      console.error("❌ Workshop API error details:", {
-        message: error instanceof Error ? error.message : String(error),
-        url: `${API_BASE_URL}/api/v1/workshops`
-      });
+      console.error('Failed to fetch workshops:', error);
       return [];
     }
   },
@@ -380,10 +370,9 @@ export const workshopAPI = {
         },
         token
       );
-      console.log("✅ Workshop created:", created);
       return enrichWorkshop(created);
     } catch (error) {
-      console.error("❌ Failed to create workshop:", error);
+      console.error('Failed to create workshop:', error);
       throw error;
     }
   },
@@ -397,9 +386,8 @@ export const workshopAPI = {
         { method: "POST" },
         token
       );
-      console.log("✅ Joined workshop:", workshopId);
     } catch (error) {
-      console.error("❌ Failed to join workshop:", error);
+      console.error('Failed to join workshop:', error);
       throw error;
     }
   },
@@ -413,9 +401,8 @@ export const workshopAPI = {
         { method: "POST" },
         token
       );
-      console.log("✅ Left workshop:", workshopId);
     } catch (error) {
-      console.error("❌ Failed to leave workshop:", error);
+      console.error('Failed to leave workshop:', error);
       throw error;
     }
   },
@@ -429,9 +416,8 @@ export const workshopAPI = {
         { method: "DELETE" },
         token
       );
-      console.log("✅ Deleted workshop:", workshopId);
     } catch (error) {
-      console.error("❌ Failed to delete workshop:", error);
+      console.error('Failed to delete workshop:', error);
       throw error;
     }
   },

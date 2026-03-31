@@ -30,8 +30,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -107,7 +109,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     public List<WorkshopResponseDto> getAllWorkshops() {
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
         preloadCollections(workshops);
-        return workshops.stream().map(this::mapToDto).toList();
+        return mapToDtoList(workshops);
     }
 
     @Override
@@ -115,7 +117,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     public List<WorkshopResponseDto> getPublicWorkshops() {
         List<Workshop> workshops = workshopRepository.findAllPublicApprovedWithFacilitator();
         preloadCollections(workshops);
-        return workshops.stream().map(this::mapToDto).toList();
+        return mapToDtoList(workshops);
     }
 
     @Override
@@ -130,7 +132,7 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         List<Workshop> workshops = workshopRepository.findAllByFacilitatorIdWithFacilitator(facilitatorUuid);
         preloadCollections(workshops);
-        return workshops.stream().map(this::mapToDto).toList();
+        return mapToDtoList(workshops);
     }
 
     @Override
@@ -139,7 +141,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
         preloadCollections(workshops);
-        return workshops.stream().map(this::mapToDto).toList();
+        return mapToDtoList(workshops);
     }
 
     @Override
@@ -148,7 +150,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllPendingWithFacilitator();
         preloadCollections(workshops);
-        return workshops.stream().map(this::mapToDto).toList();
+        return mapToDtoList(workshops);
     }
 
     @Override
@@ -305,6 +307,35 @@ public class WorkshopServiceImpl implements WorkshopService {
         });
     }
 
+    private List<WorkshopResponseDto> mapToDtoList(List<Workshop> workshops) {
+        if (workshops == null || workshops.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> workshopIds = workshops.stream()
+            .map(Workshop::getId)
+            .toList();
+
+        Map<Long, List<WorkshopParticipantDto>> participantsByWorkshopId = participantRepository
+            .findByWorkshopIdInWithUser(workshopIds)
+            .stream()
+            .collect(Collectors.groupingBy(
+                p -> p.getWorkshop().getId(),
+                Collectors.mapping(
+                    p -> new WorkshopParticipantDto(
+                        p.getUser().getId().toString(),
+                        p.getUser().getUsername(),
+                        p.getUser().getAvatarUrl()
+                    ),
+                    Collectors.toList()
+                )
+            ));
+
+        return workshops.stream()
+            .map(workshop -> mapToDto(workshop, participantsByWorkshopId.getOrDefault(workshop.getId(), List.of())))
+            .toList();
+    }
+
     @Override
     @Transactional
     public void deleteWorkshop(Long workshopId, Authentication authentication) {
@@ -419,8 +450,20 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     // 绉佹湁杈呭姪鏂规硶锛岀敤浜庡皢 Entity 鏄犲皠鍒?DTO
     private WorkshopResponseDto mapToDto(Workshop workshop) {
+        List<WorkshopParticipantDto> participants = participantRepository.findByWorkshopIdWithUser(workshop.getId())
+            .stream()
+            .map(p -> new WorkshopParticipantDto(
+                p.getUser().getId().toString(),
+                p.getUser().getUsername(),
+                p.getUser().getAvatarUrl()
+            ))
+            .toList();
 
-        // 鍒涘缓宓屽鐨?FacilitatorDto锛堟坊鍔?null 妫€鏌ワ級
+        return mapToDto(workshop, participants);
+    }
+
+    private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants) {
+        List<WorkshopParticipantDto> safeParticipants = participants == null ? List.of() : participants;
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
             facilitatorDto = new FacilitatorDto(
@@ -429,15 +472,6 @@ public class WorkshopServiceImpl implements WorkshopService {
                 workshop.getFacilitator().getAvatarUrl()
             );
         }
-
-        List<WorkshopParticipantDto> participants = participantRepository.findByWorkshopId(workshop.getId())
-            .stream()
-            .map(p -> new WorkshopParticipantDto(
-                p.getUser().getId().toString(),
-                p.getUser().getUsername(),
-                p.getUser().getAvatarUrl()
-            ))
-            .toList();
 
         return new WorkshopResponseDto(
             workshop.getId().toString(),
@@ -452,11 +486,11 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getIsOnline(),
             safeCopySet(workshop.getLocation()),
             workshop.getMaxParticipants(),
-            participants.size(),
+            safeParticipants.size(),
             workshop.getCreditCost(),
             workshop.getCreditReward(),
             facilitatorDto,
-            participants,
+            safeParticipants,
             safeCopySet(workshop.getTags()),
             safeCopySet(workshop.getMaterials()),
             safeCopySet(workshop.getRequirements()),
