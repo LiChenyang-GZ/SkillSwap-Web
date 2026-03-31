@@ -23,7 +23,10 @@ export function ExploreWorkshops() {
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
 
-  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
+  const isUpcoming = (status?: string) => {
+    const normalized = (status || '').toLowerCase();
+    return normalized === 'upcoming' || normalized === 'approved';
+  };
 
   // Filter workshops based on search and filters
   // matchesSearch, matchesCategory, matchesSkillLevel, matchesLocation
@@ -73,7 +76,7 @@ export function ExploreWorkshops() {
             </div>
 
             {/* Category Filter */}
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory} modal={false}>
               <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
@@ -86,7 +89,7 @@ export function ExploreWorkshops() {
             </Select>
 
             {/* Skill Level Filter */}
-            <Select value={selectedSkillLevel} onValueChange={setSelectedSkillLevel}>
+            <Select value={selectedSkillLevel} onValueChange={setSelectedSkillLevel} modal={false}>
               <SelectTrigger>
                 <SelectValue placeholder="Skill Level" />
               </SelectTrigger>
@@ -99,7 +102,7 @@ export function ExploreWorkshops() {
             </Select>
 
             {/* Location Filter */}
-            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+            <Select value={selectedLocation} onValueChange={setSelectedLocation} modal={false}>
               <SelectTrigger>
                 <SelectValue placeholder="Location" />
               </SelectTrigger>

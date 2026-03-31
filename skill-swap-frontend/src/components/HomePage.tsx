@@ -17,7 +17,10 @@ import {
 
 export function HomePage() {
   const { user, workshops, setCurrentPage } = useApp();
-  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
+  const isUpcoming = (status?: string) => {
+    const normalized = (status || '').toLowerCase();
+    return normalized === 'upcoming' || normalized === 'approved';
+  };
 
   // Get upcoming workshops the user is attending
   const upcomingWorkshops = workshops.filter(w => 

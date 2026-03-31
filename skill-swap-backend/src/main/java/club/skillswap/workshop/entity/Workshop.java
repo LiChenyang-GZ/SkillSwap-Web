@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -34,7 +35,7 @@ public class Workshop {
 
     private Integer duration;
 
-    private String status = "upcoming"; // 榛樿鐘舵€?
+    private String status = "pending";
 
     private LocalDate date;
     private LocalTime time;
@@ -61,6 +62,22 @@ public class Workshop {
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "reviewed_by")
+    private java.util.UUID reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Column(name = "review_comment", columnDefinition = "text")
+    private String reviewComment;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "facilitator_id", nullable = false)

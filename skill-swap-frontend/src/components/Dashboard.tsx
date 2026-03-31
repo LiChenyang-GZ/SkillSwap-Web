@@ -13,13 +13,27 @@ import {
   BookOpen,
   Target,
   Globe,
-  Edit,
-  Trash2
+  Edit
 } from 'lucide-react';
 
 export function Dashboard() {
-  const { user, workshops, setCurrentPage, cancelWorkshopAttendance, deleteWorkshop } = useApp();
-  const isUpcoming = (status?: string) => (status || '').toLowerCase() === 'upcoming';
+  const { user, workshops, setCurrentPage, cancelWorkshopAttendance } = useApp();
+  const normalizeStatus = (status?: string) => (status || 'pending').toLowerCase();
+  const displayStatus = (status?: string) => {
+    const normalized = normalizeStatus(status);
+    return normalized === 'approved' ? 'upcoming' : normalized;
+  };
+  const statusBadgeVariant = (status?: string) => {
+    const normalized = normalizeStatus(status);
+    if (normalized === 'rejected') return 'destructive';
+    if (normalized === 'approved' || normalized === 'upcoming') return 'default';
+    if (normalized === 'pending') return 'secondary';
+    return 'outline';
+  };
+  const isUpcoming = (status?: string) => {
+    const normalized = (status || '').toLowerCase();
+    return normalized === 'upcoming' || normalized === 'approved';
+  };
 
   // Early return if no user
   if (!user) {
@@ -53,10 +67,12 @@ export function Dashboard() {
               Track your learning journey and workshop activities
             </p>
           </div>
-          <Button onClick={() => setCurrentPage('create')} className="mt-4 lg:mt-0">
-            <Target className="w-4 h-4 mr-2" />
-            Host a Workshop
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0">
+            <Button onClick={() => setCurrentPage('create')}>
+              <Target className="w-4 h-4 mr-2" />
+              Host a Workshop
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -222,9 +238,9 @@ export function Dashboard() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Badge 
-                                variant={isUpcoming(workshop.status) ? 'default' : 'secondary'}
+                                variant={statusBadgeVariant(workshop.status)}
                               >
-                                {workshop.status}
+                                {displayStatus(workshop.status)}
                               </Badge>
                               {isUpcoming(workshop.status) && (
                                 <Button 
@@ -297,27 +313,11 @@ export function Dashboard() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Badge 
-                                variant={isUpcoming(workshop.status) ? 'default' : 'secondary'}
+                                variant={statusBadgeVariant(workshop.status)}
                               >
-                                {workshop.status}
+                                {displayStatus(workshop.status)}
                               </Badge>
 
-                              {/* [] todo will go to form page  */}
-                              <Button variant="outline" size="sm">
-                                Edit
-                              </Button>
-
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => {
-                                  if (confirm('Are you sure you want to delete this workshop?')) {
-                                    deleteWorkshop(workshop.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
                             </div>
                           </div>
                         ))}

@@ -1,32 +1,41 @@
 import { useApp } from '../contexts/AppContext';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { 
-  Home, 
-  Search, 
-  Plus, 
-  LayoutDashboard, 
-  Trophy, 
-  MessageSquare, 
+import {
+  Home,
+  Search,
+  Plus,
+  LayoutDashboard,
+  Trophy,
+  MessageSquare,
+  ShieldCheck,
   Moon,
   Sun,
   Menu,
   X
 } from 'lucide-react';
 import { useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 const navItems = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'explore', label: 'Explore', icon: Search },
   { id: 'create', label: 'Create', icon: Plus },
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'pastWorkshops', label: 'Past Workshops', icon: Trophy },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },
 ];
 
 export function Navigation() {
-  const { user, currentPage, setCurrentPage, isDarkMode, toggleDarkMode, isAuthenticated, signOut } = useApp();
+  const { user, currentPage, setCurrentPage, isDarkMode, toggleDarkMode, isAuthenticated, isAdmin, signOut } = useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const fullNavItems = navItems;
 
   return (
     <>
@@ -43,7 +52,7 @@ export function Navigation() {
 
           {/* Navigation Links */}
           <div className="flex items-center space-x-1">
-            {navItems.slice(0, 6).map((item) => {
+            {fullNavItems.map((item) => {
               const Icon = item.icon;
               return (
                 <Button
@@ -86,30 +95,43 @@ export function Navigation() {
             </Button>
 
             {user ? (
-              <div className="flex items-center space-x-2">
-                <div 
-                  className="flex items-center space-x-2 cursor-pointer" 
-                  onClick={() => setCurrentPage('dashboard')}
-                >
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={user.avatarUrl} alt={user.username} />
-                    <AvatarFallback>{user.username.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                  </Avatar>
-                  <div className="hidden xl:block">
-                    <p className="text-sm font-medium">{user.username}</p>
-                  </div>
-                </div>
-                {isAuthenticated && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={signOut}
-                    className="hidden xl:flex"
-                  >
-                    Sign Out
-                  </Button>
-                )}
-              </div>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center space-x-2">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={user.avatarUrl} alt={user.username} />
+                      <AvatarFallback>{user.username.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    </Avatar>
+                    <div className="hidden xl:block text-left">
+                      <p className="text-sm font-medium">{user.username}</p>
+                    </div>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setCurrentPage('dashboard')}>
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => setCurrentPage('adminReview')}>
+                      <ShieldCheck className="w-4 h-4" />
+                      Admin Review
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  {isAuthenticated ? (
+                    <DropdownMenuItem variant="destructive" onClick={signOut}>
+                      Sign Out
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => setCurrentPage('auth')}>
+                      Sign In
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button
                 variant="default"
@@ -164,7 +186,7 @@ export function Navigation() {
         {isMobileMenuOpen && (
           <div className="absolute top-full left-0 right-0 bg-background border-b border-border">
             <div className="px-4 py-4 space-y-2">
-              {navItems.map((item) => {
+              {fullNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button
@@ -184,6 +206,36 @@ export function Navigation() {
               })}
               
               <div className="pt-3 border-t border-border">
+                {user && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCurrentPage('dashboard');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start flex items-center space-x-3"
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCurrentPage('adminReview');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full justify-start flex items-center space-x-3"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Admin Review</span>
+                      </Button>
+                    )}
+                  </>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

@@ -9,6 +9,7 @@ import { Dashboard } from './components/Dashboard';
 import { CreateWorkshop } from './components/CreateWorkshop';
 import { AuthPage } from './components/AuthPage';
 import { WorkshopDetails } from './components/WorkshopDetails';
+import { AdminReview } from './components/AdminReview';
 import { Toaster } from './components/ui/sonner';
 
 function AppContent() {
@@ -65,6 +66,8 @@ function AppContent() {
         return <AuthPage />;
       case 'pastWorkshops':
         return <PastWorkshops />;
+      case 'adminReview':
+        return <AdminReview />;
       case 'feedback':
         return <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
           <div className="text-center">
