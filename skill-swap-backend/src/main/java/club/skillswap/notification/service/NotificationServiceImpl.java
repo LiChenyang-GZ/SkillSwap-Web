@@ -82,6 +82,16 @@ public class NotificationServiceImpl implements NotificationService {
             workshop = workshopRepository.findById(workshopId).orElse(null);
         }
 
+        createNotification(recipient, type, title, message, workshop);
+    }
+
+    @Override
+    @Transactional
+    public void createNotification(UserAccount recipient, String type, String title, String message, Workshop workshop) {
+        if (recipient == null || recipient.getId() == null) {
+            return;
+        }
+
         Notification notification = new Notification();
         notification.setRecipient(recipient);
         notification.setWorkshop(workshop);

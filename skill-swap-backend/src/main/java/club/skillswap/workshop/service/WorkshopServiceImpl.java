@@ -44,7 +44,7 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     @Override
     @Transactional
-    public WorkshopResponseDto createWorkshop(WorkshopCreateRequestDto createRequestDto, String facilitatorId) {
+    public void createWorkshop(WorkshopCreateRequestDto createRequestDto, String facilitatorId) {
         // 1. 鏍规嵁 facilitatorId 鏌ユ壘鐢ㄦ埛
         UserAccount facilitator = userService.findUserByStringId(facilitatorId);
 
@@ -88,8 +88,7 @@ public class WorkshopServiceImpl implements WorkshopService {
                 "A new workshop (" + savedWorkshop.getTitle() + ") is awaiting your review."
         );
 
-        // 4. 灏嗕繚瀛樺悗鐨?Entity 杞崲鍥?Response DTO 骞惰繑鍥?
-        return mapToDto(savedWorkshop);
+        // 创建接口仅返回成功消息，避免额外 DTO 映射开销。
     }
 
     @Override
@@ -660,11 +659,11 @@ public class WorkshopServiceImpl implements WorkshopService {
                 continue;
             }
             notificationService.createNotification(
-                    admin.getId(),
+                    admin,
                     type,
                     title,
                     message,
-                    workshop.getId()
+                    workshop
             );
         }
     }
@@ -674,11 +673,11 @@ public class WorkshopServiceImpl implements WorkshopService {
             return;
         }
         notificationService.createNotification(
-                workshop.getFacilitator().getId(),
+            workshop.getFacilitator(),
                 type,
                 title,
                 message,
-                workshop.getId()
+            workshop
         );
     }
 
@@ -690,11 +689,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         UserAccount facilitator = workshop.getFacilitator();
         if (facilitator != null) {
             notificationService.createNotification(
-                    facilitator.getId(),
+                    facilitator,
                     "workshop_cancelled",
                     "Workshop cancelled: " + workshop.getTitle(),
                     "Your workshop (" + workshop.getTitle() + ") was cancelled by an administrator.",
-                    workshop.getId()
+                    workshop
             );
         }
 
@@ -707,11 +706,11 @@ public class WorkshopServiceImpl implements WorkshopService {
                 continue;
             }
             notificationService.createNotification(
-                    participant.getUser().getId(),
+                    participant.getUser(),
                     "workshop_cancelled",
                     "Workshop cancelled: " + workshop.getTitle(),
                     "The workshop (" + workshop.getTitle() + ") you joined was cancelled by an administrator.",
-                    workshop.getId()
+                    workshop
             );
         }
     }
@@ -724,11 +723,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         UserAccount facilitator = workshop.getFacilitator();
         if (facilitator != null) {
             notificationService.createNotification(
-                    facilitator.getId(),
+                    facilitator,
                     "workshop_updated_by_admin",
                     "Workshop updated: " + workshop.getTitle(),
                     "An administrator updated your workshop (" + workshop.getTitle() + ").",
-                    workshop.getId()
+                    workshop
             );
         }
 
@@ -746,11 +745,11 @@ public class WorkshopServiceImpl implements WorkshopService {
                 continue;
             }
             notificationService.createNotification(
-                    participant.getUser().getId(),
+                    participant.getUser(),
                     "workshop_updated",
                     "Workshop updated: " + workshop.getTitle(),
                     "An administrator updated the workshop (" + workshop.getTitle() + "). Please review the latest schedule and information.",
-                    workshop.getId()
+                    workshop
             );
         }
     }

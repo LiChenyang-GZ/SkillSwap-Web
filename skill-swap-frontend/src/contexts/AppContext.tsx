@@ -37,7 +37,7 @@ interface AppContextType {
   deleteWorkshop: (workshopId: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshData: (mode?: "public" | "full") => Promise<void>;
+  refreshData: (mode?: "public" | "mine" | "full") => Promise<void>;
   clearCache: () => void;
   upsertWorkshop: (workshop: Workshop) => void;
 }
@@ -119,7 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   // 防止标签页切换时重复初始化
   const initializedRef = useRef(false);
-  const refreshInFlightRef = useRef<{ mode: "public" | "full"; task: Promise<void> } | null>(null);
+  const refreshInFlightRef = useRef<{ mode: "public" | "mine" | "full"; task: Promise<void> } | null>(null);
   const notificationsInFlightRef = useRef<Promise<void> | null>(null);
   const profileInFlightRef = useRef<Promise<User> | null>(null);
   const profileInFlightTokenRef = useRef<string | null>(null);
@@ -249,6 +249,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchPublicWorkshops = useCallback(async () => {
     return workshopAPI.getPublic();
   }, []);
+
+  const fetchMineWorkshops = useCallback(async () => {
+    if (!isAuthenticated || !sessionToken) {
+      return [];
+    }
+    return workshopAPI.getMine(sessionToken);
+  }, [isAuthenticated, sessionToken]);
 
   // --------------------------
   // Auth Initialization
@@ -569,23 +576,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (authTabOption) setAuthTab(authTabOption);
   };
 
-  const resolveRefreshModeByPage = (page: string): "public" | "full" => {
-    return page === "home" || page === "explore" ? "public" : "full";
+  const resolveRefreshModeByPage = (page: string): "public" | "mine" | "full" => {
+    if (page === "home" || page === "explore") {
+      return "public";
+    }
+    if (page === "pastWorkshops") {
+      return "public";
+    }
+    if (page === "dashboard" || page === "create") {
+      return "mine";
+    }
+    return "full";
   };
 
   // --------------------------
   // Data
   // --------------------------
-  const refreshData = useCallback(async (mode: "public" | "full" = "full") => {
+  const refreshData = useCallback(async (mode: "public" | "mine" | "full" = "full") => {
     if (refreshInFlightRef.current && refreshInFlightRef.current.mode === mode) {
       return refreshInFlightRef.current.task;
     }
 
     const task = (async () => {
       try {
-        const backendWorkshops = mode === "public"
-          ? await fetchPublicWorkshops()
-          : await fetchVisibleWorkshops();
+        let backendWorkshops: Workshop[];
+        if (mode === "public") {
+          backendWorkshops = await fetchPublicWorkshops();
+        } else if (mode === "mine") {
+          backendWorkshops = await fetchMineWorkshops();
+        } else {
+          backendWorkshops = await fetchVisibleWorkshops();
+        }
         setWorkshops(backendWorkshops);
       } catch (err) {
         console.warn("⚠️ Failed to fetch workshops", err);
@@ -604,7 +625,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshInFlightRef.current = null;
       }
     }
-  }, [fetchPublicWorkshops, fetchVisibleWorkshops]);
+  }, [fetchMineWorkshops, fetchPublicWorkshops, fetchVisibleWorkshops]);
 
   const refreshNotificationsUnreadCount = useCallback(async () => {
     if (!sessionToken) {
@@ -828,16 +849,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     try {
       // 调用后端 API 创建 workshop
-      const createdWorkshop = await workshopAPI.create(workshopData, sessionToken);
-      upsertWorkshop(createdWorkshop);
+      await workshopAPI.create(workshopData, sessionToken);
       
       toast.success("Workshop created successfully!");
       setCurrentPage("dashboard");
-
-      // 切页后由页面按需刷新，这里额外后台拉一次保证全局列表最终一致。
-      setTimeout(() => {
-        void refreshData(resolveRefreshModeByPage(currentPage));
-      }, 0);
     } catch (error) {
       console.error("Failed to create workshop:", error);
       toast.error("Failed to create workshop: " + (error instanceof Error ? error.message : "Unknown error"));

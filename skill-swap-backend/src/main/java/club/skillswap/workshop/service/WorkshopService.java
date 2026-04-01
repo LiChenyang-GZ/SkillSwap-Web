@@ -11,7 +11,7 @@ import java.util.List;
 
 public interface WorkshopService {
     
-    WorkshopResponseDto createWorkshop(WorkshopCreateRequestDto createRequestDto, String facilitatorId);
+    void createWorkshop(WorkshopCreateRequestDto createRequestDto, String facilitatorId);
 
     WorkshopResponseDto getWorkshopById(Long id, Authentication authentication);
 

@@ -25,7 +25,7 @@ public class WorkshopController {
     private final Environment env;
 
     @PostMapping
-    public ResponseEntity<WorkshopResponseDto> createWorkshop(
+    public ResponseEntity<ApiMessageDto> createWorkshop(
             @RequestBody WorkshopCreateRequestDto createRequestDto,
             Authentication authentication,
             @RequestHeader(value = "X-Mock-User", required = false) String mockUserId) {
@@ -42,9 +42,9 @@ public class WorkshopController {
         else {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
-        WorkshopResponseDto createdWorkshop = workshopService.createWorkshop(createRequestDto, facilitatorId);
+        workshopService.createWorkshop(createRequestDto, facilitatorId);
         System.out.println("facilitatorId = " + facilitatorId);
-        return new ResponseEntity<>(createdWorkshop, HttpStatus.CREATED);
+        return new ResponseEntity<>(new ApiMessageDto("Workshop created successfully."), HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")

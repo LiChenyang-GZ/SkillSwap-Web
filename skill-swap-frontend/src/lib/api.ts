@@ -359,10 +359,10 @@ export const workshopAPI = {
     );
   },
 
-  // 创建工作坊
-  create: async (workshopData: Partial<Workshop>, token: string): Promise<Workshop> => {
+  // 创建工作坊（后端仅返回 success message）
+  create: async (workshopData: Partial<Workshop>, token: string): Promise<void> => {
     try {
-      const created = await apiCall<Workshop>(
+      await apiCall<{ message: string }>(
         "/api/v1/workshops",
         {
           method: "POST",
@@ -370,7 +370,6 @@ export const workshopAPI = {
         },
         token
       );
-      return enrichWorkshop(created);
     } catch (error) {
       console.error('Failed to create workshop:', error);
       throw error;

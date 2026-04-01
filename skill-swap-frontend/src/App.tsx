@@ -34,9 +34,15 @@ function AppContent() {
       return;
     }
 
-    // Dashboard / PastWorkshops 需要个人相关数据，才拉 full。
-    if (currentPage === 'dashboard' || currentPage === 'pastWorkshops') {
-      void refreshData('full');
+    // Dashboard 仅拉 mine，避免 create 跳转后同时请求 public + mine。
+    if (currentPage === 'dashboard') {
+      void refreshData('mine');
+      return;
+    }
+
+    // PastWorkshops 只需公开归档数据，避免额外 mine 请求。
+    if (currentPage === 'pastWorkshops') {
+      void refreshData('public');
     }
   }, [currentPage, refreshData]);
 
