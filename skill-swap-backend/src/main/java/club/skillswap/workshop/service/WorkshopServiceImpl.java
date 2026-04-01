@@ -7,7 +7,6 @@ import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
-import club.skillswap.workshop.dto.WorkshopStatusUpdateResponseDto;
 import club.skillswap.workshop.dto.FacilitatorDto;
 import club.skillswap.workshop.dto.WorkshopParticipantDto;
 import club.skillswap.workshop.entity.Workshop;
@@ -182,7 +181,7 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     @Override
     @Transactional
-    public WorkshopStatusUpdateResponseDto approveWorkshop(Long workshopId, Authentication authentication) {
+    public void approveWorkshop(Long workshopId, Authentication authentication) {
         requireAdmin(authentication);
 
         Workshop workshop = workshopRepository.findById(workshopId)
@@ -202,12 +201,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop saved = workshopRepository.save(workshop);
         notifyWorkshopReview(saved, "workshop_approved", "Workshop approved: " + saved.getTitle(),
             "Your workshop (" + saved.getTitle() + ") has been approved and is now visible to others.");
-        return new WorkshopStatusUpdateResponseDto("Workshop approved successfully.", mapToDto(saved));
     }
 
     @Override
     @Transactional
-    public WorkshopStatusUpdateResponseDto rejectWorkshop(Long workshopId, WorkshopReviewRequestDto reviewRequestDto, Authentication authentication) {
+    public void rejectWorkshop(Long workshopId, WorkshopReviewRequestDto reviewRequestDto, Authentication authentication) {
         requireAdmin(authentication);
 
         Workshop workshop = workshopRepository.findById(workshopId)
@@ -227,12 +225,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop saved = workshopRepository.save(workshop);
         notifyWorkshopReview(saved, "workshop_rejected", "Workshop rejected: " + saved.getTitle(),
             "Your workshop submission (" + saved.getTitle() + ") was rejected. You can review the details and submit again.");
-        return new WorkshopStatusUpdateResponseDto("Workshop rejected successfully.", mapToDto(saved));
     }
 
     @Override
     @Transactional
-    public WorkshopStatusUpdateResponseDto cancelWorkshop(Long workshopId, Authentication authentication) {
+    public void cancelWorkshop(Long workshopId, Authentication authentication) {
         requireAdmin(authentication);
 
         Workshop workshop = workshopRepository.findById(workshopId)
@@ -252,7 +249,6 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         Workshop saved = workshopRepository.save(workshop);
         notifyWorkshopCancelled(saved);
-        return new WorkshopStatusUpdateResponseDto("Workshop cancelled successfully.", mapToDto(saved));
     }
 
     @Override

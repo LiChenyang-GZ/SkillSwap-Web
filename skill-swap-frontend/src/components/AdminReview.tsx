@@ -309,9 +309,22 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      const updated = await workshopAPI.approveByAdmin(selectedWorkshop.id, sessionToken);
+      await workshopAPI.approveByAdmin(selectedWorkshop.id, sessionToken);
       toast.success('Workshop approved.');
-      setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === selectedWorkshop.id
+            ? {
+                ...w,
+                status: 'approved',
+              }
+            : w
+        )
+      );
+      setTimeout(() => {
+        const mode = statusFilter === 'pending' ? 'pending' : 'all';
+        void loadWorkshops(mode);
+      }, 0);
     } catch (error) {
       console.error('Failed to approve workshop:', error);
       toast.error('Failed to approve workshop.');
@@ -325,9 +338,22 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      const updated = await workshopAPI.rejectByAdmin(selectedWorkshop.id, rejectComment || undefined, sessionToken);
+      await workshopAPI.rejectByAdmin(selectedWorkshop.id, rejectComment || undefined, sessionToken);
       toast.success('Workshop rejected.');
-      setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === selectedWorkshop.id
+            ? {
+                ...w,
+                status: 'rejected',
+              }
+            : w
+        )
+      );
+      setTimeout(() => {
+        const mode = statusFilter === 'pending' ? 'pending' : 'all';
+        void loadWorkshops(mode);
+      }, 0);
     } catch (error) {
       console.error('Failed to reject workshop:', error);
       toast.error('Failed to reject workshop.');
@@ -341,9 +367,22 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      const updated = await workshopAPI.cancelByAdmin(selectedWorkshop.id, sessionToken);
+      await workshopAPI.cancelByAdmin(selectedWorkshop.id, sessionToken);
       toast.success('Workshop cancelled.');
-      setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === selectedWorkshop.id
+            ? {
+                ...w,
+                status: 'cancelled',
+              }
+            : w
+        )
+      );
+      setTimeout(() => {
+        const mode = statusFilter === 'pending' ? 'pending' : 'all';
+        void loadWorkshops(mode);
+      }, 0);
     } catch (error) {
       console.error('Failed to cancel workshop:', error);
       toast.error('Failed to cancel workshop.');

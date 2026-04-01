@@ -448,20 +448,19 @@ export const workshopAPI = {
   },
 
   // 管理员：通过待审核工作坊
-  approveByAdmin: async (workshopId: string, token?: string | null): Promise<Workshop> => {
+  approveByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
     const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<{ message: string; workshop: any }>(
+    await apiCall<{ message: string }>(
       `/api/v1/admin/workshops/${backendId}/approve`,
       { method: "POST" },
       token
     );
-    return enrichWorkshop(data.workshop);
   },
 
   // 管理员：拒绝待审核工作坊
-  rejectByAdmin: async (workshopId: string, comment?: string, token?: string | null): Promise<Workshop> => {
+  rejectByAdmin: async (workshopId: string, comment?: string, token?: string | null): Promise<void> => {
     const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<{ message: string; workshop: any }>(
+    await apiCall<{ message: string }>(
       `/api/v1/admin/workshops/${backendId}/reject`,
       {
         method: "POST",
@@ -469,18 +468,16 @@ export const workshopAPI = {
       },
       token
     );
-    return enrichWorkshop(data.workshop);
   },
 
   // 管理员：取消工作坊
-  cancelByAdmin: async (workshopId: string, token?: string | null): Promise<Workshop> => {
+  cancelByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
     const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<{ message: string; workshop: any }>(
+    await apiCall<{ message: string }>(
       `/api/v1/admin/workshops/${backendId}/cancel`,
       { method: "POST" },
       token
     );
-    return enrichWorkshop(data.workshop);
   },
 };
 
