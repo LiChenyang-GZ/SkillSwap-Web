@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { workshopAPI } from '../lib/api';
 import { Workshop } from '../types';
@@ -59,7 +59,15 @@ export function AdminReview() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('pending');
   const [currentPage, setCurrentPageState] = useState(1);
-  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(null);
+  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(() => {
+    const storedTarget = sessionStorage.getItem('adminReviewTargetId');
+    if (storedTarget) {
+      sessionStorage.removeItem('adminReviewTargetId');
+      return storedTarget;
+    }
+    return null;
+  });
+  const detailInFlightRef = useRef<Set<string>>(new Set());
   const pageSize = 8;
 
   const normalizeArray = (items: string[] | undefined) =>
@@ -140,6 +148,9 @@ export function AdminReview() {
   const loadWorkshopDetail = async (workshopId: string, force = false) => {
     if (!sessionToken || !workshopId) return;
     if (!force && loadedDetailIds[workshopId]) return;
+    if (detailInFlightRef.current.has(workshopId)) return;
+
+    detailInFlightRef.current.add(workshopId);
 
     setIsDetailLoading(true);
     try {
@@ -152,6 +163,7 @@ export function AdminReview() {
       console.error('Failed to load workshop details:', error);
       toast.error('Failed to load workshop details.');
     } finally {
+      detailInFlightRef.current.delete(workshopId);
       setIsDetailLoading(false);
     }
   };
@@ -176,9 +188,12 @@ export function AdminReview() {
 
       if (data.length > 0) {
         const fallbackId = data[0].id;
-        const nextSelectedId = selectedId && data.some((w) => w.id === selectedId) ? selectedId : fallbackId;
+        const nextSelectedId = targetWorkshopId && data.some((w) => w.id === targetWorkshopId)
+          ? targetWorkshopId
+          : selectedId && data.some((w) => w.id === selectedId)
+            ? selectedId
+            : fallbackId;
         setSelectedId(nextSelectedId);
-        void loadWorkshopDetail(nextSelectedId, true);
       } else {
         setSelectedId(null);
       }
@@ -200,15 +215,6 @@ export function AdminReview() {
     if (!selectedId) return;
     void loadWorkshopDetail(selectedId);
   }, [selectedId, sessionToken]);
-
-  useEffect(() => {
-    const storedTarget = sessionStorage.getItem('adminReviewTargetId');
-    if (storedTarget) {
-      sessionStorage.removeItem('adminReviewTargetId');
-      setTargetWorkshopId(storedTarget);
-      setStatusFilter('pending');
-    }
-  }, []);
 
   useEffect(() => {
     if (sortedWorkshops.length === 0) {
@@ -238,6 +244,7 @@ export function AdminReview() {
 
     setSelectedId(targetWorkshopId);
     setCurrentPageState(Math.floor(targetIndex / pageSize) + 1);
+    setTargetWorkshopId(null);
 
     requestAnimationFrame(() => {
       const targetElement = document.querySelector(`[data-workshop-id="${targetWorkshopId}"]`);

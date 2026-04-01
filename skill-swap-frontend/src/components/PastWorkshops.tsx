@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -30,7 +30,7 @@ function isOldWorkshop(workshop: Workshop): boolean {
 }
 
 export function PastWorkshops() {
-  const { workshops, setCurrentPage } = useApp();
+  const { workshops, setCurrentPage, isAuthenticated, refreshData } = useApp();
   const normalizeStatus = (status?: string) => (status || 'pending').toLowerCase();
   const displayStatus = (status?: string) => {
     const normalized = normalizeStatus(status);
@@ -47,6 +47,26 @@ export function PastWorkshops() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
+  const [backfillTriggered, setBackfillTriggered] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || backfillTriggered) {
+      return;
+    }
+
+    const hasArchived = workshops.some(isOldWorkshop);
+    if (hasArchived) {
+      return;
+    }
+
+    // 公开历史为空时，后台补拉 full，避免“历史全消失”的体感。
+    const timer = window.setTimeout(() => {
+      void refreshData('full');
+      setBackfillTriggered(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [backfillTriggered, isAuthenticated, refreshData, workshops]);
 
   const filteredWorkshops = workshops
     .filter(isOldWorkshop)
