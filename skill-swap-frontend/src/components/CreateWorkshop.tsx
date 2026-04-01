@@ -17,9 +17,11 @@ import {
   Upload
 } from 'lucide-react';
 import { categories, skillLevels } from '../lib/mock-data';
+import { toast } from 'sonner';
 
 export function CreateWorkshop() {
   const { user, setCurrentPage, createWorkshop } = useApp();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Workshop form state
   const [formData, setFormData] = useState({
@@ -99,6 +101,10 @@ export function CreateWorkshop() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    const loadingToastId = toast.loading('Creating workshop...');
     try {
       await createWorkshop({
         title: formData.title,
@@ -118,8 +124,12 @@ export function CreateWorkshop() {
         materials: formData.materials,
         requirements: formData.requirements,
       });
+      toast.dismiss(loadingToastId);
     } catch (error) {
       // Error is handled in the context
+      toast.dismiss(loadingToastId);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -493,10 +503,10 @@ export function CreateWorkshop() {
             </Button>
             <Button 
               type="submit" 
-              disabled={!isFormValid()}
+              disabled={!isFormValid() || isSubmitting}
               className="min-w-[120px]"
             >
-              Create Workshop
+              {isSubmitting ? 'Creating...' : 'Create Workshop'}
             </Button>
           </div>
         </form>

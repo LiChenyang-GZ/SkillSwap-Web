@@ -31,8 +31,6 @@ function getDefaultImage(category: string): string {
 
 // 后端返回的数据直接映射，转换字段名，添加 image 字段
 function enrichWorkshop(workshop: any): Workshop {
-  console.log("📦 Raw workshop data from backend:", workshop);
-  
   // 处理后端返回的蛇形命名字段，转换为驼峰命名
   const facilitator = workshop.facilitator 
     ? {
@@ -49,7 +47,7 @@ function enrichWorkshop(workshop: any): Workshop {
         username: p.username || p.name || 'Unknown',
         avatarUrl: p.avatarUrl || p.avatar_url || p.avatar,
       }))
-    : [];
+    : undefined;
 
   const normalizedStatus = String(workshop.status || '').toLowerCase();
 
@@ -66,11 +64,11 @@ function enrichWorkshop(workshop: any): Workshop {
     isOnline: workshop.isOnline,
     location: workshop.location || workshop.locations || [],
     maxParticipants: workshop.maxParticipants,
-    currentParticipants: workshop.currentParticipants ?? participants.length,
+    currentParticipants: workshop.currentParticipants ?? (participants?.length ?? 0),
     creditCost: workshop.creditCost,
     creditReward: workshop.creditReward,
     facilitator,
-    tags: workshop.tags || [],
+    tags: workshop.tags,
     image: workshop.image || getDefaultImage(workshop.category),
     createdAt: workshop.createdAt,
     participants: participants as any,
@@ -85,6 +83,8 @@ function toBackendWorkshopId(workshopId: string): string {
   if (match) return match[1];
   return workshopId;
 }
+
+const workshopDetailInFlight = new Map<string, Promise<Workshop | null>>();
 
 // Helper function to make API calls with authentication
 async function apiCall<T>(
@@ -104,10 +104,14 @@ async function apiCall<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${tokenToUse}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const method = (options.method || "GET").toUpperCase();
+  const requestOptions: RequestInit = {
     ...options,
     headers,
-  });
+    cache: options.cache ?? (method === "GET" ? "no-store" : undefined),
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
 
   if (!response.ok) {
     const error = await response.text();
@@ -303,18 +307,10 @@ export const workshopAPI = {
   // 获取所有工作坊
   getAll: async (): Promise<Workshop[]> => {
     try {
-      console.log("🔄 Fetching workshops from backend...");
       const data = await apiCall<any[]>("/api/v1/workshops");
-      console.log("✅ Fetched workshops from backend:", data.length, data);
-      const enriched = data.map(enrichWorkshop);
-      console.log("✅ Enriched workshops:", enriched);
-      return enriched;
+      return data.map(enrichWorkshop);
     } catch (error) {
-      console.error("❌ Backend request failed:", error);
-      console.error("❌ Workshop API error details:", {
-        message: error instanceof Error ? error.message : String(error),
-        url: `${API_BASE_URL}/api/v1/workshops`
-      });
+      console.error('Failed to fetch workshops:', error);
       return [];
     }
   },
@@ -343,6 +339,13 @@ export const workshopAPI = {
 
   // 获取单个工作坊
   getById: async (id: string, token?: string | null): Promise<Workshop | null> => {
+    const cacheKey = `${token ?? "anon"}:${toBackendWorkshopId(id)}`;
+    const existingTask = workshopDetailInFlight.get(cacheKey);
+    if (existingTask) {
+      return existingTask;
+    }
+
+    const task = (async () => {
     try {
       const data = await apiCall<Workshop>(
         `/api/v1/workshops/${toBackendWorkshopId(id)}`,
@@ -353,6 +356,14 @@ export const workshopAPI = {
     } catch (error) {
       console.warn("⚠️ Backend unavailable for workshop", id);
       return null;
+    }
+    })();
+
+    workshopDetailInFlight.set(cacheKey, task);
+    try {
+      return await task;
+    } finally {
+      workshopDetailInFlight.delete(cacheKey);
     }
   },
 
@@ -365,10 +376,10 @@ export const workshopAPI = {
     );
   },
 
-  // 创建工作坊
-  create: async (workshopData: Partial<Workshop>, token: string): Promise<Workshop> => {
+  // 创建工作坊（后端仅返回 success message）
+  create: async (workshopData: Partial<Workshop>, token: string): Promise<void> => {
     try {
-      const created = await apiCall<Workshop>(
+      await apiCall<{ message: string }>(
         "/api/v1/workshops",
         {
           method: "POST",
@@ -376,10 +387,8 @@ export const workshopAPI = {
         },
         token
       );
-      console.log("✅ Workshop created:", created);
-      return enrichWorkshop(created);
     } catch (error) {
-      console.error("❌ Failed to create workshop:", error);
+      console.error('Failed to create workshop:', error);
       throw error;
     }
   },
@@ -393,9 +402,8 @@ export const workshopAPI = {
         { method: "POST" },
         token
       );
-      console.log("✅ Joined workshop:", workshopId);
     } catch (error) {
-      console.error("❌ Failed to join workshop:", error);
+      console.error('Failed to join workshop:', error);
       throw error;
     }
   },
@@ -409,9 +417,8 @@ export const workshopAPI = {
         { method: "POST" },
         token
       );
-      console.log("✅ Left workshop:", workshopId);
     } catch (error) {
-      console.error("❌ Failed to leave workshop:", error);
+      console.error('Failed to leave workshop:', error);
       throw error;
     }
   },
@@ -425,9 +432,8 @@ export const workshopAPI = {
         { method: "DELETE" },
         token
       );
-      console.log("✅ Deleted workshop:", workshopId);
     } catch (error) {
-      console.error("❌ Failed to delete workshop:", error);
+      console.error('Failed to delete workshop:', error);
       throw error;
     }
   },
@@ -459,20 +465,19 @@ export const workshopAPI = {
   },
 
   // 管理员：通过待审核工作坊
-  approveByAdmin: async (workshopId: string, token?: string | null): Promise<Workshop> => {
+  approveByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
     const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<{ message: string; workshop: any }>(
+    await apiCall<{ message: string }>(
       `/api/v1/admin/workshops/${backendId}/approve`,
       { method: "POST" },
       token
     );
-    return enrichWorkshop(data.workshop);
   },
 
   // 管理员：拒绝待审核工作坊
-  rejectByAdmin: async (workshopId: string, comment?: string, token?: string | null): Promise<Workshop> => {
+  rejectByAdmin: async (workshopId: string, comment?: string, token?: string | null): Promise<void> => {
     const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<{ message: string; workshop: any }>(
+    await apiCall<{ message: string }>(
       `/api/v1/admin/workshops/${backendId}/reject`,
       {
         method: "POST",
@@ -480,18 +485,16 @@ export const workshopAPI = {
       },
       token
     );
-    return enrichWorkshop(data.workshop);
   },
 
   // 管理员：取消工作坊
-  cancelByAdmin: async (workshopId: string, token?: string | null): Promise<Workshop> => {
+  cancelByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
     const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<{ message: string; workshop: any }>(
+    await apiCall<{ message: string }>(
       `/api/v1/admin/workshops/${backendId}/cancel`,
       { method: "POST" },
       token
     );
-    return enrichWorkshop(data.workshop);
   },
 };
 

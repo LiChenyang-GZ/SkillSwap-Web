@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { workshopAPI } from '../lib/api';
 import { Workshop } from '../types';
@@ -52,12 +52,22 @@ export function AdminReview() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formData, setFormData] = useState<WorkshopFormState>(emptyForm);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const [currentPage, setCurrentPageState] = useState(1);
-  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(null);
+  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(() => {
+    const storedTarget = sessionStorage.getItem('adminReviewTargetId');
+    if (storedTarget) {
+      sessionStorage.removeItem('adminReviewTargetId');
+      return storedTarget;
+    }
+    return null;
+  });
+  const detailInFlightRef = useRef<Set<string>>(new Set());
   const pageSize = 8;
 
   const normalizeArray = (items: string[] | undefined) =>
@@ -126,6 +136,7 @@ export function AdminReview() {
     () => sortedWorkshops.find((w) => w.id === selectedId) || null,
     [sortedWorkshops, selectedId]
   );
+  const selectedHasDetail = selectedWorkshop ? !!loadedDetailIds[selectedWorkshop.id] : false;
 
   const isDirty = useMemo(() => {
     if (!selectedWorkshop) return false;
@@ -134,7 +145,30 @@ export function AdminReview() {
     return JSON.stringify(baseline) !== JSON.stringify(current);
   }, [formData, selectedWorkshop]);
 
-  const loadWorkshops = async () => {
+  const loadWorkshopDetail = async (workshopId: string, force = false) => {
+    if (!sessionToken || !workshopId) return;
+    if (!force && loadedDetailIds[workshopId]) return;
+    if (detailInFlightRef.current.has(workshopId)) return;
+
+    detailInFlightRef.current.add(workshopId);
+
+    setIsDetailLoading(true);
+    try {
+      const detail = await workshopAPI.getById(workshopId, sessionToken);
+      if (!detail) return;
+
+      setWorkshops((prev) => prev.map((w) => (w.id === detail.id ? { ...w, ...detail } : w)));
+      setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
+    } catch (error) {
+      console.error('Failed to load workshop details:', error);
+      toast.error('Failed to load workshop details.');
+    } finally {
+      detailInFlightRef.current.delete(workshopId);
+      setIsDetailLoading(false);
+    }
+  };
+
+  const loadWorkshops = async (mode: 'pending' | 'all') => {
     if (!sessionToken) {
       setErrorMessage('Please sign in to review workshops.');
       return;
@@ -144,10 +178,24 @@ export function AdminReview() {
     setErrorMessage(null);
 
     try {
-      const data = await workshopAPI.getAllForAdmin(sessionToken);
+      const data =
+        mode === 'pending'
+          ? await workshopAPI.getPendingForAdmin(sessionToken)
+          : await workshopAPI.getAllForAdmin(sessionToken);
+
+      setLoadedDetailIds({});
       setWorkshops(data);
-      if (data.length > 0 && !selectedId) {
-        setSelectedId(data[0].id);
+
+      if (data.length > 0) {
+        const fallbackId = data[0].id;
+        const nextSelectedId = targetWorkshopId && data.some((w) => w.id === targetWorkshopId)
+          ? targetWorkshopId
+          : selectedId && data.some((w) => w.id === selectedId)
+            ? selectedId
+            : fallbackId;
+        setSelectedId(nextSelectedId);
+      } else {
+        setSelectedId(null);
       }
     } catch (error) {
       console.error('Failed to load admin workshops:', error);
@@ -159,17 +207,14 @@ export function AdminReview() {
   };
 
   useEffect(() => {
-    loadWorkshops();
-  }, [sessionToken]);
+    const mode = statusFilter === 'pending' ? 'pending' : 'all';
+    void loadWorkshops(mode);
+  }, [sessionToken, statusFilter]);
 
   useEffect(() => {
-    const storedTarget = sessionStorage.getItem('adminReviewTargetId');
-    if (storedTarget) {
-      sessionStorage.removeItem('adminReviewTargetId');
-      setTargetWorkshopId(storedTarget);
-      setStatusFilter('pending');
-    }
-  }, []);
+    if (!selectedId) return;
+    void loadWorkshopDetail(selectedId);
+  }, [selectedId, sessionToken]);
 
   useEffect(() => {
     if (sortedWorkshops.length === 0) {
@@ -199,6 +244,7 @@ export function AdminReview() {
 
     setSelectedId(targetWorkshopId);
     setCurrentPageState(Math.floor(targetIndex / pageSize) + 1);
+    setTargetWorkshopId(null);
 
     requestAnimationFrame(() => {
       const targetElement = document.querySelector(`[data-workshop-id="${targetWorkshopId}"]`);
@@ -232,7 +278,7 @@ export function AdminReview() {
   };
 
   const handleSave = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
@@ -266,13 +312,26 @@ export function AdminReview() {
   };
 
   const handleApprove = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
-      const updated = await workshopAPI.approveByAdmin(selectedWorkshop.id, sessionToken);
+      await workshopAPI.approveByAdmin(selectedWorkshop.id, sessionToken);
       toast.success('Workshop approved.');
-      setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === selectedWorkshop.id
+            ? {
+                ...w,
+                status: 'approved',
+              }
+            : w
+        )
+      );
+      setTimeout(() => {
+        const mode = statusFilter === 'pending' ? 'pending' : 'all';
+        void loadWorkshops(mode);
+      }, 0);
     } catch (error) {
       console.error('Failed to approve workshop:', error);
       toast.error('Failed to approve workshop.');
@@ -282,13 +341,26 @@ export function AdminReview() {
   };
 
   const handleReject = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
-      const updated = await workshopAPI.rejectByAdmin(selectedWorkshop.id, rejectComment || undefined, sessionToken);
+      await workshopAPI.rejectByAdmin(selectedWorkshop.id, rejectComment || undefined, sessionToken);
       toast.success('Workshop rejected.');
-      setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === selectedWorkshop.id
+            ? {
+                ...w,
+                status: 'rejected',
+              }
+            : w
+        )
+      );
+      setTimeout(() => {
+        const mode = statusFilter === 'pending' ? 'pending' : 'all';
+        void loadWorkshops(mode);
+      }, 0);
     } catch (error) {
       console.error('Failed to reject workshop:', error);
       toast.error('Failed to reject workshop.');
@@ -298,13 +370,26 @@ export function AdminReview() {
   };
 
   const handleCancel = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
-      const updated = await workshopAPI.cancelByAdmin(selectedWorkshop.id, sessionToken);
+      await workshopAPI.cancelByAdmin(selectedWorkshop.id, sessionToken);
       toast.success('Workshop cancelled.');
-      setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setWorkshops((prev) =>
+        prev.map((w) =>
+          w.id === selectedWorkshop.id
+            ? {
+                ...w,
+                status: 'cancelled',
+              }
+            : w
+        )
+      );
+      setTimeout(() => {
+        const mode = statusFilter === 'pending' ? 'pending' : 'all';
+        void loadWorkshops(mode);
+      }, 0);
     } catch (error) {
       console.error('Failed to cancel workshop:', error);
       toast.error('Failed to cancel workshop.');
@@ -349,7 +434,14 @@ export function AdminReview() {
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={loadWorkshops} disabled={isLoading}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const mode = statusFilter === 'pending' ? 'pending' : 'all';
+                void loadWorkshops(mode);
+              }}
+              disabled={isLoading}
+            >
               <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
@@ -368,7 +460,21 @@ export function AdminReview() {
               <CardTitle>Workshops</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {sortedWorkshops.length === 0 && !isLoading ? (
+              {isLoading && sortedWorkshops.length === 0 ? (
+                <div className="space-y-3">
+                  <div className="text-sm text-muted-foreground flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Loading workshop submissions...
+                  </div>
+                  {Array.from({ length: 4 }).map((_, idx) => (
+                    <div key={idx} className="border rounded-lg p-3 animate-pulse">
+                      <div className="h-4 w-2/3 bg-muted rounded mb-2" />
+                      <div className="h-3 w-1/3 bg-muted rounded mb-2" />
+                      <div className="h-3 w-1/2 bg-muted rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : sortedWorkshops.length === 0 && !isLoading ? (
                 <div className="text-sm text-muted-foreground">No workshops match this filter.</div>
               ) : (
                 pagedWorkshops.map((workshop) => (
@@ -428,8 +534,18 @@ export function AdminReview() {
               <CardTitle>Submission Details</CardTitle>
             </CardHeader>
             <CardContent>
-              {!selectedWorkshop ? (
+              {(isLoading || isDetailLoading) && !selectedWorkshop ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Loading submission details...
+                </div>
+              ) : !selectedWorkshop ? (
                 <div className="text-sm text-muted-foreground">Select a submission to review.</div>
+              ) : !selectedHasDetail ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Loading detailed submission...
+                </div>
               ) : (
                 <div className="space-y-6">
                   {(() => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import {
   Search,
   Calendar,
-  Users,
   Clock,
   MapPin,
   Globe,
@@ -31,7 +30,7 @@ function isOldWorkshop(workshop: Workshop): boolean {
 }
 
 export function PastWorkshops() {
-  const { workshops, user, setCurrentPage } = useApp();
+  const { workshops, setCurrentPage, isAuthenticated, refreshData } = useApp();
   const normalizeStatus = (status?: string) => (status || 'pending').toLowerCase();
   const displayStatus = (status?: string) => {
     const normalized = normalizeStatus(status);
@@ -48,6 +47,26 @@ export function PastWorkshops() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
+  const [backfillTriggered, setBackfillTriggered] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || backfillTriggered) {
+      return;
+    }
+
+    const hasArchived = workshops.some(isOldWorkshop);
+    if (hasArchived) {
+      return;
+    }
+
+    // 公开历史为空时，后台补拉 full，避免“历史全消失”的体感。
+    const timer = window.setTimeout(() => {
+      void refreshData('full');
+      setBackfillTriggered(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [backfillTriggered, isAuthenticated, refreshData, workshops]);
 
   const filteredWorkshops = workshops
     .filter(isOldWorkshop)
@@ -69,9 +88,6 @@ export function PastWorkshops() {
       const bTime = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
       return bTime - aTime;
     });
-
-  const isUserAttending = (workshop: Workshop) =>
-    (workshop.participants ?? []).some((p) => p.id === user?.id);
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
@@ -194,10 +210,7 @@ export function PastWorkshops() {
                           </>
                         )}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4" />
-                        <span>{workshop.currentParticipants ?? 0}/{workshop.maxParticipants} participants</span>
-                      </div>
+                      
                     </div>
 
                     <div className="flex gap-2">
@@ -209,14 +222,10 @@ export function PastWorkshops() {
                       >
                         View Details
                       </Button>
-                      {isUserAttending(workshop) ? (
-                        <Badge variant="secondary" className="px-3 py-1">Attended</Badge>
-                      ) : (
-                        <Badge variant="outline" className="px-3 py-1 flex items-center gap-1">
-                          <Archive className="w-3 h-3" />
-                          Archived
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="px-3 py-1 flex items-center gap-1">
+                        <Archive className="w-3 h-3" />
+                        Archived
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>

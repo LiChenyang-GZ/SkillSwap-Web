@@ -14,7 +14,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -68,14 +70,30 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Transactional
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createNotification(UUID recipientId, String type, String title, String message, Long workshopId) {
+        persistNotification(recipientId, type, title, message, workshopId);
+    }
+
+    @Override
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void createNotification(UserAccount recipient, String type, String title, String message, Workshop workshop) {
+        UUID recipientId = recipient != null ? recipient.getId() : null;
+        Long workshopId = workshop != null ? workshop.getId() : null;
+        persistNotification(recipientId, type, title, message, workshopId);
+    }
+
+    private void persistNotification(UUID recipientId, String type, String title, String message, Long workshopId) {
         if (recipientId == null) {
             return;
         }
 
-        UserAccount recipient = userRepository.findById(recipientId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + recipientId));
+        UserAccount recipient = userRepository.findById(recipientId).orElse(null);
+        if (recipient == null) {
+            return;
+        }
 
         Workshop workshop = null;
         if (workshopId != null) {

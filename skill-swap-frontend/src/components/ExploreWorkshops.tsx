@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { 
   Search, 
   Calendar, 
-  Users, 
   Clock,
   MapPin,
   Globe,
@@ -189,28 +188,10 @@ export function ExploreWorkshops() {
                         ) : (
                           <>
                             <MapPin className="w-4 h-4" />
-                            <span className="line-clamp-1">{workshop.location}</span>
+                            <span className="line-clamp-1">In-person</span>
                           </>
                         )}
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-4 h-4" />
-                        <span>{workshop.currentParticipants ?? 0}/{workshop.maxParticipants} participants</span>
-                      </div>
-                    </div>
-
-                    {/* Tags */}
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {(workshop.tags ?? []).slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {(workshop.tags?.length ?? 0) > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{(workshop.tags?.length ?? 0) - 3}
-                        </Badge>
-                      )}
                     </div>
 
                     {/* Action Buttons */}
@@ -226,10 +207,6 @@ export function ExploreWorkshops() {
                       {isUserAttending(workshop.id) ? (
                         <Badge variant="secondary" className="px-3 py-1">
                           Attending
-                        </Badge>
-                      ) : (workshop.currentParticipants ?? 0) >= workshop.maxParticipants ? (
-                        <Badge variant="outline" className="px-3 py-1">
-                          Full
                         </Badge>
                       ) : (
                         <Button 

@@ -1,9 +1,9 @@
 package club.skillswap.admin.controller;
 
+import club.skillswap.common.dto.ApiMessageDto;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
-import club.skillswap.workshop.dto.WorkshopStatusUpdateResponseDto;
 import club.skillswap.workshop.service.WorkshopService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -44,24 +44,27 @@ public class AdminWorkshopController {
     }
 
     @PostMapping("/{id}/approve")
-    public ResponseEntity<WorkshopStatusUpdateResponseDto> approveWorkshop(
+    public ResponseEntity<ApiMessageDto> approveWorkshop(
             @PathVariable Long id,
             Authentication authentication) {
-        return ResponseEntity.ok(workshopService.approveWorkshop(id, authentication));
+        workshopService.approveWorkshop(id, authentication);
+        return ResponseEntity.ok(new ApiMessageDto("Workshop approved successfully."));
     }
 
     @PostMapping("/{id}/reject")
-    public ResponseEntity<WorkshopStatusUpdateResponseDto> rejectWorkshop(
+    public ResponseEntity<ApiMessageDto> rejectWorkshop(
             @PathVariable Long id,
             @RequestBody(required = false) WorkshopReviewRequestDto request,
             Authentication authentication) {
-        return ResponseEntity.ok(workshopService.rejectWorkshop(id, request, authentication));
+        workshopService.rejectWorkshop(id, request, authentication);
+        return ResponseEntity.ok(new ApiMessageDto("Workshop rejected successfully."));
     }
 
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<WorkshopStatusUpdateResponseDto> cancelWorkshop(
+    public ResponseEntity<ApiMessageDto> cancelWorkshop(
             @PathVariable Long id,
             Authentication authentication) {
-        return ResponseEntity.ok(workshopService.cancelWorkshop(id, authentication));
+        workshopService.cancelWorkshop(id, authentication);
+        return ResponseEntity.ok(new ApiMessageDto("Workshop cancelled successfully."));
     }
 }

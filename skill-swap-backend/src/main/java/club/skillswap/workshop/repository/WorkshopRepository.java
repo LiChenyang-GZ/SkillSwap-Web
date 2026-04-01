@@ -14,13 +14,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface WorkshopRepository extends JpaRepository<Workshop, Long> {
 
-    @Query("SELECT DISTINCT w FROM Workshop w " +
-           "LEFT JOIN FETCH w.facilitator " +
-           "LEFT JOIN FETCH w.location " +
-           "LEFT JOIN FETCH w.tags " +
-           "LEFT JOIN FETCH w.materials " +
-           "LEFT JOIN FETCH w.requirements " +
-           "WHERE w.id = :id")
+        @Query("SELECT w FROM Workshop w " +
+            "LEFT JOIN FETCH w.facilitator " +
+            "WHERE w.id = :id")
     Optional<Workshop> findByIdWithDetails(@Param("id") Long id);
 
     @Query("""

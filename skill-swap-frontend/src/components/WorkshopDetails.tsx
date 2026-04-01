@@ -41,7 +41,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
         return;
       }
       lastFetchedIdRef.current = workshopId;
-      setIsLoading(true);
+      const hasLocalSnapshot = workshops.some((item) => item.id === workshopId);
+      if (!hasLocalSnapshot) {
+        setIsLoading(true);
+      }
       try {
         const latest = await workshopAPI.getById(workshopId, sessionToken);
         if (latest && isMounted) {
@@ -62,7 +65,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
     return () => {
       isMounted = false;
     };
-  }, [workshopId, sessionToken, upsertWorkshop]);
+  }, [workshopId, sessionToken, upsertWorkshop, workshops]);
 
   if (isLoading) {
     return (
@@ -240,80 +243,81 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               </div>
             )}
 
-            {/* Participants Section */}
-            <div>
-              <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Participants</h2>
-              <div className="space-y-4">
-                <div className="flex items-center text-base">
-                  <Users className="w-5 h-5 mr-2 text-muted-foreground" />
-                  <span>{workshop.currentParticipants ?? 0} of {workshop.maxParticipants} attending</span>
-                </div>
-                
-                {(workshop.participants?.length ?? 0) > 0 && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-3">Going:</p>
-                    <div className="flex flex-wrap gap-3">
-                      {workshop.participants?.slice(0, 6).map((participant) => (
-                        <div key={participant.id} className="flex items-center space-x-2">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={participant.avatarUrl} />
-                            <AvatarFallback className="text-xs">
-                              {participant.username?.split(' ').map((n) => n[0]).join('') || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm text-foreground">{participant.username}</span>
-                        </div>
-                      ))}
-                      {(workshop.participants?.length ?? 0) > 6 && (
-                        <div className="flex items-center">
-                          <Badge variant="outline">+{(workshop.participants?.length ?? 0) - 6}</Badge>
-                        </div>
-                      )}
-                    </div>
+            {isAdmin && (
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Participants</h2>
+                <div className="space-y-4">
+                  <div className="flex items-center text-base">
+                    <Users className="w-5 h-5 mr-2 text-muted-foreground" />
+                    <span>{workshop.currentParticipants ?? 0} of {workshop.maxParticipants} attending</span>
                   </div>
-                )}
-              </div>
 
-              {/* Action Buttons (under Participants) */}
-              <div className="mt-6">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    {isCancelled ? (
-                      <Button disabled variant="outline" className="w-full">
-                        Workshop Cancelled
-                      </Button>
-                    ) : isRejected ? (
-                      <Button disabled variant="outline" className="w-full">
-                        Workshop Rejected
-                      </Button>
-                    ) : isPending ? (
-                      <Button
-                        variant="outline"
-                        onClick={isHost ? handleRequestApproval : undefined}
-                        disabled={!isHost}
-                        className="w-full"
-                      >
-                        {isHost ? "Request Approval" : "Pending Approval"}
-                      </Button>
-                    ) : isUserAttending ? (
-                      <Button variant="outline" onClick={handleCancel} className="w-full">
-                        Cancel Attendance
-                      </Button>
-                    ) : isFull ? (
-                      <Button disabled variant="outline" className="w-full">
-                        Workshop Full
-                      </Button>
-                    ) : (
-                      <Button onClick={handleAttend} className="w-full" size="lg">
-                        Attend Workshop
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <Button variant="outline" onClick={() => setCurrentPage('explore')} className="w-full gap-2">
-                      View More Workshops
+                  {(workshop.participants?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-3">Going:</p>
+                      <div className="flex flex-wrap gap-3">
+                        {workshop.participants?.slice(0, 6).map((participant) => (
+                          <div key={participant.id} className="flex items-center space-x-2">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={participant.avatarUrl} />
+                              <AvatarFallback className="text-xs">
+                                {participant.username?.split(' ').map((n) => n[0]).join('') || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm text-foreground">{participant.username}</span>
+                          </div>
+                        ))}
+                        {(workshop.participants?.length ?? 0) > 6 && (
+                          <div className="flex items-center">
+                            <Badge variant="outline">+{(workshop.participants?.length ?? 0) - 6}</Badge>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="mt-6">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  {isCancelled ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Workshop Cancelled
                     </Button>
-                  </div>
+                  ) : isRejected ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Workshop Rejected
+                    </Button>
+                  ) : isPending ? (
+                    <Button
+                      variant="outline"
+                      onClick={isHost ? handleRequestApproval : undefined}
+                      disabled={!isHost}
+                      className="w-full"
+                    >
+                      {isHost ? "Request Approval" : "Pending Approval"}
+                    </Button>
+                  ) : isUserAttending ? (
+                    <Button variant="outline" onClick={handleCancel} className="w-full">
+                      Cancel Attendance
+                    </Button>
+                  ) : isFull ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Workshop Full
+                    </Button>
+                  ) : (
+                    <Button onClick={handleAttend} className="w-full" size="lg">
+                      Attend Workshop
+                    </Button>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Button variant="outline" onClick={() => setCurrentPage('explore')} className="w-full gap-2">
+                    View More Workshops
+                  </Button>
                 </div>
               </div>
             </div>

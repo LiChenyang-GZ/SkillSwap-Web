@@ -1,11 +1,11 @@
 import { useApp } from '../contexts/AppContext';
+import { Workshop } from '../types';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { 
+import {
   Calendar,
-  Users, 
   TrendingUp,
   Clock,
   MapPin,
@@ -22,16 +22,28 @@ export function HomePage() {
     return normalized === 'upcoming' || normalized === 'approved';
   };
 
-  // Get upcoming workshops the user is attending
-  const upcomingWorkshops = workshops.filter(w => 
-    isUpcoming(w.status) && 
-    (w.participants ?? []).some(p => p.id === user?.id)
-  );
+  // Home 首屏仅展示公开的即将开始 workshop，不依赖参与者明细。
+  const upcomingWorkshops = workshops.filter((w) => isUpcoming(w.status));
 
-  // Get featured workshops (newest or most popular)
-  const featuredWorkshops = workshops
-    .filter(w => isUpcoming(w.status))
-    .slice(0, 3);
+  const featuredWorkshops = upcomingWorkshops.slice(0, 3);
+
+  const resolveLocationLabel = (workshop: Workshop) => {
+    if (workshop.isOnline) {
+      return 'Online';
+    }
+
+    const location = workshop.location;
+    if (Array.isArray(location)) {
+      const first = location.find((item) => typeof item === 'string' && item.trim().length > 0);
+      return first || 'In-person';
+    }
+
+    if (typeof location === 'string' && location.trim().length > 0) {
+      return location;
+    }
+
+    return 'In-person';
+  };
 
   // Quick stats
   const stats = [
@@ -119,7 +131,7 @@ export function HomePage() {
           {/* Upcoming Workshops */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold">Your Upcoming Workshops</h2>
+              <h2 className="text-2xl font-semibold">Upcoming Workshops</h2>
               <Button 
                 variant="ghost"
                 onClick={() => setCurrentPage('dashboard')}
@@ -154,7 +166,7 @@ export function HomePage() {
                             </div>
                             <div className="flex items-center space-x-1">
                               <MapPin className="w-4 h-4" />
-                              <span>{workshop.location}</span>
+                              <span>{resolveLocationLabel(workshop)}</span>
                             </div>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -167,7 +179,7 @@ export function HomePage() {
                         </div>
                         <div className="flex flex-col items-end space-y-2">
                           <Badge>{workshop.category}</Badge>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => setCurrentPage(`workshop-${workshop.id}`)}>
                             View Details
                           </Button>
                         </div>
@@ -207,10 +219,14 @@ export function HomePage() {
               </Button>
               
             </div>
-            {/* feature Workshop [workshop[id, image, title, currentParticipants,maxParticipants, facilators [name, rating, avator] ]]   */}
+            {/* feature Workshop [workshop[id, image, title, date/time, facilitators[name, avatar]]] */}
             <div className="space-y-4">
               {featuredWorkshops.map((workshop) => (
-                <Card key={workshop.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                <Card
+                  key={workshop.id}
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                >
                   <CardContent className="p-4">
                     <div className="aspect-video bg-muted rounded-lg mb-3 overflow-hidden">
                       {workshop.image && (
@@ -224,8 +240,8 @@ export function HomePage() {
                     <h3 className="font-semibold mb-2 line-clamp-2">{workshop.title}</h3>
                     <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
                       <div className="flex items-center space-x-1">
-                        <Users className="w-3 h-3" />
-                        <span>{workshop.currentParticipants}/{workshop.maxParticipants}</span>
+                        <Calendar className="w-3 h-3" />
+                        <span>{new Date(workshop.date).toLocaleDateString()}</span>
                       </div>
                       {/* 积分系统已停用：隐藏原 workshop 积分展示。 */}
                       {/*
