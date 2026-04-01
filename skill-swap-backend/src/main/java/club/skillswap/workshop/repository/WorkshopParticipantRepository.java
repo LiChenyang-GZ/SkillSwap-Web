@@ -21,6 +21,8 @@ public interface WorkshopParticipantRepository extends JpaRepository<WorkshopPar
     // 根据 workshop ID 查询参与者记录
     List<WorkshopParticipant> findByWorkshopId(Long workshopId);
 
+    long countByWorkshopId(Long workshopId);
+
     @Query("""
         select wp from WorkshopParticipant wp
         join fetch wp.user

@@ -135,8 +135,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     public List<WorkshopResponseDto> getAllWorkshopsForAdmin(Authentication authentication) {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
-        preloadCollections(workshops);
-        return mapToDtoList(workshops);
+        return workshops.stream().map(this::mapToSummaryDto).toList();
     }
 
     @Override
@@ -144,8 +143,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     public List<WorkshopResponseDto> getPendingWorkshops(Authentication authentication) {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllPendingWithFacilitator();
-        preloadCollections(workshops);
-        return mapToDtoList(workshops);
+        return workshops.stream().map(this::mapToSummaryDto).toList();
     }
 
     @Override
@@ -453,6 +451,10 @@ public class WorkshopServiceImpl implements WorkshopService {
             );
         }
 
+        java.util.Set<String> summaryLocation = Boolean.TRUE.equals(workshop.getIsOnline())
+            ? java.util.Set.of("Online")
+            : java.util.Set.of("In-person");
+
         return new WorkshopResponseDto(
             workshop.getId().toString(),
             workshop.getTitle(),
@@ -464,16 +466,16 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getTime(),
             workshop.getDuration(),
             workshop.getIsOnline(),
-            null,
+            summaryLocation,
             workshop.getMaxParticipants(),
-            0,
+            null,
             workshop.getCreditCost(),
             workshop.getCreditReward(),
             facilitatorDto,
-            List.of(),
-            java.util.Set.of(),
-            java.util.Set.of(),
-            java.util.Set.of(),
+            null,
+            null,
+            null,
+            null,
             workshop.getCreatedAt()
         );
     }
@@ -484,22 +486,29 @@ public class WorkshopServiceImpl implements WorkshopService {
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, boolean includeParticipants) {
-        List<WorkshopParticipantDto> participants = includeParticipants
-            ? participantRepository.findByWorkshopIdWithUser(workshop.getId())
+        if (includeParticipants) {
+            List<WorkshopParticipantDto> participants = participantRepository.findByWorkshopIdWithUser(workshop.getId())
                 .stream()
                 .map(p -> new WorkshopParticipantDto(
                     p.getUser().getId().toString(),
                     p.getUser().getUsername(),
                     p.getUser().getAvatarUrl()
                 ))
-                .toList()
-            : List.of();
+                .toList();
+            return mapToDto(workshop, participants, participants.size());
+        }
 
-        return mapToDto(workshop, participants);
+        Integer participantCount = Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()));
+        return mapToDto(workshop, null, participantCount);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants) {
-        List<WorkshopParticipantDto> safeParticipants = participants == null ? List.of() : participants;
+        Integer participantCount = participants == null ? null : participants.size();
+        return mapToDto(workshop, participants, participantCount);
+    }
+
+    private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants, Integer participantCount) {
+        List<WorkshopParticipantDto> safeParticipants = participants == null ? null : participants;
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
             facilitatorDto = new FacilitatorDto(
@@ -522,7 +531,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getIsOnline(),
             safeCopySet(workshop.getLocation()),
             workshop.getMaxParticipants(),
-            safeParticipants.size(),
+            participantCount,
             workshop.getCreditCost(),
             workshop.getCreditReward(),
             facilitatorDto,

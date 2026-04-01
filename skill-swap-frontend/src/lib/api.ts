@@ -47,7 +47,7 @@ function enrichWorkshop(workshop: any): Workshop {
         username: p.username || p.name || 'Unknown',
         avatarUrl: p.avatarUrl || p.avatar_url || p.avatar,
       }))
-    : [];
+    : undefined;
 
   const normalizedStatus = String(workshop.status || '').toLowerCase();
 
@@ -64,11 +64,11 @@ function enrichWorkshop(workshop: any): Workshop {
     isOnline: workshop.isOnline,
     location: workshop.location || workshop.locations || [],
     maxParticipants: workshop.maxParticipants,
-    currentParticipants: workshop.currentParticipants ?? participants.length,
+    currentParticipants: workshop.currentParticipants ?? (participants?.length ?? 0),
     creditCost: workshop.creditCost,
     creditReward: workshop.creditReward,
     facilitator,
-    tags: workshop.tags || [],
+    tags: workshop.tags,
     image: workshop.image || getDefaultImage(workshop.category),
     createdAt: workshop.createdAt,
     participants: participants as any,

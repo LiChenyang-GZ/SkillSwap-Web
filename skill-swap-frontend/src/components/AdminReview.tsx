@@ -52,6 +52,8 @@ export function AdminReview() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formData, setFormData] = useState<WorkshopFormState>(emptyForm);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -126,6 +128,7 @@ export function AdminReview() {
     () => sortedWorkshops.find((w) => w.id === selectedId) || null,
     [sortedWorkshops, selectedId]
   );
+  const selectedHasDetail = selectedWorkshop ? !!loadedDetailIds[selectedWorkshop.id] : false;
 
   const isDirty = useMemo(() => {
     if (!selectedWorkshop) return false;
@@ -133,6 +136,25 @@ export function AdminReview() {
     const current = normalizeFormState(formData);
     return JSON.stringify(baseline) !== JSON.stringify(current);
   }, [formData, selectedWorkshop]);
+
+  const loadWorkshopDetail = async (workshopId: string, force = false) => {
+    if (!sessionToken || !workshopId) return;
+    if (!force && loadedDetailIds[workshopId]) return;
+
+    setIsDetailLoading(true);
+    try {
+      const detail = await workshopAPI.getById(workshopId, sessionToken);
+      if (!detail) return;
+
+      setWorkshops((prev) => prev.map((w) => (w.id === detail.id ? { ...w, ...detail } : w)));
+      setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
+    } catch (error) {
+      console.error('Failed to load workshop details:', error);
+      toast.error('Failed to load workshop details.');
+    } finally {
+      setIsDetailLoading(false);
+    }
+  };
 
   const loadWorkshops = async (mode: 'pending' | 'all') => {
     if (!sessionToken) {
@@ -148,9 +170,17 @@ export function AdminReview() {
         mode === 'pending'
           ? await workshopAPI.getPendingForAdmin(sessionToken)
           : await workshopAPI.getAllForAdmin(sessionToken);
+
+      setLoadedDetailIds({});
       setWorkshops(data);
-      if (data.length > 0 && !selectedId) {
-        setSelectedId(data[0].id);
+
+      if (data.length > 0) {
+        const fallbackId = data[0].id;
+        const nextSelectedId = selectedId && data.some((w) => w.id === selectedId) ? selectedId : fallbackId;
+        setSelectedId(nextSelectedId);
+        void loadWorkshopDetail(nextSelectedId, true);
+      } else {
+        setSelectedId(null);
       }
     } catch (error) {
       console.error('Failed to load admin workshops:', error);
@@ -165,6 +195,11 @@ export function AdminReview() {
     const mode = statusFilter === 'pending' ? 'pending' : 'all';
     void loadWorkshops(mode);
   }, [sessionToken, statusFilter]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    void loadWorkshopDetail(selectedId);
+  }, [selectedId, sessionToken]);
 
   useEffect(() => {
     const storedTarget = sessionStorage.getItem('adminReviewTargetId');
@@ -236,7 +271,7 @@ export function AdminReview() {
   };
 
   const handleSave = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
@@ -270,7 +305,7 @@ export function AdminReview() {
   };
 
   const handleApprove = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
@@ -286,7 +321,7 @@ export function AdminReview() {
   };
 
   const handleReject = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
@@ -302,7 +337,7 @@ export function AdminReview() {
   };
 
   const handleCancel = async () => {
-    if (!selectedWorkshop || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
 
     try {
@@ -453,13 +488,18 @@ export function AdminReview() {
               <CardTitle>Submission Details</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading && !selectedWorkshop ? (
+              {(isLoading || isDetailLoading) && !selectedWorkshop ? (
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   Loading submission details...
                 </div>
               ) : !selectedWorkshop ? (
                 <div className="text-sm text-muted-foreground">Select a submission to review.</div>
+              ) : !selectedHasDetail ? (
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Loading detailed submission...
+                </div>
               ) : (
                 <div className="space-y-6">
                   {(() => {

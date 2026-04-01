@@ -44,11 +44,71 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const PAGE_TO_PATH: Record<string, string> = {
+  hero: "/",
+  home: "/home",
+  explore: "/explore",
+  create: "/create",
+  dashboard: "/dashboard",
+  pastWorkshops: "/past-workshops",
+  feedback: "/feedback",
+  notifications: "/notifications",
+  adminReview: "/admin/workshops",
+  auth: "/auth",
+  credits: "/credits",
+};
+
+const PATH_TO_PAGE: Record<string, string> = {
+  "/": "hero",
+  "/home": "home",
+  "/explore": "explore",
+  "/create": "create",
+  "/dashboard": "dashboard",
+  "/past-workshops": "pastWorkshops",
+  "/feedback": "feedback",
+  "/notifications": "notifications",
+  "/admin/workshops": "adminReview",
+  "/auth": "auth",
+  "/credits": "credits",
+};
+
+const normalizePath = (pathname: string) => {
+  if (!pathname) return "/";
+  const trimmed = pathname.trim();
+  if (!trimmed || trimmed === "/") return "/";
+  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
+};
+
+const pageFromPath = (pathname: string) => {
+  const normalizedPath = normalizePath(pathname);
+  if (normalizedPath.startsWith("/workshops/")) {
+    const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
+    return workshopId ? `workshop-${workshopId}` : "home";
+  }
+  return PATH_TO_PAGE[normalizedPath] || "home";
+};
+
+const pathFromPage = (page: string) => {
+  if (page.startsWith("workshop-")) {
+    const workshopId = page.slice("workshop-".length);
+    return `/workshops/${encodeURIComponent(workshopId)}`;
+  }
+  return PAGE_TO_PATH[page] || "/home";
+};
+
+const resolvePostLoginPage = () => {
+  const requestedPage = pageFromPath(window.location.pathname);
+  if (requestedPage === "hero" || requestedPage === "auth") {
+    return "home";
+  }
+  return requestedPage;
+};
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
-  const [currentPage, setCurrentPageState] = useState("hero");
+  const [currentPage, setCurrentPageState] = useState(() => pageFromPath(window.location.pathname));
   const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -144,6 +204,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   // Theme Initialization
   // --------------------------
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPageState(pageFromPath(window.location.pathname));
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("skill-swap-theme");
     const systemPrefersDark = window.matchMedia(
@@ -435,7 +504,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hasBackendProfileRef.current = false;
     }
 
-    setCurrentPage("home");
+    setCurrentPage(resolvePostLoginPage());
     bootstrapAuthInProgressRef.current = false;
     setIsLoading(false);
   };
@@ -456,7 +525,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setTransactions([]);
         setIsAuthenticated(true);
         setSessionToken(savedToken || null);
-        setCurrentPage("home");
+        setCurrentPage(resolvePostLoginPage());
       } catch {
         localStorage.removeItem("skill-swap-auth");
         localStorage.removeItem("skill-swap-user");
@@ -491,7 +560,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   const setCurrentPage = (page: string, authTabOption?: "signin" | "signup") => {
     setCurrentPageState(page);
+
+    const targetPath = pathFromPage(page);
+    if (normalizePath(window.location.pathname) !== targetPath) {
+      window.history.pushState({ page }, "", targetPath);
+    }
+
     if (authTabOption) setAuthTab(authTabOption);
+  };
+
+  const resolveRefreshModeByPage = (page: string): "public" | "full" => {
+    return page === "home" || page === "explore" ? "public" : "full";
   };
 
   // --------------------------
@@ -690,7 +769,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // 成功后后台刷新，避免 toast 被全量拉取阻塞。
       setTimeout(() => {
-        void refreshData();
+        void refreshData(resolveRefreshModeByPage(currentPage));
       }, 0);
     } catch (error) {
       console.error("Failed to join workshop:", error);
@@ -699,7 +778,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (alreadyParticipant) {
         // 若后端返回“已参加”，将其视为幂等成功并后台刷新列表。
-        void refreshData();
+        void refreshData(resolveRefreshModeByPage(currentPage));
         toast.success("You are already attending this workshop.");
         return;
       }
@@ -733,7 +812,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // 后台刷新，避免操作反馈被阻塞。
       setTimeout(() => {
-        void refreshData();
+        void refreshData(resolveRefreshModeByPage(currentPage));
       }, 0);
     } catch (error) {
       console.error("Failed to leave workshop:", error);
@@ -757,7 +836,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // 切页后由页面按需刷新，这里额外后台拉一次保证全局列表最终一致。
       setTimeout(() => {
-        void refreshData();
+        void refreshData(resolveRefreshModeByPage(currentPage));
       }, 0);
     } catch (error) {
       console.error("Failed to create workshop:", error);
