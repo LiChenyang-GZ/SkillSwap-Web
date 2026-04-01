@@ -1,17 +1,18 @@
 import React from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { Navigation } from './components/Navigation';
-import { HeroPage } from './components/Hero';
-import { HomePage } from './components/HomePage';
-import { ExploreWorkshops } from './components/ExploreWorkshops';
-import { PastWorkshops } from './components/PastWorkshops';
-import { Dashboard } from './components/Dashboard';
-import { CreateWorkshop } from './components/CreateWorkshop';
-import { AuthPage } from './components/AuthPage';
-import { WorkshopDetails } from './components/WorkshopDetails';
-import { AdminReview } from './components/AdminReview';
-import { Notifications } from './components/Notifications';
 import { Toaster } from './components/ui/sonner';
+
+const HeroPage = React.lazy(() => import('./components/Hero').then((m) => ({ default: m.HeroPage })));
+const HomePage = React.lazy(() => import('./components/HomePage').then((m) => ({ default: m.HomePage })));
+const ExploreWorkshops = React.lazy(() => import('./components/ExploreWorkshops').then((m) => ({ default: m.ExploreWorkshops })));
+const PastWorkshops = React.lazy(() => import('./components/PastWorkshops').then((m) => ({ default: m.PastWorkshops })));
+const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
+const CreateWorkshop = React.lazy(() => import('./components/CreateWorkshop').then((m) => ({ default: m.CreateWorkshop })));
+const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
+const WorkshopDetails = React.lazy(() => import('./components/WorkshopDetails').then((m) => ({ default: m.WorkshopDetails })));
+const AdminReview = React.lazy(() => import('./components/AdminReview').then((m) => ({ default: m.AdminReview })));
+const Notifications = React.lazy(() => import('./components/Notifications').then((m) => ({ default: m.Notifications })));
 
 function AppContent() {
   const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData } = useApp();
@@ -110,7 +111,15 @@ function AppContent() {
     <div className="min-h-screen bg-background">
       {showNavigation && <Navigation />}
       <main>
-        {renderPage()}
+        <React.Suspense
+          fallback={
+            <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
+              <p className="text-muted-foreground">Loading page...</p>
+            </div>
+          }
+        >
+          {renderPage()}
+        </React.Suspense>
       </main>
       <Toaster />
     </div>

@@ -41,7 +41,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
         return;
       }
       lastFetchedIdRef.current = workshopId;
-      setIsLoading(true);
+      const hasLocalSnapshot = workshops.some((item) => item.id === workshopId);
+      if (!hasLocalSnapshot) {
+        setIsLoading(true);
+      }
       try {
         const latest = await workshopAPI.getById(workshopId, sessionToken);
         if (latest && isMounted) {
@@ -62,7 +65,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
     return () => {
       isMounted = false;
     };
-  }, [workshopId, sessionToken, upsertWorkshop]);
+  }, [workshopId, sessionToken, upsertWorkshop, workshops]);
 
   if (isLoading) {
     return (

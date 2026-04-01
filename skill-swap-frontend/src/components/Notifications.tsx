@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { notificationAPI } from "../lib/api";
+import { notificationAPI, workshopAPI } from "../lib/api";
 import { NotificationItem } from "../types";
 import { useApp } from "../contexts/AppContext";
 import { Button } from "./ui/button";
@@ -14,7 +14,7 @@ import {
 } from "./ui/dialog";
 
 export function Notifications() {
-  const { sessionToken, refreshNotificationsUnreadCount, isAuthenticated, setCurrentPage } = useApp();
+  const { sessionToken, refreshNotificationsUnreadCount, isAuthenticated, setCurrentPage, upsertWorkshop } = useApp();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
@@ -68,7 +68,7 @@ export function Notifications() {
       setNotifications((prev) =>
         prev.map((item) => (item.id === notificationId ? updated : item))
       );
-      await refreshNotificationsUnreadCount();
+      void refreshNotificationsUnreadCount();
     } catch (error) {
       console.warn("Failed to mark notification as read", error);
     }
@@ -78,10 +78,21 @@ export function Notifications() {
     try {
       await notificationAPI.markAllRead(sessionToken);
       setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-      await refreshNotificationsUnreadCount();
+      void refreshNotificationsUnreadCount();
     } catch (error) {
       console.warn("Failed to mark all notifications as read", error);
     }
+  };
+
+  const openWorkshopFromNotification = (workshopId: string) => {
+    if (sessionToken) {
+      void workshopAPI.getById(workshopId, sessionToken).then((latest) => {
+        if (latest) {
+          upsertWorkshop(latest);
+        }
+      });
+    }
+    setCurrentPage(`workshop-${workshopId}`);
   };
 
   const handleOpenNotification = async (notification: NotificationItem) => {
@@ -119,7 +130,7 @@ export function Notifications() {
       case "workshop_cancelled":
         return {
           label: "View workshop",
-          action: () => setCurrentPage(`workshop-${notification.workshopId}`),
+          action: () => openWorkshopFromNotification(notification.workshopId!),
         };
       default:
         return null;

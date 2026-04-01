@@ -370,23 +370,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsAdmin(computeIsAdmin(sessionToken));
   }, [sessionToken]);
 
-  useEffect(() => {
-    if (!sessionToken) {
-      setNotificationsUnreadCount(0);
-    } else if (currentPage !== "notifications") {
-      // 非通知页面不主动请求未读数，避免影响首页首屏速度。
-      setNotificationsUnreadCount(0);
-    }
-  }, [sessionToken, currentPage]);
-
-  useEffect(() => {
-    if (currentPage !== "notifications" || !sessionToken) {
-      return;
-    }
-
-    void refreshNotificationsUnreadCount();
-  }, [currentPage, sessionToken]);
-
   // --------------------------
   // Helpers
   // --------------------------
@@ -653,6 +636,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notificationsInFlightRef.current = null;
     }
   }, [sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken) {
+      setNotificationsUnreadCount(0);
+      return;
+    }
+
+    if (currentPage === "notifications") {
+      return;
+    }
+
+    // 在非通知页面后台刷新未读数，避免阻塞当前页渲染。
+    const timer = window.setTimeout(() => {
+      void refreshNotificationsUnreadCount();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [currentPage, refreshNotificationsUnreadCount, sessionToken]);
 
   const upsertWorkshop = useCallback((workshop: Workshop) => {
     setWorkshops((prev) => {

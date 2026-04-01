@@ -84,6 +84,8 @@ function toBackendWorkshopId(workshopId: string): string {
   return workshopId;
 }
 
+const workshopDetailInFlight = new Map<string, Promise<Workshop | null>>();
+
 // Helper function to make API calls with authentication
 async function apiCall<T>(
   endpoint: string,
@@ -337,6 +339,13 @@ export const workshopAPI = {
 
   // 获取单个工作坊
   getById: async (id: string, token?: string | null): Promise<Workshop | null> => {
+    const cacheKey = `${token ?? "anon"}:${toBackendWorkshopId(id)}`;
+    const existingTask = workshopDetailInFlight.get(cacheKey);
+    if (existingTask) {
+      return existingTask;
+    }
+
+    const task = (async () => {
     try {
       const data = await apiCall<Workshop>(
         `/api/v1/workshops/${toBackendWorkshopId(id)}`,
@@ -347,6 +356,14 @@ export const workshopAPI = {
     } catch (error) {
       console.warn("⚠️ Backend unavailable for workshop", id);
       return null;
+    }
+    })();
+
+    workshopDetailInFlight.set(cacheKey, task);
+    try {
+      return await task;
+    } finally {
+      workshopDetailInFlight.delete(cacheKey);
     }
   },
 
