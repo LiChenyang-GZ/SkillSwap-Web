@@ -617,6 +617,10 @@ export function MemoryStudio() {
               <h1 className="text-3xl font-bold">Memory Studio</h1>
             </div>
             <div className="flex gap-2 flex-wrap justify-end">
+              <Button variant="outline" onClick={() => setCurrentPage('memory')}>
+                <Eye className="w-4 h-4 mr-2" />
+                Open Public Memory Wall
+              </Button>
               <Button variant="outline" onClick={() => void loadEntries()} disabled={isLoading}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh
@@ -892,23 +896,7 @@ export function MemoryStudio() {
                   </div>
                 )}
               </div>
-
-              <div className="rounded-md border border-border p-3 flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Detected metadata:</span>
-                <Badge variant="secondary">title: {parsedDoc.title || 'N/A'}</Badge>
-                <Badge variant="secondary">slug: {resolvedSlugPreview || 'Auto by backend'}</Badge>
-                <Badge variant="secondary">status: {toStatusLabel(activeStatus)}</Badge>
-                <Badge variant="secondary">media: {parsedDoc.mediaUrls.length}</Badge>
-                {isUploadingImage && <Badge variant="secondary">uploading image...</Badge>}
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <Button variant="outline" onClick={() => setCurrentPage('memory')}>
-                  <Eye className="w-4 h-4 mr-2" />
-                  Open Public Memory Wall
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground text-right">Only published memories are visible on the public wall.</p>
+              
             </CardContent>
           </Card>
         </div>
