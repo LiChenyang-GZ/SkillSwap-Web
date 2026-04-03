@@ -6,7 +6,6 @@ import java.util.List;
 public record MemoryEntryRequestDto(
         String title,
         String slug,
-        String summary,
         String coverUrl,
         String content,
         List<String> mediaUrls,

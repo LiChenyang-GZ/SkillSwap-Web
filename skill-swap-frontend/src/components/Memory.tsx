@@ -14,12 +14,13 @@ function pickCover(entry: MemoryEntry): string {
   const raw = (entry.coverUrl || entry.mediaUrls[0] || '').trim();
   if (!raw) return fallbackCover;
 
-  const markdownImage = raw.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
+  const unquoted = raw.replace(/^['\"]|['\"]$/g, '');
+  const markdownImage = unquoted.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
   if (markdownImage?.[1]) {
     return markdownImage[1].trim() || fallbackCover;
   }
 
-  return raw;
+  return unquoted;
 }
 
 export function Memory() {

@@ -7,7 +7,6 @@ public record MemoryEntryResponseDto(
         String id,
         String title,
         String slug,
-        String summary,
         String coverUrl,
         String content,
         List<String> mediaUrls,

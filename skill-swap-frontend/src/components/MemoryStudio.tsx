@@ -93,11 +93,6 @@ function normalizeCoverValue(value?: string): string {
   return unquoted;
 }
 
-function extractFirstHeading(body: string): string {
-  const match = body.match(/^#\s+(.+)$/m);
-  return match ? match[1].trim() : '';
-}
-
 function extractMediaUrls(markdown: string): string[] {
   const urls = new Set<string>();
 
@@ -137,7 +132,7 @@ ${content}`;
 function parseMemoryDocument(documentText: string): ParsedMemoryDocument {
   const { meta, body } = parseFrontMatter(documentText);
 
-  const title = (meta.title || meta.Title || extractFirstHeading(body) || '').trim();
+  const title = (meta.title || meta.Title || '').trim();
   const coverUrl = normalizeCoverValue(meta.cover || meta.coverUrl || meta.image || meta.imageUrl || '');
   const mediaUrls = extractMediaUrls(documentText);
 
@@ -324,7 +319,7 @@ export function MemoryStudio() {
     }
 
     if (!parsedDoc.title) {
-      toast.error('Please provide a title in front matter or with a # heading.');
+      toast.error('Please provide a card title in front matter: title: ...');
       return;
     }
 
@@ -334,7 +329,6 @@ export function MemoryStudio() {
       const payload: Partial<MemoryEntry> = {
         title: parsedDoc.title,
         slug: undefined,
-        summary: undefined,
         coverUrl: parsedDoc.coverUrl || undefined,
         content: documentText,
         status: statusToPersist,

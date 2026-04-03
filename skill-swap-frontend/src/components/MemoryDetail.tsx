@@ -55,11 +55,6 @@ export function MemoryDetail({ slug }: MemoryDetailProps) {
     void load();
   }, [slug]);
 
-  const coverUrl = useMemo(() => {
-    if (!entry) return '';
-    return resolveAssetUrl(entry.coverUrl || entry.mediaUrls[0] || '');
-  }, [entry]);
-
   const body = useMemo(() => stripFrontMatter(entry?.content), [entry]);
   const displayDate = useMemo(() => (entry ? toDisplayDate(entry) : ''), [entry]);
 
@@ -94,19 +89,6 @@ export function MemoryDetail({ slug }: MemoryDetailProps) {
           Back to Memory Wall
         </Button>
 
-        {coverUrl && (
-          <div className="w-full overflow-hidden rounded-3xl border border-border/70">
-            <img
-              src={coverUrl}
-              alt={entry.title}
-              className="w-full h-[300px] md:h-[420px] object-cover"
-              onError={(event) => {
-                event.currentTarget.style.display = 'none';
-              }}
-            />
-          </div>
-        )}
-
         <header className="space-y-3">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{entry.title}</h1>
           {displayDate && (
@@ -117,7 +99,7 @@ export function MemoryDetail({ slug }: MemoryDetailProps) {
           )}
         </header>
 
-        <article className="rounded-2xl border border-border bg-card px-5 py-6 md:px-8 md:py-8 prose prose-sm md:prose-base dark:prose-invert max-w-none">
+        <article className="prose prose-sm md:prose-base dark:prose-invert max-w-none px-1">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{

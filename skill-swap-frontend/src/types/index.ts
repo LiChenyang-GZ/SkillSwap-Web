@@ -51,7 +51,6 @@ export interface MemoryEntry {
   id: string;
   title: string;
   slug: string;
-  summary?: string;
   coverUrl?: string;
   content?: string;
   mediaUrls: string[];

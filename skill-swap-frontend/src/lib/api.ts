@@ -95,15 +95,24 @@ function enrichWorkshop(workshop: any): Workshop {
 }
 
 function enrichMemory(entry: any): MemoryEntry {
+  const normalizeMemoryUrl = (value?: string): string => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    const unquoted = raw.replace(/^['\"]|['\"]$/g, '');
+    const markdownImage = unquoted.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
+    const resolved = markdownImage?.[1]?.trim() || unquoted;
+    return resolveAssetUrl(resolved);
+  };
+
   const rawMediaUrls = Array.isArray(entry.mediaUrls) ? entry.mediaUrls : [];
   return {
     id: String(entry.id),
     title: entry.title || '',
     slug: entry.slug || '',
-    summary: entry.summary || '',
-    coverUrl: resolveAssetUrl(entry.coverUrl || ''),
+    coverUrl: normalizeMemoryUrl(entry.coverUrl || ''),
     content: entry.content || '',
-    mediaUrls: rawMediaUrls.map((url: string) => resolveAssetUrl(url)).filter(Boolean),
+    mediaUrls: rawMediaUrls.map((url: string) => normalizeMemoryUrl(url)).filter(Boolean),
     status: (entry.status || 'draft') as MemoryEntry['status'],
     publishedAt: entry.publishedAt,
     createdAt: entry.createdAt,

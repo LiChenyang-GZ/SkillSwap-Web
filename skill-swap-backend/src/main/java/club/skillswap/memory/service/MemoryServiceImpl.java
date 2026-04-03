@@ -177,9 +177,6 @@ public class MemoryServiceImpl implements MemoryService {
         }
         entry.setSlug(candidateSlug);
 
-        if (requestDto.summary() != null || createMode) {
-            entry.setSummary(trimToNull(requestDto.summary()));
-        }
         if (requestDto.coverUrl() != null || createMode) {
             entry.setCoverUrl(trimToNull(requestDto.coverUrl()));
         }
@@ -316,7 +313,6 @@ public class MemoryServiceImpl implements MemoryService {
                 entry.getId() != null ? entry.getId().toString() : null,
                 entry.getTitle(),
                 entry.getSlug(),
-                entry.getSummary(),
                 entry.getCoverUrl(),
                 entry.getContent(),
                 mediaUrls,
