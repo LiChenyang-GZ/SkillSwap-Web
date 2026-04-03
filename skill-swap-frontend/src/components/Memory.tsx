@@ -1,56 +1,87 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
+import { memoryAPI } from '../lib/api';
+import { MemoryEntry } from '../types';
 import { Button } from './ui/button';
 import { Archive, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';
-import { Workshop } from '../types';
 
-function isOldWorkshop(workshop: Workshop): boolean {
-  const status = (workshop.status || '').toLowerCase();
-  if (status === 'completed' || status === 'cancelled') return true;
+const fallbackCover = 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80';
 
-  if (!workshop.date) return false;
-  const time = workshop.time || '00:00';
-  const dateTime = new Date(`${workshop.date}T${time}`);
-  if (Number.isNaN(dateTime.getTime())) return false;
+type DisplayMemoryEntry = MemoryEntry & { _cloneId?: string };
 
-  return dateTime.getTime() < Date.now();
+function pickCover(entry: MemoryEntry): string {
+  const raw = (entry.coverUrl || entry.mediaUrls[0] || '').trim();
+  if (!raw) return fallbackCover;
+
+  const markdownImage = raw.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
+  if (markdownImage?.[1]) {
+    return markdownImage[1].trim() || fallbackCover;
+  }
+
+  return raw;
 }
 
 export function Memory() {
-  const { workshops, setCurrentPage, isLoading, isAuthenticated, refreshData } = useApp();
-  
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center', skipSnaps: false });
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const { setCurrentPage } = useApp();
+  const [entries, setEntries] = useState<MemoryEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [localLoading, setLocalLoading] = useState(true);
-  const [backfillTriggered, setBackfillTriggered] = useState(false);
 
-  // Fallback timer for smooth UI transition
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const data = await memoryAPI.getPublic();
+        setEntries(data);
+      } catch (error) {
+        console.error('Failed to load memories:', error);
+        setEntries([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, []);
+
+  // Keep the old page transition feeling from the original Memory page.
   useEffect(() => {
     if (!isLoading) {
-      const timer = setTimeout(() => setLocalLoading(false), 500);
-      return () => clearTimeout(timer);
-    } else {
-      setLocalLoading(true);
+      const timer = window.setTimeout(() => setLocalLoading(false), 500);
+      return () => window.clearTimeout(timer);
     }
+
+    setLocalLoading(true);
   }, [isLoading]);
 
-  // Backfill: 页面刷新时如果 Auth 最初为 false，第一次 fetchVisibleWorkshops(full) 仅仅会拉取 public 数据。
-  // 在获取到了真实的登录态 (isAuthenticated === true) 且没发现历史活动时，强制要求刷新补全 mine 数据。
-  useEffect(() => {
-    if (!isAuthenticated || backfillTriggered) return;
+  const originalPublished = useMemo(
+    () => [...entries].sort((a, b) => {
+      const aTime = new Date(a.publishedAt || a.updatedAt || a.createdAt || 0).getTime();
+      const bTime = new Date(b.publishedAt || b.updatedAt || b.createdAt || 0).getTime();
+      return bTime - aTime;
+    }),
+    [entries]
+  );
 
-    const hasArchived = workshops.some(isOldWorkshop);
-    if (hasArchived) return;
+  const displayEntries = useMemo<DisplayMemoryEntry[]>(() => {
+    if (originalPublished.length === 0) return [];
+    if (originalPublished.length > 5) return originalPublished;
 
-    // setTimeout 到宏任务队列结尾执行，防止如果第一波 public 请求还在被 refreshInFlightRef 拦截。
-    const timer = window.setTimeout(() => {
-      void refreshData('full');
-      setBackfillTriggered(true);
-    }, 50);
+    let cloned: DisplayMemoryEntry[] = [];
+    const copiesNeeded = Math.ceil(6 / originalPublished.length);
+    for (let i = 0; i < copiesNeeded; i++) {
+      cloned = [
+        ...cloned,
+        ...originalPublished.map((entry) => ({ ...entry, _cloneId: `${entry.id}-${i}` })),
+      ];
+    }
+    return cloned;
+  }, [originalPublished]);
 
-    return () => window.clearTimeout(timer);
-  }, [backfillTriggered, isAuthenticated, refreshData, workshops]);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center', skipSnaps: false });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const activeDotIndex = originalPublished.length > 0 ? selectedIndex % originalPublished.length : 0;
 
   const scrollPrev = useCallback(() => {
     if (emblaApi) emblaApi.scrollPrev();
@@ -72,29 +103,6 @@ export function Memory() {
     emblaApi.on('reInit', onSelect);
   }, [emblaApi, onSelect]);
 
-  const originalArchived = useMemo(() => workshops
-    .filter(isOldWorkshop)
-    .sort((a, b) => {
-      const aTime = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
-      const bTime = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
-      return bTime - aTime;
-    }), [workshops]);
-
-  const displayWorkshops = useMemo(() => {
-    if (originalArchived.length === 0) return [];
-    if (originalArchived.length > 5) return originalArchived;
-    
-    // Duplicate array to ensure Embla can loop properly
-    let cloned: Workshop[] = [];
-    const copiesNeeded = Math.ceil(6 / originalArchived.length);
-    for (let i = 0; i < copiesNeeded; i++) {
-        cloned = [...cloned, ...originalArchived.map(w => ({ ...w, _cloneId: `${w.id}-${i}` })) as any];
-    }
-    return cloned;
-  }, [originalArchived]);
-
-  const activeDotIndex = originalArchived.length > 0 ? selectedIndex % originalArchived.length : 0;
-
   if (isLoading || localLoading) {
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
@@ -109,39 +117,45 @@ export function Memory() {
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24 flex flex-col">
       <div className="flex-1 flex flex-col justify-center pb-8 overflow-hidden">
-        {originalArchived.length > 0 ? (
+        {originalPublished.length > 0 ? (
           <div className="relative w-full max-w-[100vw] mx-auto">
             <div className="overflow-hidden" ref={emblaRef}>
               <div className="flex backface-hidden touch-pan-y items-center py-10">
-                {displayWorkshops.map((workshop: any, index) => {
+                {displayEntries.map((entry, index) => {
+                  const cover = pickCover(entry);
                   const isActive = index === selectedIndex;
                   return (
                     <div
-                      key={workshop._cloneId || workshop.id}
+                      key={entry._cloneId || entry.id}
                       className="relative flex-[0_0_85%] sm:flex-[0_0_60%] md:flex-[0_0_45%] lg:flex-[0_0_35%] min-w-0 px-4"
                       onClick={() => {
                         if (!isActive) {
-                           emblaApi?.scrollTo(index);
-                        } else {
-                           setCurrentPage(`workshop-${workshop.id}`);
+                          emblaApi?.scrollTo(index);
+                        } else if (entry.slug) {
+                          setCurrentPage(`memory-entry-${entry.slug}`);
                         }
                       }}
                     >
-                      <div 
+                      <div
                         className={`group relative w-full aspect-[4/5] sm:aspect-square md:aspect-[3/4] max-h-[70vh] mx-auto rounded-3xl overflow-hidden shadow-2xl transition-all duration-700 ease-out cursor-pointer ${
                           isActive ? 'scale-100 opacity-100 z-10 shadow-primary/20' : 'scale-[0.85] opacity-40 z-0 hover:opacity-60 shadow-none'
                         }`}
                       >
                         <img
-                          src={workshop.image || 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80'}
-                          alt={workshop.title}
+                          src={cover}
+                          alt={entry.title}
+                          onError={(event) => {
+                            if (event.currentTarget.src !== fallbackCover) {
+                              event.currentTarget.src = fallbackCover;
+                            }
+                          }}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10" />
                         <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-end text-white">
                           <div className={`transition-all duration-700 delay-100 transform ${isActive ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
-                            <h3 className="text-3xl sm:text-4xl font-bold mb-6 leading-tight drop-shadow-md text-center">
-                              {workshop.title}
+                            <h3 className="text-3xl sm:text-4xl font-bold mb-6 leading-tight drop-shadow-md text-center line-clamp-3">
+                              {entry.title}
                             </h3>
                           </div>
                         </div>
@@ -162,7 +176,7 @@ export function Memory() {
                 <ChevronLeft className="w-5 h-5" />
               </Button>
               <div className="flex gap-2 isolate">
-                {originalArchived.map((_, index) => (
+                {originalPublished.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => emblaApi?.scrollTo(index)}
@@ -188,9 +202,9 @@ export function Memory() {
             <div className="bg-muted/50 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
               <Archive className="w-12 h-12 text-muted-foreground" />
             </div>
-            <h3 className="text-2xl font-bold mb-3">No past workshops yet</h3>
+            <h3 className="text-2xl font-bold mb-3">No memories published yet</h3>
             <p className="text-muted-foreground mb-8">
-              Looks like we haven't archived any workshops yet. Check back here after our upcoming events!
+              Looks like we haven't published any memories yet. Check back here after upcoming events.
             </p>
             <Button onClick={() => setCurrentPage('explore')} size="lg" className="rounded-full">
               Explore upcoming workshops

@@ -51,6 +51,7 @@ const PAGE_TO_PATH: Record<string, string> = {
   create: "/create",
   dashboard: "/dashboard",
   memory: "/memory",
+  adminMemory: "/admin/memory",
   feedback: "/feedback",
   notifications: "/notifications",
   adminReview: "/admin/workshops",
@@ -65,6 +66,7 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/create": "create",
   "/dashboard": "dashboard",
   "/memory": "memory",
+  "/admin/memory": "adminMemory",
   "/feedback": "feedback",
   "/notifications": "notifications",
   "/admin/workshops": "adminReview",
@@ -85,6 +87,10 @@ const pageFromPath = (pathname: string) => {
     const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
     return workshopId ? `workshop-${workshopId}` : "home";
   }
+  if (normalizedPath.startsWith("/memory/")) {
+    const slug = decodeURIComponent(normalizedPath.slice("/memory/".length));
+    return slug ? `memory-entry-${slug}` : "memory";
+  }
   return PATH_TO_PAGE[normalizedPath] || "home";
 };
 
@@ -92,6 +98,10 @@ const pathFromPage = (page: string) => {
   if (page.startsWith("workshop-")) {
     const workshopId = page.slice("workshop-".length);
     return `/workshops/${encodeURIComponent(workshopId)}`;
+  }
+  if (page.startsWith("memory-entry-")) {
+    const slug = page.slice("memory-entry-".length);
+    return `/memory/${encodeURIComponent(slug)}`;
   }
   return PAGE_TO_PATH[page] || "/home";
 };

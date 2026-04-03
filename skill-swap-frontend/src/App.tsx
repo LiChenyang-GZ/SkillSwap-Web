@@ -11,7 +11,9 @@ const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => 
 const CreateWorkshop = React.lazy(() => import('./components/CreateWorkshop').then((m) => ({ default: m.CreateWorkshop })));
 const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
 const WorkshopDetails = React.lazy(() => import('./components/WorkshopDetails').then((m) => ({ default: m.WorkshopDetails })));
+const MemoryDetail = React.lazy(() => import('./components/MemoryDetail.tsx').then((m) => ({ default: m.MemoryDetail })));
 const AdminReview = React.lazy(() => import('./components/AdminReview').then((m) => ({ default: m.AdminReview })));
+const MemoryStudio = React.lazy(() => import('./components/MemoryStudio.tsx').then((m) => ({ default: m.MemoryStudio })));
 const Notifications = React.lazy(() => import('./components/Notifications').then((m) => ({ default: m.Notifications })));
 
 function AppContent() {
@@ -41,10 +43,7 @@ function AppContent() {
       return;
     }
 
-    // Memory 需要加载完全数据以展示所有的旧历史工作坊
-    if (currentPage === 'memory') {
-      void refreshData('full');
-    }
+    // Memory 页面使用独立的 memory API，不依赖 workshop 列表。
   }, [currentPage, refreshData]);
 
   if (isLoading) {
@@ -68,6 +67,11 @@ function AppContent() {
       return <WorkshopDetails workshopId={workshopId} />;
     }
 
+    if (currentPage.startsWith('memory-entry-')) {
+      const slug = currentPage.substring('memory-entry-'.length);
+      return <MemoryDetail slug={slug} />;
+    }
+
     switch (currentPage) {
       case 'hero':
         return <HeroPage />;
@@ -89,6 +93,8 @@ function AppContent() {
         return <Memory />;
       case 'adminReview':
         return <AdminReview />;
+      case 'adminMemory':
+        return <MemoryStudio />;
       case 'notifications':
         return <Notifications />;
       case 'feedback':

@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Bell,
   ShieldCheck,
+  PenSquare,
   Moon,
   Sun,
   Menu,
@@ -138,6 +139,12 @@ export function Navigation() {
                     <DropdownMenuItem onClick={() => setCurrentPage('adminReview')}>
                       <ShieldCheck className="w-4 h-4" />
                       Admin Review
+                    </DropdownMenuItem>
+                  )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => setCurrentPage('adminMemory')}>
+                      <PenSquare className="w-4 h-4" />
+                      Memory Studio
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
@@ -269,6 +276,20 @@ export function Navigation() {
                       >
                         <ShieldCheck className="w-4 h-4" />
                         <span>Admin Review</span>
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCurrentPage('adminMemory');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full justify-start flex items-center space-x-3"
+                      >
+                        <PenSquare className="w-4 h-4" />
+                        <span>Memory Studio</span>
                       </Button>
                     )}
                   </>
