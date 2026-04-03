@@ -41,9 +41,9 @@ function AppContent() {
       return;
     }
 
-    // Memory 只需公开归档数据，避免额外 mine 请求。
+    // Memory 需要加载完全数据以展示所有的旧历史工作坊
     if (currentPage === 'memory') {
-      void refreshData('public');
+      void refreshData('full');
     }
   }, [currentPage, refreshData]);
 

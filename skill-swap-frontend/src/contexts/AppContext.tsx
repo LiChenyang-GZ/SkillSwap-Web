@@ -563,9 +563,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (page === "home" || page === "explore") {
       return "public";
     }
-    if (page === "memory") {
-      return "public";
-    }
     if (page === "dashboard" || page === "create") {
       return "mine";
     }
