@@ -6,8 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import {
+  ArchiveRestore,
   Bold,
   Eye,
+  EyeOff,
   FilePenLine,
   Heading1,
   Heading2,
@@ -17,11 +26,15 @@ import {
   List,
   ListOrdered,
   Minus,
+  MoreHorizontal,
   Plus,
   Quote,
   RefreshCw,
+  Save,
+  Send,
   Split,
   Strikethrough,
+  Trash2,
   Underline,
   Upload,
 } from 'lucide-react';
@@ -47,6 +60,8 @@ cover:
 
 Write your memory story here...
 `;
+
+const ENTRY_PAGE_SIZE = 10;
 
 function slugify(input: string): string {
   return input
@@ -144,6 +159,11 @@ function parseMemoryDocument(documentText: string): ParsedMemoryDocument {
   };
 }
 
+function toStatusLabel(status: MemoryEntry['status']): string {
+  if (status === 'archived') return 'hidden';
+  return status;
+}
+
 export function MemoryStudio() {
   const { sessionToken, isAdmin, setCurrentPage } = useApp();
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
@@ -154,6 +174,7 @@ export function MemoryStudio() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [entryPage, setEntryPage] = useState(1);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -164,6 +185,25 @@ export function MemoryStudio() {
 
   const parsedDoc = useMemo(() => parseMemoryDocument(documentText), [documentText]);
   const resolvedSlugPreview = useMemo(() => slugify(parsedDoc.title), [parsedDoc.title]);
+  const activeStatus: MemoryEntry['status'] = selectedEntry?.status || 'draft';
+  const isReadOnlyEntry = Boolean(selectedEntry && activeStatus !== 'draft');
+  const editorActionsDisabled = isSaving || isUploadingImage || isReadOnlyEntry;
+  const baseDocumentText = useMemo(
+    () => (selectedEntry ? buildDocumentFromEntry(selectedEntry) : EMPTY_DOC),
+    [selectedEntry]
+  );
+  const isDraftContext = !selectedEntry || activeStatus === 'draft';
+  const hasUnsavedDraftChanges = isDraftContext && documentText !== baseDocumentText;
+
+  const totalEntryPages = useMemo(
+    () => Math.max(1, Math.ceil(entries.length / ENTRY_PAGE_SIZE)),
+    [entries.length]
+  );
+
+  const pagedEntries = useMemo(() => {
+    const start = (entryPage - 1) * ENTRY_PAGE_SIZE;
+    return entries.slice(start, start + ENTRY_PAGE_SIZE);
+  }, [entries, entryPage]);
 
   const loadEntries = async () => {
     if (!sessionToken) return;
@@ -171,6 +211,7 @@ export function MemoryStudio() {
     try {
       const data = await memoryAPI.getAllForAdmin(sessionToken);
       setEntries(data);
+      setEntryPage(1);
 
       if (!selectedId && data.length > 0) {
         setSelectedId(data[0].id);
@@ -192,6 +233,25 @@ export function MemoryStudio() {
     setDocumentText(buildDocumentFromEntry(selectedEntry));
     setSelectedStatus(selectedEntry.status || 'draft');
   }, [selectedEntry]);
+
+  useEffect(() => {
+    if (entryPage > totalEntryPages) {
+      setEntryPage(totalEntryPages);
+    }
+  }, [entryPage, totalEntryPages]);
+
+  useEffect(() => {
+    if (entries.length === 0) {
+      if (selectedId !== null) {
+        setSelectedId(null);
+      }
+      return;
+    }
+
+    if (!selectedId || !entries.some((entry) => entry.id === selectedId)) {
+      setSelectedId(entries[0].id);
+    }
+  }, [entries, selectedId]);
 
   const handleCreateNew = () => {
     setSelectedId(null);
@@ -355,6 +415,50 @@ export function MemoryStudio() {
     }
   };
 
+  const handleDeleteEntry = async (entry: MemoryEntry) => {
+    if (!sessionToken) {
+      toast.error('Please sign in.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete memory \"${entry.title}\"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    setIsSaving(true);
+    try {
+      await memoryAPI.deleteByAdmin(entry.id, sessionToken);
+      setEntries((prev) => prev.filter((item) => item.id !== entry.id));
+      toast.success('Deleted.');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete memory.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleStatusForEntry = async (entry: MemoryEntry, nextStatus: MemoryEntry['status']) => {
+    if (!sessionToken) {
+      toast.error('Please sign in.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const updated = await memoryAPI.updateByAdmin(entry.id, { status: nextStatus }, sessionToken);
+      setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      if (selectedId === entry.id) {
+        setSelectedStatus(updated.status || nextStatus);
+      }
+      toast.success(`Memory ${toStatusLabel(updated.status || nextStatus)}.`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to update memory status.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center px-4">
@@ -374,40 +478,22 @@ export function MemoryStudio() {
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Memory Studio</h1>
-            <p className="text-muted-foreground mt-1">Markdown editor with backend-generated slug and explicit publish workflow.</p>
-          </div>
-          <div className="flex gap-2 flex-wrap justify-end">
-            <Button variant="outline" onClick={() => void loadEntries()} disabled={isLoading}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
-            <Button variant="outline" onClick={handleCreateNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create New
-            </Button>
-            <Button
-              variant={selectedStatus === 'draft' ? 'default' : 'outline'}
-              onClick={() => {
-                setSelectedStatus('draft');
-                void handleSave('draft');
-              }}
-              disabled={isSaving || isUploadingImage}
-            >
-              Save Draft
-            </Button>
-            <Button
-              variant={selectedStatus === 'published' ? 'default' : 'outline'}
-              onClick={() => {
-                setSelectedStatus('published');
-                void handleSave('published');
-              }}
-              disabled={isSaving || isUploadingImage}
-            >
-              Publish
-            </Button>
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h1 className="text-3xl font-bold">Memory Studio</h1>
+              <p className="text-muted-foreground mt-1">Markdown editor with backend-generated slug and explicit publish workflow.</p>
+            </div>
+            <div className="flex gap-2 flex-wrap justify-end">
+              <Button variant="outline" onClick={() => void loadEntries()} disabled={isLoading}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+              <Button variant="outline" onClick={handleCreateNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create New
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -416,23 +502,124 @@ export function MemoryStudio() {
             <CardHeader>
               <CardTitle className="text-lg">Entries</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 max-h-[70vh] overflow-auto">
+            <CardContent className="space-y-3">
               {entries.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No memory entries yet.</p>
               ) : (
-                entries.map((entry) => (
-                  <button
+                pagedEntries.map((entry) => (
+                  <div
                     key={entry.id}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    className={`p-3 rounded-lg border transition-colors ${
                       entry.id === selectedId ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
                     }`}
-                    onClick={() => setSelectedId(entry.id)}
                   >
-                    <div className="font-medium line-clamp-1">{entry.title}</div>
-                    <div className="text-xs text-muted-foreground mt-1 line-clamp-1">/{entry.slug}</div>
-                    <Badge variant="secondary" className="mt-2">{entry.status}</Badge>
-                  </button>
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        className="text-left flex-1 min-w-0"
+                        onClick={() => setSelectedId(entry.id)}
+                      >
+                        <div className="font-medium line-clamp-1">{entry.title}</div>
+                      </button>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="secondary" className="capitalize">{toStatusLabel(entry.status)}</Badge>
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                              aria-label="More actions"
+                              onClick={() => setSelectedId(entry.id)}
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="bottom" align="end" sideOffset={8} className="w-48">
+                            {entry.status === 'draft' && (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  void handleStatusForEntry(entry, 'published');
+                                }}
+                                disabled={isSaving || isUploadingImage}
+                              >
+                                <Send className="w-4 h-4" />
+                                Publish
+                              </DropdownMenuItem>
+                            )}
+                            {entry.status === 'published' && (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  void handleStatusForEntry(entry, 'archived');
+                                }}
+                                disabled={isSaving || isUploadingImage}
+                              >
+                                <EyeOff className="w-4 h-4" />
+                                Hide (Archive)
+                              </DropdownMenuItem>
+                            )}
+                            {entry.status === 'published' && (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  void handleStatusForEntry(entry, 'draft');
+                                }}
+                                disabled={isSaving || isUploadingImage}
+                              >
+                                <ArchiveRestore className="w-4 h-4" />
+                                Move to Draft
+                              </DropdownMenuItem>
+                            )}
+                            {entry.status === 'archived' && (
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  void handleStatusForEntry(entry, 'draft');
+                                }}
+                                disabled={isSaving || isUploadingImage}
+                              >
+                                <ArchiveRestore className="w-4 h-4" />
+                                Move to Draft
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onSelect={() => {
+                                void handleDeleteEntry(entry);
+                              }}
+                              disabled={isSaving || isUploadingImage}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
                 ))
+              )}
+
+              {entries.length > ENTRY_PAGE_SIZE && (
+                <div className="pt-2 flex items-center justify-between gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEntryPage((prev) => Math.max(1, prev - 1))}
+                    disabled={entryPage <= 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Page {entryPage} / {totalEntryPages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setEntryPage((prev) => Math.min(totalEntryPages, prev + 1))}
+                    disabled={entryPage >= totalEntryPages}
+                  >
+                    Next
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -441,16 +628,46 @@ export function MemoryStudio() {
             <CardHeader>
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <CardTitle className="text-lg">Markdown Editor</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button variant={mode === 'write' ? 'default' : 'outline'} size="sm" onClick={() => setMode('write')}>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {isDraftContext && (
+                    <Button
+                      variant={hasUnsavedDraftChanges ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedStatus('draft');
+                        void handleSave('draft');
+                      }}
+                      disabled={isSaving || isUploadingImage || !hasUnsavedDraftChanges}
+                      className={hasUnsavedDraftChanges ? '' : 'bg-transparent'}
+                    >
+                      <Save className="w-4 h-4 mr-1" />
+                      Save Draft
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={mode === 'write' ? 'bg-muted text-foreground border-border' : ''}
+                    onClick={() => setMode('write')}
+                  >
                     <FilePenLine className="w-4 h-4 mr-1" />
                     Write
                   </Button>
-                  <Button variant={mode === 'preview' ? 'default' : 'outline'} size="sm" onClick={() => setMode('preview')}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={mode === 'preview' ? 'bg-muted text-foreground border-border' : ''}
+                    onClick={() => setMode('preview')}
+                  >
                     <Eye className="w-4 h-4 mr-1" />
                     Preview
                   </Button>
-                  <Button variant={mode === 'split' ? 'default' : 'outline'} size="sm" onClick={() => setMode('split')}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={mode === 'split' ? 'bg-muted text-foreground border-border' : ''}
+                    onClick={() => setMode('split')}
+                  >
                     <Split className="w-4 h-4 mr-1" />
                     Split
                   </Button>
@@ -458,28 +675,37 @@ export function MemoryStudio() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isReadOnlyEntry && (
+                <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+                  <p>
+                    This memory is <span className="font-medium">{toStatusLabel(activeStatus)}</span> and read-only.
+                    Move it to <span className="font-medium">draft</span> from the entry menu to continue editing content.
+                  </p>
+                </div>
+              )}
+
               <div className="rounded-md border border-border p-2 flex flex-wrap gap-2">
-                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('# ')}><Heading1 className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('## ')}><Heading2 className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('**', '**', 'bold')}><Bold className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('*', '*', 'italic')}><Italic className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('<u>', '</u>', 'underline')}><Underline className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('~~', '~~', 'strike')}><Strikethrough className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('> ')}><Quote className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('- ')}><List className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('1. ')}><ListOrdered className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('[', '](https://)', 'link text')}><Link2 className="w-4 h-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('![', '](https://)', 'alt text')}><Image className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('# ')} disabled={editorActionsDisabled}><Heading1 className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('## ')} disabled={editorActionsDisabled}><Heading2 className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('**', '**', 'bold')} disabled={editorActionsDisabled}><Bold className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('*', '*', 'italic')} disabled={editorActionsDisabled}><Italic className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('<u>', '</u>', 'underline')} disabled={editorActionsDisabled}><Underline className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('~~', '~~', 'strike')} disabled={editorActionsDisabled}><Strikethrough className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('> ')} disabled={editorActionsDisabled}><Quote className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('- ')} disabled={editorActionsDisabled}><List className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertLinePrefix('1. ')} disabled={editorActionsDisabled}><ListOrdered className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('[', '](https://)', 'link text')} disabled={editorActionsDisabled}><Link2 className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertAroundSelection('![', '](https://)', 'alt text')} disabled={editorActionsDisabled}><Image className="w-4 h-4" /></Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingImage}
+                  disabled={editorActionsDisabled}
                   title="Upload image"
                 >
                   <Upload className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => insertStandalone('\n\n---\n\n')}><Minus className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => insertStandalone('\n\n---\n\n')} disabled={editorActionsDisabled}><Minus className="w-4 h-4" /></Button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -497,7 +723,9 @@ title: Summer Showcase 2026
 cover: https://image-url
 ---`}
                 </pre>
-                <p className="mt-2">Save Draft and Publish both persist immediately. Slug is generated by backend.</p>
+                <p className="mt-2">Draft: editable and not visible on the public wall.</p>
+                <p className="mt-1">Published: visible on public wall and locked in studio. Hide it to remove from public wall.</p>
+                <p className="mt-1">Hidden (archived): not public and locked in studio. Move to draft to edit content again.</p>
                 <p className="mt-1">The editor supports direct image paste and auto-inserts Markdown image syntax after upload.</p>
               </div>
 
@@ -510,8 +738,9 @@ cover: https://image-url
                       value={documentText}
                       onChange={(e) => setDocumentText(e.target.value)}
                       onPaste={handleEditorPaste}
+                      readOnly={isReadOnlyEntry}
                       className="w-full min-h-[520px] rounded-md border border-input bg-input-background px-3 py-2 text-sm font-mono leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                      placeholder="Write markdown with front matter..."
+                      placeholder={isReadOnlyEntry ? 'This entry is read-only. Move it to draft to edit.' : 'Write markdown with front matter...'}
                     />
                   </div>
                 )}
@@ -544,7 +773,7 @@ cover: https://image-url
                 <span className="text-muted-foreground">Detected metadata:</span>
                 <Badge variant="secondary">title: {parsedDoc.title || 'N/A'}</Badge>
                 <Badge variant="secondary">slug: {resolvedSlugPreview || 'Auto by backend'}</Badge>
-                <Badge variant="secondary">status: {selectedStatus}</Badge>
+                <Badge variant="secondary">status: {toStatusLabel(activeStatus)}</Badge>
                 <Badge variant="secondary">media: {parsedDoc.mediaUrls.length}</Badge>
                 {isUploadingImage && <Badge variant="secondary">uploading image...</Badge>}
               </div>

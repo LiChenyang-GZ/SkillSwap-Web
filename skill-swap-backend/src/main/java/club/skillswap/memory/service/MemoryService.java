@@ -19,5 +19,7 @@ public interface MemoryService {
 
     MemoryEntryResponseDto updateMemory(Long id, MemoryEntryRequestDto requestDto, Authentication authentication);
 
+    void deleteMemory(Long id, Authentication authentication);
+
     String uploadMemoryMedia(MultipartFile file, Authentication authentication);
 }

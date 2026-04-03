@@ -654,6 +654,16 @@ export const memoryAPI = {
     return enrichMemory(data);
   },
 
+  deleteByAdmin: async (id: string, token?: string | null): Promise<void> => {
+    await apiCall<void>(
+      `/api/v1/admin/memories/${id}`,
+      {
+        method: 'DELETE',
+      },
+      token
+    );
+  },
+
   uploadMediaByAdmin: async (file: File, token?: string | null): Promise<{ url: string; path: string }> => {
     const formData = new FormData();
     formData.append('file', file);

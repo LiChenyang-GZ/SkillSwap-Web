@@ -107,6 +107,17 @@ public class MemoryServiceImpl implements MemoryService {
     }
 
     @Override
+    @Transactional
+    public void deleteMemory(Long id, Authentication authentication) {
+        requireAdmin(authentication);
+
+        MemoryEntry entry = memoryEntryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Memory not found with ID: " + id));
+
+        memoryEntryRepository.delete(entry);
+    }
+
+    @Override
     public String uploadMemoryMedia(MultipartFile file, Authentication authentication) {
         requireAdmin(authentication);
 
