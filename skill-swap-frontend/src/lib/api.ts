@@ -167,7 +167,16 @@ async function apiCall<T>(
     throw apiError;
   }
 
-  return response.json();
+  const raw = await response.text();
+  if (!raw) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return raw as T;
+  }
 }
 
 // ----------------------

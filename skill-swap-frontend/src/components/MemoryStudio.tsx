@@ -5,16 +5,6 @@ import { MemoryEntry } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import {
   DropdownMenu,
@@ -204,6 +194,7 @@ export function MemoryStudio() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [conflictDialog, setConflictDialog] = useState<ConflictDialogState | null>(null);
   const [deleteDialogEntry, setDeleteDialogEntry] = useState<MemoryEntry | null>(null);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [entryPage, setEntryPage] = useState(1);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -272,6 +263,7 @@ export function MemoryStudio() {
 
     if (serverEntries.length > 0) {
       skipNextSelectionSyncRef.current = true;
+      setIsCreatingNew(false);
       setEntries(serverEntries);
 
       if (entryId && serverEntries.some((item) => item.id === entryId)) {
@@ -292,6 +284,7 @@ export function MemoryStudio() {
     if (!conflictDialog) return;
 
     const { entryId, serverEntry, serverEntries } = conflictDialog;
+    setIsCreatingNew(false);
     setEntries(serverEntries);
 
     if (serverEntry) {
@@ -324,7 +317,7 @@ export function MemoryStudio() {
       setEntries(data);
       setEntryPage(1);
 
-      if (!selectedId && data.length > 0) {
+      if (!selectedId && data.length > 0 && !isCreatingNew) {
         setSelectedId(data[0].id);
       }
     } catch (error) {
@@ -366,11 +359,15 @@ export function MemoryStudio() {
     }
 
     if (!selectedId || !entries.some((entry) => entry.id === selectedId)) {
+      if (isCreatingNew) {
+        return;
+      }
       setSelectedId(entries[0].id);
     }
-  }, [entries, selectedId]);
+  }, [entries, selectedId, isCreatingNew]);
 
   const handleCreateNew = () => {
+    setIsCreatingNew(true);
     setSelectedId(null);
     setDocumentText(EMPTY_DOC);
     setSelectedStatus('draft');
@@ -516,12 +513,14 @@ export function MemoryStudio() {
       if (selectedId) {
         const updated = await memoryAPI.updateByAdmin(selectedId, payload, sessionToken);
         setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+        setIsCreatingNew(false);
         setSelectedStatus(updated.status || statusToPersist);
         toast.success('Saved.');
       } else {
         const created = await memoryAPI.createByAdmin(payload, sessionToken);
         setEntries((prev) => [created, ...prev]);
         setSelectedId(created.id);
+        setIsCreatingNew(false);
         setSelectedStatus(created.status || statusToPersist);
         toast.success('Saved.');
       }
@@ -649,7 +648,10 @@ export function MemoryStudio() {
                     <div className="flex items-center justify-between gap-2">
                       <button
                         className="text-left flex-1 min-w-0"
-                        onClick={() => setSelectedId(entry.id)}
+                        onClick={() => {
+                          setIsCreatingNew(false);
+                          setSelectedId(entry.id);
+                        }}
                       >
                         <div className="font-medium line-clamp-1">{entry.title}</div>
                       </button>
@@ -662,7 +664,10 @@ export function MemoryStudio() {
                               type="button"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                               aria-label="More actions"
-                              onClick={() => setSelectedId(entry.id)}
+                              onClick={() => {
+                                setIsCreatingNew(false);
+                                setSelectedId(entry.id);
+                              }}
                             >
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
@@ -957,7 +962,7 @@ export function MemoryStudio() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
+      <Dialog
         open={Boolean(deleteDialogEntry)}
         onOpenChange={(open) => {
           if (!open) {
@@ -965,16 +970,16 @@ export function MemoryStudio() {
           }
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Memory Entry</AlertDialogTitle>
-            <AlertDialogDescription>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Memory Entry</DialogTitle>
+            <DialogDescription>
               Delete memory "{deleteDialogEntry?.title || ''}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogEntry(null)} disabled={isSaving}>Cancel</Button>
+            <Button
               onClick={() => {
                 void handleDeleteEntry();
               }}
@@ -982,10 +987,10 @@ export function MemoryStudio() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isSaving ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
