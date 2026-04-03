@@ -99,6 +99,15 @@ public class MemoryServiceImpl implements MemoryService {
         MemoryEntry entry = memoryEntryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Memory not found with ID: " + id));
 
+        Long requestVersion = requestDto.version();
+        Long currentVersion = entry.getVersion();
+        if (requestVersion == null || currentVersion == null || !currentVersion.equals(requestVersion)) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "This memory was updated by another admin. Please refresh and try again."
+            );
+        }
+
         applyPayload(entry, requestDto, false);
         entry.setUpdatedBy(actor);
 
@@ -322,6 +331,7 @@ public class MemoryServiceImpl implements MemoryService {
 
         return new MemoryEntryResponseDto(
                 entry.getId() != null ? entry.getId().toString() : null,
+            entry.getVersion(),
                 entry.getTitle(),
                 entry.getSlug(),
                 entry.getCoverUrl(),

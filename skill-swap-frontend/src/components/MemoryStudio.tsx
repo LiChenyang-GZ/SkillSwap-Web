@@ -6,6 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,12 +54,21 @@ import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
 
 type EditorMode = 'write' | 'preview' | 'split';
+type ConflictAction = 'save' | 'status';
 
 interface ParsedMemoryDocument {
   body: string;
   title: string;
   coverUrl: string;
   mediaUrls: string[];
+}
+
+interface ConflictDialogState {
+  action: ConflictAction;
+  entryId: string | null;
+  myDocument: string;
+  serverEntry: MemoryEntry | null;
+  serverEntries: MemoryEntry[];
 }
 
 const EMPTY_DOC = `---
@@ -164,6 +184,14 @@ function toStatusLabel(status: MemoryEntry['status']): string {
   return status;
 }
 
+function getErrorStatus(error: unknown): number | null {
+  if (typeof error === 'object' && error !== null && 'status' in error) {
+    const status = Number((error as { status?: number }).status);
+    return Number.isFinite(status) ? status : null;
+  }
+  return null;
+}
+
 export function MemoryStudio() {
   const { sessionToken, isAdmin, setCurrentPage } = useApp();
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
@@ -174,9 +202,12 @@ export function MemoryStudio() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [conflictDialog, setConflictDialog] = useState<ConflictDialogState | null>(null);
+  const [deleteDialogEntry, setDeleteDialogEntry] = useState<MemoryEntry | null>(null);
   const [entryPage, setEntryPage] = useState(1);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const skipNextSelectionSyncRef = useRef(false);
 
   const selectedEntry = useMemo(
     () => entries.find((entry) => entry.id === selectedId) || null,
@@ -205,6 +236,86 @@ export function MemoryStudio() {
     return entries.slice(start, start + ENTRY_PAGE_SIZE);
   }, [entries, entryPage]);
 
+  const openConflictDialog = async (params: {
+    action: ConflictAction;
+    entryId: string | null;
+    myDocument: string;
+  }): Promise<boolean> => {
+    if (!sessionToken || !params.entryId) {
+      toast.error('Conflict detected. Please refresh and retry.');
+      return false;
+    }
+
+    try {
+      const latestEntries = await memoryAPI.getAllForAdmin(sessionToken);
+      const latestEntry = latestEntries.find((item) => item.id === params.entryId) || null;
+
+      setConflictDialog({
+        action: params.action,
+        entryId: params.entryId,
+        myDocument: params.myDocument,
+        serverEntry: latestEntry,
+        serverEntries: latestEntries,
+      });
+      return true;
+    } catch (error) {
+      console.error(error);
+      toast.error('Conflict detected, but failed to load the latest server version.');
+      return false;
+    }
+  };
+
+  const handleKeepMyChangesAfterConflict = () => {
+    if (!conflictDialog) return;
+
+    const { entryId, myDocument, serverEntries, serverEntry } = conflictDialog;
+
+    if (serverEntries.length > 0) {
+      skipNextSelectionSyncRef.current = true;
+      setEntries(serverEntries);
+
+      if (entryId && serverEntries.some((item) => item.id === entryId)) {
+        setSelectedId(entryId);
+        setSelectedStatus(serverEntry?.status || 'draft');
+      } else {
+        setSelectedId(serverEntries[0].id);
+        setSelectedStatus(serverEntries[0].status || 'draft');
+      }
+    }
+
+    setDocumentText(myDocument);
+    setConflictDialog(null);
+    toast.info('Kept your local edits. Server metadata has been refreshed.');
+  };
+
+  const handleReloadServerVersionAfterConflict = () => {
+    if (!conflictDialog) return;
+
+    const { entryId, serverEntry, serverEntries } = conflictDialog;
+    setEntries(serverEntries);
+
+    if (serverEntry) {
+      setSelectedId(serverEntry.id);
+      setSelectedStatus(serverEntry.status || 'draft');
+      setDocumentText(buildDocumentFromEntry(serverEntry));
+    } else if (serverEntries.length > 0) {
+      const fallback = entryId
+        ? serverEntries.find((item) => item.id === entryId) || serverEntries[0]
+        : serverEntries[0];
+
+      setSelectedId(fallback.id);
+      setSelectedStatus(fallback.status || 'draft');
+      setDocumentText(buildDocumentFromEntry(fallback));
+    } else {
+      setSelectedId(null);
+      setSelectedStatus('draft');
+      setDocumentText(EMPTY_DOC);
+    }
+
+    setConflictDialog(null);
+    toast.success('Reloaded latest server version.');
+  };
+
   const loadEntries = async () => {
     if (!sessionToken) return;
     setIsLoading(true);
@@ -230,6 +341,12 @@ export function MemoryStudio() {
 
   useEffect(() => {
     if (!selectedEntry) return;
+
+    if (skipNextSelectionSyncRef.current) {
+      skipNextSelectionSyncRef.current = false;
+      return;
+    }
+
     setDocumentText(buildDocumentFromEntry(selectedEntry));
     setSelectedStatus(selectedEntry.status || 'draft');
   }, [selectedEntry]);
@@ -387,6 +504,7 @@ export function MemoryStudio() {
     try {
       const statusToPersist = forcedStatus || selectedStatus;
       const payload: Partial<MemoryEntry> = {
+        version: selectedEntry?.version,
         title: parsedDoc.title,
         slug: undefined,
         coverUrl: parsedDoc.coverUrl || undefined,
@@ -409,25 +527,33 @@ export function MemoryStudio() {
       }
     } catch (error) {
       console.error(error);
+      if (getErrorStatus(error) === 409) {
+        await openConflictDialog({
+          action: 'save',
+          entryId: selectedId,
+          myDocument: documentText,
+        });
+        return;
+      }
       toast.error('Failed to save memory.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteEntry = async (entry: MemoryEntry) => {
+  const handleDeleteEntry = async () => {
+    if (!deleteDialogEntry) return;
+
     if (!sessionToken) {
       toast.error('Please sign in.');
       return;
     }
 
-    const confirmed = window.confirm(`Delete memory \"${entry.title}\"? This action cannot be undone.`);
-    if (!confirmed) return;
-
     setIsSaving(true);
     try {
-      await memoryAPI.deleteByAdmin(entry.id, sessionToken);
-      setEntries((prev) => prev.filter((item) => item.id !== entry.id));
+      await memoryAPI.deleteByAdmin(deleteDialogEntry.id, sessionToken);
+      setEntries((prev) => prev.filter((item) => item.id !== deleteDialogEntry.id));
+      setDeleteDialogEntry(null);
       toast.success('Deleted.');
     } catch (error) {
       console.error(error);
@@ -445,7 +571,7 @@ export function MemoryStudio() {
 
     setIsSaving(true);
     try {
-      const updated = await memoryAPI.updateByAdmin(entry.id, { status: nextStatus }, sessionToken);
+      const updated = await memoryAPI.updateByAdmin(entry.id, { status: nextStatus, version: entry.version }, sessionToken);
       setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       if (selectedId === entry.id) {
         setSelectedStatus(updated.status || nextStatus);
@@ -453,6 +579,14 @@ export function MemoryStudio() {
       toast.success(`Memory ${toStatusLabel(updated.status || nextStatus)}.`);
     } catch (error) {
       console.error(error);
+      if (getErrorStatus(error) === 409) {
+        await openConflictDialog({
+          action: 'status',
+          entryId: entry.id,
+          myDocument: documentText,
+        });
+        return;
+      }
       toast.error('Failed to update memory status.');
     } finally {
       setIsSaving(false);
@@ -482,7 +616,6 @@ export function MemoryStudio() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <h1 className="text-3xl font-bold">Memory Studio</h1>
-              <p className="text-muted-foreground mt-1">Markdown editor with backend-generated slug and explicit publish workflow.</p>
             </div>
             <div className="flex gap-2 flex-wrap justify-end">
               <Button variant="outline" onClick={() => void loadEntries()} disabled={isLoading}>
@@ -534,7 +667,7 @@ export function MemoryStudio() {
                               <MoreHorizontal className="w-4 h-4" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent side="bottom" align="end" sideOffset={8} className="w-48">
+                          <DropdownMenuContent side="bottom" align="start" alignOffset={-8} sideOffset={8} className="w-48">
                             {entry.status === 'draft' && (
                               <DropdownMenuItem
                                 onSelect={() => {
@@ -583,7 +716,7 @@ export function MemoryStudio() {
                             <DropdownMenuItem
                               variant="destructive"
                               onSelect={() => {
-                                void handleDeleteEntry(entry);
+                                setDeleteDialogEntry(entry);
                               }}
                               disabled={isSaving || isUploadingImage}
                             >
@@ -715,20 +848,6 @@ export function MemoryStudio() {
                 />
               </div>
 
-              <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-                Front matter example:
-                <pre className="mt-2 overflow-auto text-xs">
-{`---
-title: Summer Showcase 2026
-cover: https://image-url
----`}
-                </pre>
-                <p className="mt-2">Draft: editable and not visible on the public wall.</p>
-                <p className="mt-1">Published: visible on public wall and locked in studio. Hide it to remove from public wall.</p>
-                <p className="mt-1">Hidden (archived): not public and locked in studio. Move to draft to edit content again.</p>
-                <p className="mt-1">The editor supports direct image paste and auto-inserts Markdown image syntax after upload.</p>
-              </div>
-
               <div className={`grid gap-4 ${mode === 'split' ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
                 {(mode === 'write' || mode === 'split') && (
                   <div className="space-y-2">
@@ -789,6 +908,84 @@ cover: https://image-url
           </Card>
         </div>
       </div>
+
+      <Dialog
+        open={Boolean(conflictDialog)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConflictDialog(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>Conflict Detected</DialogTitle>
+            <DialogDescription>
+              Another admin changed this memory on the server. Compare both versions and choose how to proceed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">My Local Edits</p>
+              <pre className="max-h-[420px] overflow-auto rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 whitespace-pre-wrap break-words">
+                {conflictDialog?.myDocument || '*Empty*'}
+              </pre>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                Server Version
+                {conflictDialog?.action === 'status' ? ' (updated status by another admin)' : ''}
+              </p>
+              <pre className="max-h-[420px] overflow-auto rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 whitespace-pre-wrap break-words">
+                {conflictDialog?.serverEntry
+                  ? buildDocumentFromEntry(conflictDialog.serverEntry)
+                  : 'This entry no longer exists on the server.'}
+              </pre>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={handleKeepMyChangesAfterConflict}>
+              Keep My Changes
+            </Button>
+            <Button onClick={handleReloadServerVersionAfterConflict}>
+              Reload Server Version
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(deleteDialogEntry)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialogEntry(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Memory Entry</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete memory "{deleteDialogEntry?.title || ''}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                void handleDeleteEntry();
+              }}
+              disabled={isSaving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSaving ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
