@@ -50,7 +50,7 @@ const PAGE_TO_PATH: Record<string, string> = {
   explore: "/explore",
   create: "/create",
   dashboard: "/dashboard",
-  pastWorkshops: "/past-workshops",
+  memory: "/memory",
   feedback: "/feedback",
   notifications: "/notifications",
   adminReview: "/admin/workshops",
@@ -64,7 +64,7 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/explore": "explore",
   "/create": "create",
   "/dashboard": "dashboard",
-  "/past-workshops": "pastWorkshops",
+  "/memory": "memory",
   "/feedback": "feedback",
   "/notifications": "notifications",
   "/admin/workshops": "adminReview",
@@ -563,7 +563,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (page === "home" || page === "explore") {
       return "public";
     }
-    if (page === "pastWorkshops") {
+    if (page === "memory") {
       return "public";
     }
     if (page === "dashboard" || page === "create") {

@@ -6,7 +6,7 @@ import { Toaster } from './components/ui/sonner';
 const HeroPage = React.lazy(() => import('./components/Hero').then((m) => ({ default: m.HeroPage })));
 const HomePage = React.lazy(() => import('./components/HomePage').then((m) => ({ default: m.HomePage })));
 const ExploreWorkshops = React.lazy(() => import('./components/ExploreWorkshops').then((m) => ({ default: m.ExploreWorkshops })));
-const PastWorkshops = React.lazy(() => import('./components/PastWorkshops').then((m) => ({ default: m.PastWorkshops })));
+const Memory = React.lazy(() => import('./components/Memory').then((m) => ({ default: m.Memory })));
 const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
 const CreateWorkshop = React.lazy(() => import('./components/CreateWorkshop').then((m) => ({ default: m.CreateWorkshop })));
 const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
@@ -41,8 +41,8 @@ function AppContent() {
       return;
     }
 
-    // PastWorkshops 只需公开归档数据，避免额外 mine 请求。
-    if (currentPage === 'pastWorkshops') {
+    // Memory 只需公开归档数据，避免额外 mine 请求。
+    if (currentPage === 'memory') {
       void refreshData('public');
     }
   }, [currentPage, refreshData]);
@@ -85,8 +85,8 @@ function AppContent() {
         return <CreateWorkshop />;
       case 'auth':
         return <AuthPage />;
-      case 'pastWorkshops':
-        return <PastWorkshops />;
+      case 'memory':
+        return <Memory />;
       case 'adminReview':
         return <AdminReview />;
       case 'notifications':
