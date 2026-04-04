@@ -32,13 +32,21 @@ function AppContent() {
   }, [isDarkMode]);
 
   React.useEffect(() => {
-    if (lastAutoRefreshPageRef.current === currentPage) {
+    const previousPage = lastAutoRefreshPageRef.current;
+    if (previousPage === currentPage) {
       return;
     }
     lastAutoRefreshPageRef.current = currentPage;
 
+    const isPublicPage = currentPage === 'home' || currentPage === 'explore';
+    const wasPublicPage = previousPage === 'home' || previousPage === 'explore';
+
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
-    if (currentPage === 'home' || currentPage === 'explore') {
+    if (isPublicPage) {
+      // Home 与 Explore 共享同一批 public 数据，互相切换时不重复请求。
+      if (wasPublicPage) {
+        return;
+      }
       void refreshData('public');
       return;
     }

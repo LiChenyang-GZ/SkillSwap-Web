@@ -14,9 +14,10 @@ import {
   Moon,
   Sun,
   Menu,
-  X
+  X,
+  Plus
 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +48,21 @@ export function Navigation() {
   } = useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const fullNavItems = navItems;
+
+  const preloadCreateWorkshopPage = useCallback(() => {
+    void import('./create-workshop/CreateWorkshopPage');
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = window.setTimeout(() => {
+      preloadCreateWorkshopPage();
+    }, 1200);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [isAuthenticated, preloadCreateWorkshopPage]);
 
   return (
     <>
@@ -125,8 +141,12 @@ export function Navigation() {
                     <LayoutDashboard className="w-4 h-4" />
                     Dashboard
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setCurrentPage('create')}>
-                    <Target className="w-4 h-4" />
+                  <DropdownMenuItem
+                    onMouseEnter={preloadCreateWorkshopPage}
+                    onFocus={preloadCreateWorkshopPage}
+                    onClick={() => setCurrentPage('create')}
+                  >
+                    <Plus className="w-4 h-4" />
                     Host a Workshop
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setCurrentPage('notifications')}>
@@ -254,6 +274,7 @@ export function Navigation() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
+                        preloadCreateWorkshopPage();
                         setCurrentPage('create');
                         setIsMobileMenuOpen(false);
                       }}
