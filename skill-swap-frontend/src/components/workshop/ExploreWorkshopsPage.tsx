@@ -3,7 +3,6 @@ import { useApp } from '../../contexts/AppContext';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
@@ -116,13 +115,6 @@ export function ExploreWorkshops() {
                           {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                         </Badge>
                       </div>
-                      {/* 积分系统已停用：隐藏 workshop 积分价格。 */}
-                      {/*
-                      <Badge variant="outline" className="text-primary">
-                        <CreditCard className="w-3 h-3 mr-1" />
-                        {workshop.creditCost}
-                      </Badge>
-                      */}
                       <Badge variant="outline">Open Access</Badge>
                     </div>
 
@@ -133,7 +125,7 @@ export function ExploreWorkshops() {
                     </p>
 
                     {/* Facilitator */}
-                    <div className="flex items-center space-x-3 mb-4">
+                    {/* <div className="flex items-center space-x-3 mb-4">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={workshop.facilitator?.avatarUrl} />
                         <AvatarFallback className="text-xs">
@@ -143,7 +135,7 @@ export function ExploreWorkshops() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{workshop.facilitator?.name}</p>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Workshop Details */}
                     <div className="space-y-2 mb-4 text-sm text-muted-foreground">
