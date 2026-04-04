@@ -1,40 +1,40 @@
 import { useState } from 'react';
-import { useApp } from '../contexts/AppContext';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { 
-  Search, 
-  Calendar, 
+import { useApp } from '../../contexts/AppContext';
+import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  Search,
+  Calendar,
   Clock,
   MapPin,
   Globe,
 } from 'lucide-react';
-import { categories } from '../lib/mock-data';
+import { categories } from '../../lib/mock-data';
+import {
+  getUserWorkshopStatusBadgeVariant,
+  getUserWorkshopStatusLabel,
+  isUserWorkshopUpcomingOrOngoing,
+} from './workshopStatusPublicApi';
 
 export function ExploreWorkshops() {
   const { workshops, user, attendWorkshop, setCurrentPage } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const isUpcoming = (status?: string) => {
-    const normalized = (status || '').toLowerCase();
-    return normalized === 'upcoming' || normalized === 'approved';
-  };
-
   // Filter workshops based on search and category
-  // Return only upcoming workshops
+  // Return only upcoming/ongoing workshops
   const filteredWorkshops = workshops.filter(workshop => {
     const matchesSearch = workshop.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          workshop.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          workshop.facilitator?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesCategory = selectedCategory === 'all' || workshop.category === selectedCategory;
-    
-    return matchesSearch && matchesCategory && isUpcoming(workshop.status);
+
+    return matchesSearch && matchesCategory && isUserWorkshopUpcomingOrOngoing(workshop);
   });
 
   const isUserAttending = (workshopId: string) => {
@@ -99,8 +99,8 @@ export function ExploreWorkshops() {
                   {/* Workshop Image */}
                   <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden">
                     {workshop.image && (
-                      <img 
-                        src={workshop.image} 
+                      <img
+                        src={workshop.image}
                         alt={workshop.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
@@ -110,7 +110,12 @@ export function ExploreWorkshops() {
                   <div className="p-6">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
-                      <Badge variant="secondary">{workshop.category}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{workshop.category}</Badge>
+                        <Badge variant={getUserWorkshopStatusBadgeVariant(workshop)}>
+                          {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
+                        </Badge>
+                      </div>
                       {/* 积分系统已停用：隐藏 workshop 积分价格。 */}
                       {/*
                       <Badge variant="outline" className="text-primary">
@@ -165,9 +170,9 @@ export function ExploreWorkshops() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="flex-1"
                         onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
                       >
@@ -178,7 +183,7 @@ export function ExploreWorkshops() {
                           Attending
                         </Badge>
                       ) : (
-                        <Button 
+                        <Button
                           size="sm"
                           onClick={() => attendWorkshop(workshop.id)}
                           className="shrink-0"
@@ -200,7 +205,7 @@ export function ExploreWorkshops() {
               <p className="text-muted-foreground mb-6">
                 Try adjusting your search terms or filters to find workshops.
               </p>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => {
                   setSearchQuery('');

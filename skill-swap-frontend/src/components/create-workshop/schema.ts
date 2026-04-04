@@ -63,15 +63,21 @@ export function normalizeAustralianContactNumber(value: string): string {
   return value.replace(/\D/g, '');
 }
 
-export function isCreateWorkshopFormSubmittable(values: CreateWorkshopFormValues): boolean {
+function hasText(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+export function isCreateWorkshopFormSubmittable(
+  values: Partial<CreateWorkshopFormValues> | undefined
+): boolean {
   return Boolean(
-    values.hostName.trim() &&
-      values.title.trim() &&
-      values.category.trim() &&
-      values.contactNumber.trim() &&
-      values.date.trim() &&
-      values.time.trim() &&
-      values.duration.trim() &&
-      values.detailsConfirmed
+    hasText(values?.hostName) &&
+      hasText(values?.title) &&
+      hasText(values?.category) &&
+      hasText(values?.contactNumber) &&
+      hasText(values?.date) &&
+      hasText(values?.time) &&
+      hasText(values?.duration) &&
+      values?.detailsConfirmed === true
   );
 }

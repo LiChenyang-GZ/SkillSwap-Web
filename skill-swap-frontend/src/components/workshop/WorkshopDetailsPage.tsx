@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useApp } from '../contexts/AppContext';
-import { workshopAPI } from '../lib/api';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { useApp } from '../../contexts/AppContext';
+import { workshopAPI } from '../../lib/api';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   Calendar,
   Clock,
@@ -12,7 +12,7 @@ import {
   Globe,
   ArrowLeft,
 } from 'lucide-react';
-import { Workshop } from '../types';
+import { Workshop } from '../../types';
 import { toast } from 'sonner';
 
 interface WorkshopDetailsProps {
@@ -53,7 +53,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
           upsertWorkshop(latest);
         }
       } catch (error) {
-        console.warn("Failed to refresh workshop details", error);
+        console.warn('Failed to refresh workshop details', error);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -104,14 +104,12 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const isFull = typeof workshop.maxParticipants === 'number'
     ? (workshop.currentParticipants ?? 0) >= workshop.maxParticipants
     : false;
-  const normalizedStatus = (workshop.status || "").toLowerCase();
-  const isCancelled = normalizedStatus === "cancelled";
-  const isPending = normalizedStatus === "pending";
-  const isRejected = normalizedStatus === "rejected";
+  const normalizedStatus = (workshop.status || '').toLowerCase();
+  const isCancelled = normalizedStatus === 'cancelled';
+  const isPending = normalizedStatus === 'pending';
+  const isRejected = normalizedStatus === 'rejected';
   const isHost = workshop.facilitator?.id === user?.id;
   const canViewRestricted = isAdmin || isHost;
-  // 积分系统已停用：不再根据余额限制报名。
-  // const hasEnoughCredits = user && user.creditBalance >= workshop.creditCost;
 
   if ((isPending || isRejected) && !canViewRestricted) {
     return (
@@ -147,23 +145,21 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
   const handleRequestApproval = async () => {
     if (!sessionToken) {
-      toast.error("Please sign in to request approval");
+      toast.error('Please sign in to request approval');
       return;
     }
     try {
       await workshopAPI.requestApproval(workshopId, sessionToken);
-      toast.success("Approval request sent to admins");
+      toast.success('Approval request sent to admins');
     } catch (error) {
-      console.error("Failed to request approval", error);
-      toast.error("Failed to send approval request");
+      console.error('Failed to request approval', error);
+      toast.error('Failed to send approval request');
     }
   };
-
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
         <Button
           variant="ghost"
           size="sm"
@@ -186,13 +182,11 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               <h1 className="text-4xl font-bold leading-tight">{workshop.title}</h1>
             </div>
 
-            {/* About Section */}
             <div className="pb-8">
               <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">About</h2>
               <p className="text-base leading-relaxed text-foreground">{workshop.description}</p>
             </div>
 
-            {/* Materials Section */}
             {(workshop.materialsProvided || '').trim() && (
               <div className="pb-8">
                 <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Provided</h2>
@@ -200,7 +194,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               </div>
             )}
 
-            {/* Club Materials Section */}
             {(workshop.materialsNeededFromClub || '').trim() && (
               <div className="pb-8">
                 <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Needed From Club</h2>
@@ -248,7 +241,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="mt-6">
               <div className="flex gap-4">
                 <div className="flex-1">
@@ -267,7 +259,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                       disabled={!isHost}
                       className="w-full"
                     >
-                      {isHost ? "Request Approval" : "Pending Approval"}
+                      {isHost ? 'Request Approval' : 'Pending Approval'}
                     </Button>
                   ) : isUserAttending ? (
                     <Button variant="outline" onClick={handleCancel} className="w-full">
@@ -292,18 +284,14 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
             </div>
           </div>
 
-          {/* Right sidebar: key info & tags (below image) */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
-              {/* Key Info Card */}
               <div className="bg-muted rounded-lg p-6 space-y-6">
-                {/* Access */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Access</p>
                   <span className="text-lg font-semibold">Open to all members</span>
                 </div>
 
-                {/* Date */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Date</p>
                   <div className="flex items-center space-x-2">
@@ -318,7 +306,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                   </div>
                 </div>
 
-                {/* Time */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Time</p>
                   <div className="flex items-center space-x-2">
@@ -341,7 +328,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                   </div>
                 )}
 
-                {/* Location */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Location</p>
                   <div className="flex items-start space-x-2">

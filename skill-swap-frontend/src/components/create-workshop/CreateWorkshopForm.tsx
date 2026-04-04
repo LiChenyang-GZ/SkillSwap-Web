@@ -1,6 +1,4 @@
-import { useRef } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useRef, useState, type FormEvent } from 'react';
 import { categories } from '../../lib/mock-data';
 import { useApp } from '../../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -21,35 +19,74 @@ import {
 } from './schema';
 import { useCreateWorkshopSubmit } from './useCreateWorkshopSubmit';
 
+type CreateWorkshopFieldErrors = Partial<Record<CreateWorkshopFormField, string>>;
+
+const validationFieldOrder: CreateWorkshopFormField[] = [
+  'hostName',
+  'title',
+  'category',
+  'contactNumber',
+  'date',
+  'time',
+  'duration',
+  'maxParticipants',
+  'detailsConfirmed',
+];
+
+function validateCreateWorkshopValues(values: CreateWorkshopFormValues): {
+  isValid: boolean;
+  fieldErrors: CreateWorkshopFieldErrors;
+  formError: string | null;
+  firstInvalidField: CreateWorkshopFormField | null;
+} {
+  const parsed = createWorkshopFormSchema.safeParse(values);
+  if (parsed.success) {
+    return {
+      isValid: true,
+      fieldErrors: {},
+      formError: null,
+      firstInvalidField: null,
+    };
+  }
+
+  const fieldErrors: CreateWorkshopFieldErrors = {};
+  for (const issue of parsed.error.issues) {
+    const fieldName = issue.path[0];
+    if (typeof fieldName !== 'string') continue;
+
+    const field = fieldName as CreateWorkshopFormField;
+    if (!fieldErrors[field]) {
+      fieldErrors[field] = issue.message;
+    }
+  }
+
+  const firstInvalidField = validationFieldOrder.find((field) => Boolean(fieldErrors[field])) ?? null;
+  return {
+    isValid: false,
+    fieldErrors,
+    formError: 'Please review the highlighted fields before submitting.',
+    firstInvalidField,
+  };
+}
+
 export function CreateWorkshopForm() {
   const { user, setCurrentPage } = useApp();
+  const [values, setValues] = useState<CreateWorkshopFormValues>(defaultCreateWorkshopFormValues);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);
   const { isSubmitting, submit } = useCreateWorkshopSubmit();
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, submitCount },
-  } = useForm<CreateWorkshopFormValues>({
-    resolver: zodResolver(createWorkshopFormSchema),
-    defaultValues: defaultCreateWorkshopFormValues,
-    mode: 'onChange',
-    reValidateMode: 'onChange',
-    shouldFocusError: false,
-  });
 
-  const values = watch();
-  const hasSubmitted = submitCount > 0;
+  const validationResult = validateCreateWorkshopValues(values);
   const canSubmit = isCreateWorkshopFormSubmittable(values);
-  const error = hasSubmitted && Object.keys(errors).length > 0
-    ? 'Please review the highlighted fields before submitting.'
-    : null;
+  const fieldErrors: CreateWorkshopFieldErrors = hasSubmitted ? validationResult.fieldErrors : {};
+  const error = hasSubmitted ? validationResult.formError : null;
+
+  const setField = (field: CreateWorkshopFormField, value: string | boolean) => {
+    setValues((prev) => ({ ...prev, [field]: value }));
+  };
 
   const getFieldError = (field: CreateWorkshopFormField): string | null => {
-    if (!hasSubmitted) return null;
-    const message = errors[field]?.message;
-    return typeof message === 'string' ? message : null;
+    return fieldErrors[field] ?? null;
   };
 
   const invalidClassName = 'border-destructive focus-visible:ring-destructive';
@@ -75,18 +112,6 @@ export function CreateWorkshopForm() {
     detailsConfirmed: 'detailsConfirmed',
   };
 
-  const validationFieldOrder: CreateWorkshopFormField[] = [
-    'hostName',
-    'title',
-    'category',
-    'contactNumber',
-    'date',
-    'time',
-    'duration',
-    'maxParticipants',
-    'detailsConfirmed',
-  ];
-
   const focusFirstInvalidField = (field: CreateWorkshopFormField | null) => {
     if (!field) return;
     requestAnimationFrame(() => {
@@ -98,20 +123,22 @@ export function CreateWorkshopForm() {
     });
   };
 
-  const handleValidSubmit = async (nextValues: CreateWorkshopFormValues) => {
-    await submit(nextValues);
-  };
+  const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const handleInvalidSubmit = () => {
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const firstInvalidField = validationFieldOrder.find((field) => Boolean(errors[field])) ?? null;
-    focusFirstInvalidField(firstInvalidField);
-  };
+    if (!validationResult.isValid) {
+      setHasSubmitted(true);
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      focusFirstInvalidField(validationResult.firstInvalidField);
+      return;
+    }
 
-  const formSubmitHandler = handleSubmit(handleValidSubmit, handleInvalidSubmit);
+    setHasSubmitted(false);
+    await submit(values);
+  };
 
   return (
-    <form ref={formRef} onSubmit={formSubmitHandler} className="space-y-6" autoComplete="off">
+    <form ref={formRef} onSubmit={handleFormSubmit} className="space-y-6" autoComplete="off">
       <input
         tabIndex={-1}
         aria-hidden="true"
@@ -143,7 +170,8 @@ export function CreateWorkshopForm() {
               <Input
                 id="hostName"
                 autoComplete="off"
-                {...register('hostName')}
+                value={values.hostName}
+                onChange={(event) => setField('hostName', event.target.value)}
                 aria-invalid={Boolean(getFieldError('hostName'))}
                 className={getFieldClassName('hostName')}
                 placeholder="Your display name for this workshop"
@@ -155,7 +183,8 @@ export function CreateWorkshopForm() {
               <Input
                 id="title"
                 autoComplete="off"
-                {...register('title')}
+                value={values.title}
+                onChange={(event) => setField('title', event.target.value)}
                 aria-invalid={Boolean(getFieldError('title'))}
                 className={getFieldClassName('title')}
                 placeholder="e.g., Acrylic Painting Basics"
@@ -166,9 +195,7 @@ export function CreateWorkshopForm() {
               <Label htmlFor="category">Category *</Label>
               <Select
                 value={values.category}
-                onValueChange={(next: string) => {
-                  setValue('category', next, { shouldDirty: true, shouldValidate: true });
-                }}
+                onValueChange={(next: string) => setField('category', next)}
                 modal={false}
               >
                 <SelectTrigger
@@ -193,7 +220,8 @@ export function CreateWorkshopForm() {
               <Input
                 id="contactNumber"
                 autoComplete="off"
-                {...register('contactNumber')}
+                value={values.contactNumber}
+                onChange={(event) => setField('contactNumber', event.target.value)}
                 aria-invalid={Boolean(getFieldError('contactNumber'))}
                 className={getFieldClassName('contactNumber')}
                 placeholder="e.g., 04XXXXXXXX"
@@ -206,7 +234,8 @@ export function CreateWorkshopForm() {
                 id="date"
                 type="date"
                 autoComplete="off"
-                {...register('date')}
+                value={values.date}
+                onChange={(event) => setField('date', event.target.value)}
                 aria-invalid={Boolean(getFieldError('date'))}
                 className={getFieldClassName('date')}
               />
@@ -218,7 +247,8 @@ export function CreateWorkshopForm() {
                 id="time"
                 type="time"
                 autoComplete="off"
-                {...register('time')}
+                value={values.time}
+                onChange={(event) => setField('time', event.target.value)}
                 aria-invalid={Boolean(getFieldError('time'))}
                 className={getFieldClassName('time')}
               />
@@ -231,7 +261,8 @@ export function CreateWorkshopForm() {
                 type="number"
                 min={1}
                 autoComplete="off"
-                {...register('duration')}
+                value={values.duration}
+                onChange={(event) => setField('duration', event.target.value)}
                 aria-invalid={Boolean(getFieldError('duration'))}
                 className={getFieldClassName('duration')}
                 placeholder="e.g., 60"
@@ -245,7 +276,8 @@ export function CreateWorkshopForm() {
                 type="number"
                 min={1}
                 autoComplete="off"
-                {...register('maxParticipants')}
+                value={values.maxParticipants}
+                onChange={(event) => setField('maxParticipants', event.target.value)}
                 aria-invalid={Boolean(getFieldError('maxParticipants'))}
                 className={getFieldClassName('maxParticipants')}
                 placeholder="e.g., 30"
@@ -259,12 +291,7 @@ export function CreateWorkshopForm() {
               <Globe className="w-4 h-4" />
               <span>{values.isOnline ? 'Online workshop' : 'In-person workshop (location confirmed by admin later)'}</span>
             </div>
-            <Switch
-              checked={values.isOnline}
-              onCheckedChange={(checked: boolean) => {
-                setValue('isOnline', checked, { shouldDirty: true, shouldValidate: true });
-              }}
-            />
+            <Switch checked={values.isOnline} onCheckedChange={(checked: boolean) => setField('isOnline', checked)} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -274,7 +301,8 @@ export function CreateWorkshopForm() {
                 id="materialsProvided"
                 rows={3}
                 autoComplete="off"
-                {...register('materialsProvided')}
+                value={values.materialsProvided}
+                onChange={(event) => setField('materialsProvided', event.target.value)}
                 className="mt-1"
                 placeholder="e.g., brushes, printed worksheet"
               />
@@ -285,7 +313,8 @@ export function CreateWorkshopForm() {
                 id="materialsNeededFromClub"
                 rows={3}
                 autoComplete="off"
-                {...register('materialsNeededFromClub')}
+                value={values.materialsNeededFromClub}
+                onChange={(event) => setField('materialsNeededFromClub', event.target.value)}
                 className="mt-1"
                 placeholder="e.g., projector, extra tables"
               />
@@ -299,7 +328,8 @@ export function CreateWorkshopForm() {
                 id="venueRequirements"
                 rows={3}
                 autoComplete="off"
-                {...register('venueRequirements')}
+                value={values.venueRequirements}
+                onChange={(event) => setField('venueRequirements', event.target.value)}
                 className="mt-1"
                 placeholder="e.g., room size, table setup"
               />
@@ -310,7 +340,8 @@ export function CreateWorkshopForm() {
                 id="otherImportantInfo"
                 rows={3}
                 autoComplete="off"
-                {...register('otherImportantInfo')}
+                value={values.otherImportantInfo}
+                onChange={(event) => setField('otherImportantInfo', event.target.value)}
                 className="mt-1"
               />
             </div>
@@ -334,9 +365,7 @@ export function CreateWorkshopForm() {
             <Checkbox
               id="detailsConfirmed"
               checked={values.detailsConfirmed}
-              onCheckedChange={(checked) => {
-                setValue('detailsConfirmed', checked === true, { shouldDirty: true, shouldValidate: true });
-              }}
+              onCheckedChange={(checked) => setField('detailsConfirmed', checked === true)}
             />
             <Label htmlFor="detailsConfirmed" className="leading-normal cursor-pointer">
               I confirm that the above details are accurate *

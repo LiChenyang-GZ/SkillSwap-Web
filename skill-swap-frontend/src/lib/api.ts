@@ -2,7 +2,12 @@
 
 import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
-import { mockUser, mockUsers, mockTransactions } from './mock-data';
+// Legacy in-memory fallback data used by development-only helper APIs.
+import {
+  mockUser as legacyMockUser,
+  mockUsers as legacyMockUsers,
+  mockTransactions as legacyMockTransactions,
+} from './mock-data';
 
 export interface WorkshopUpsertPayload {
   hostName: string;
@@ -314,7 +319,7 @@ export const authAPI = {
 
   // Mock sign-in (just return the first mock user)
   signInMock: async () => {
-    return mockUsers[0]; // ✅ always use the first mock user
+    return legacyMockUsers[0]; // ✅ always use the first mock user
   },
 
   // Mock sign-up (local only, creates a fake user object)
@@ -332,7 +337,7 @@ export const authAPI = {
       rating: 0,
       createdAt: new Date().toISOString(),
     };
-    mockUsers.push(newUser); // add to in-memory list
+    legacyMockUsers.push(newUser); // add to in-memory list
     return newUser;
   },
 
@@ -366,7 +371,7 @@ export const authAPI = {
     if (data.session?.user) {
       return data.session.user;
     }
-    return mockUsers[0]; // fallback mock user
+    return legacyMockUsers[0]; // fallback mock user
   },
 };
 
@@ -377,7 +382,7 @@ export const userAPI = {
   // 获取当前用户 profile（需要认证）
   getProfile: async (): Promise<User> => {
     // TODO: 当后端 /api/v1/users/me 实现后，改为真实调用
-    return mockUser;
+    return legacyMockUser;
   },
 
   // 根据 ID 获取用户
@@ -387,14 +392,14 @@ export const userAPI = {
       return data;
     } catch (error) {
       console.warn("⚠️ Backend unavailable, using mock data");
-      return mockUsers.find((u) => u.id === id) || null;
+      return legacyMockUsers.find((u) => u.id === id) || null;
     }
   },
 
   // Update profile locally
   updateProfile: async (updates: Partial<User>): Promise<User> => {
-    Object.assign(mockUser, updates);
-    return { ...mockUser };
+    Object.assign(legacyMockUser, updates);
+    return { ...legacyMockUser };
   },
 };
 
@@ -617,7 +622,7 @@ export const workshopAPI = {
 // TRANSACTION API
 // ----------------------
 export const transactionAPI = {
-  getAll: async () => mockTransactions,
+  getAll: async () => legacyMockTransactions,
 
   add: async (tx: any) => {
     const newTx = {
@@ -625,7 +630,7 @@ export const transactionAPI = {
       timestamp: new Date().toISOString(),
       ...tx,
     };
-    mockTransactions.push(newTx);
+    legacyMockTransactions.push(newTx);
     return newTx;
   },
 };
