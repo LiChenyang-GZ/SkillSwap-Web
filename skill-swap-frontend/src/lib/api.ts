@@ -4,6 +4,25 @@ import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
 import { mockUser, mockUsers, mockTransactions } from './mock-data';
 
+export interface WorkshopUpsertPayload {
+  hostName: string;
+  title: string;
+  description?: string;
+  category: string;
+  duration: number;
+  maxParticipants?: number | null;
+  date: string;
+  time: string;
+  isOnline: boolean;
+  location?: string;
+  contactNumber: string;
+  materialsProvided?: string;
+  materialsNeededFromClub?: string;
+  venueRequirements?: string;
+  otherImportantInfo?: string;
+  detailsConfirmed: boolean;
+}
+
 // Backend API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -70,8 +89,9 @@ function enrichWorkshop(workshop: any): Workshop {
 
   return {
     id: String(workshop.id),
+    hostName: workshop.hostName,
     title: workshop.title,
-    description: workshop.description,
+    description: workshop.description || '',
     category: workshop.category,
     skillLevel: workshop.skillLevel,
     status: normalizedStatus as Workshop['status'],
@@ -79,11 +99,19 @@ function enrichWorkshop(workshop: any): Workshop {
     time: workshop.time,
     duration: workshop.duration,
     isOnline: workshop.isOnline,
-    location: workshop.location || workshop.locations || [],
+    location: workshop.location || workshop.locations || '',
     maxParticipants: workshop.maxParticipants,
     currentParticipants: workshop.currentParticipants ?? (participants?.length ?? 0),
     creditCost: workshop.creditCost,
     creditReward: workshop.creditReward,
+    contactNumber: workshop.contactNumber,
+    materialsProvided: workshop.materialsProvided,
+    materialsNeededFromClub: workshop.materialsNeededFromClub,
+    venueRequirements: workshop.venueRequirements,
+    otherImportantInfo: workshop.otherImportantInfo,
+    detailsConfirmed: workshop.detailsConfirmed,
+    submitterUsername: workshop.submitterUsername,
+    submitterEmail: workshop.submitterEmail,
     facilitator,
     tags: workshop.tags,
     image: workshop.image || getDefaultImage(workshop.category),
@@ -435,7 +463,7 @@ export const workshopAPI = {
   },
 
   // 创建工作坊（后端仅返回 success message）
-  create: async (workshopData: Partial<Workshop>, token: string): Promise<void> => {
+  create: async (workshopData: WorkshopUpsertPayload, token: string): Promise<void> => {
     try {
       await apiCall<{ message: string }>(
         "/api/v1/workshops",
@@ -509,7 +537,7 @@ export const workshopAPI = {
   },
 
   // 管理员：编辑待审核工作坊
-  updatePendingByAdmin: async (workshopId: string, workshopData: Partial<Workshop>, token?: string | null): Promise<Workshop> => {
+  updatePendingByAdmin: async (workshopId: string, workshopData: WorkshopUpsertPayload, token?: string | null): Promise<Workshop> => {
     const backendId = toBackendWorkshopId(workshopId);
     const data = await apiCall<any>(
       `/api/v1/admin/workshops/${backendId}`,

@@ -49,25 +49,30 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         // 2. 灏?DTO 杞崲涓?Entity
         Workshop workshop = new Workshop();
+        workshop.setHostName(createRequestDto.hostName());
         workshop.setTitle(createRequestDto.title());
         workshop.setDescription(createRequestDto.description());
         workshop.setCategory(createRequestDto.category());
-        workshop.setSkillLevel(createRequestDto.skillLevel());
         workshop.setDuration(createRequestDto.duration());
         workshop.setDate(createRequestDto.date());
         workshop.setTime(createRequestDto.time());
         workshop.setIsOnline(createRequestDto.isOnline());
         workshop.setLocation(createRequestDto.location());
         workshop.setMaxParticipants(createRequestDto.maxParticipants());
+        workshop.setContactNumber(createRequestDto.contactNumber());
+        workshop.setMaterialsProvided(createRequestDto.materialsProvided());
+        workshop.setMaterialsNeededFromClub(createRequestDto.materialsNeededFromClub());
+        workshop.setVenueRequirements(createRequestDto.venueRequirements());
+        workshop.setOtherImportantInfo(createRequestDto.otherImportantInfo());
+        workshop.setDetailsConfirmed(Boolean.TRUE.equals(createRequestDto.detailsConfirmed()));
         // 积分系统已停用：创建 workshop 时不再使用请求中的积分配置。
         // workshop.setCreditCost(createRequestDto.creditCost());
         // workshop.setCreditReward(createRequestDto.creditReward());
         workshop.setCreditCost(0);
         workshop.setCreditReward(0);
-        workshop.setTags(createRequestDto.tags());
-        workshop.setMaterials(createRequestDto.materials());
-        workshop.setRequirements(createRequestDto.requirements());
         workshop.setFacilitator(facilitator);
+        workshop.setSubmitterUsername(facilitator.getUsername());
+        workshop.setSubmitterEmail(facilitator.getEmail());
         workshop.setStatus("pending");
         workshop.setReviewedBy(null);
         workshop.setReviewedAt(null);
@@ -96,14 +101,13 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop workshop = workshopRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + id));
         enforceWorkshopVisibility(workshop, authentication);
-        return mapToDto(workshop, isAdmin(authentication));
+        return mapToDtoForViewer(workshop, authentication);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<WorkshopResponseDto> getAllWorkshops() {
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
-        preloadCollections(workshops);
         return mapToDtoList(workshops);
     }
 
@@ -163,16 +167,19 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setTitle(updateRequestDto.title());
         workshop.setDescription(updateRequestDto.description());
         workshop.setCategory(updateRequestDto.category());
-        workshop.setSkillLevel(updateRequestDto.skillLevel());
         workshop.setDuration(updateRequestDto.duration());
         workshop.setDate(updateRequestDto.date());
         workshop.setTime(updateRequestDto.time());
         workshop.setIsOnline(updateRequestDto.isOnline());
         workshop.setLocation(updateRequestDto.location());
         workshop.setMaxParticipants(updateRequestDto.maxParticipants());
-        workshop.setTags(updateRequestDto.tags());
-        workshop.setMaterials(updateRequestDto.materials());
-        workshop.setRequirements(updateRequestDto.requirements());
+        workshop.setHostName(updateRequestDto.hostName());
+        workshop.setContactNumber(updateRequestDto.contactNumber());
+        workshop.setMaterialsProvided(updateRequestDto.materialsProvided());
+        workshop.setMaterialsNeededFromClub(updateRequestDto.materialsNeededFromClub());
+        workshop.setVenueRequirements(updateRequestDto.venueRequirements());
+        workshop.setOtherImportantInfo(updateRequestDto.otherImportantInfo());
+        workshop.setDetailsConfirmed(Boolean.TRUE.equals(updateRequestDto.detailsConfirmed()));
 
         Workshop saved = workshopRepository.save(workshop);
         notifyWorkshopAdminUpdate(saved);
@@ -283,16 +290,6 @@ public class WorkshopServiceImpl implements WorkshopService {
                 "Approval requested: " + workshop.getTitle(),
                 "The host requested approval for workshop (" + workshop.getTitle() + ")."
         );
-    }
-
-    private void preloadCollections(List<Workshop> workshops) {
-        // 瑙﹀彂鎳掑姞杞斤紙娣诲姞 null 妫€鏌ワ級
-        workshops.forEach(w -> {
-            if (w.getLocation() != null) w.getLocation().size();
-            if (w.getTags() != null) w.getTags().size();
-            if (w.getMaterials() != null) w.getMaterials().size();
-            if (w.getRequirements() != null) w.getRequirements().size();
-        });
     }
 
     private List<WorkshopResponseDto> mapToDtoList(List<Workshop> workshops) {
@@ -446,16 +443,16 @@ public class WorkshopServiceImpl implements WorkshopService {
             );
         }
 
-        java.util.Set<String> summaryLocation = Boolean.TRUE.equals(workshop.getIsOnline())
-            ? java.util.Set.of("Online")
-            : java.util.Set.of("In-person");
+        String summaryLocation = Boolean.TRUE.equals(workshop.getIsOnline())
+            ? "Online"
+            : (workshop.getLocation() == null || workshop.getLocation().isBlank() ? "To be confirmed" : workshop.getLocation());
 
         return new WorkshopResponseDto(
             workshop.getId().toString(),
+            workshop.getHostName(),
             workshop.getTitle(),
             workshop.getDescription(),
             workshop.getCategory(),
-            workshop.getSkillLevel(),
             resolveEffectiveStatus(workshop),
             workshop.getDate(),
             workshop.getTime(),
@@ -466,10 +463,15 @@ public class WorkshopServiceImpl implements WorkshopService {
             null,
             workshop.getCreditCost(),
             workshop.getCreditReward(),
+            null,
+            workshop.getMaterialsProvided(),
+            workshop.getMaterialsNeededFromClub(),
+            workshop.getVenueRequirements(),
+            workshop.getOtherImportantInfo(),
+            workshop.getDetailsConfirmed(),
+            workshop.getSubmitterUsername(),
+            null,
             facilitatorDto,
-            null,
-            null,
-            null,
             null,
             workshop.getCreatedAt()
         );
@@ -477,10 +479,14 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     // 绉佹湁杈呭姪鏂规硶锛岀敤浜庡皢 Entity 鏄犲皠鍒?DTO
     private WorkshopResponseDto mapToDto(Workshop workshop) {
-        return mapToDto(workshop, false);
+        return mapToDto(workshop, false, true);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, boolean includeParticipants) {
+        return mapToDto(workshop, includeParticipants, true);
+    }
+
+    private WorkshopResponseDto mapToDto(Workshop workshop, boolean includeParticipants, boolean includeSensitive) {
         if (includeParticipants) {
             List<WorkshopParticipantDto> participants = participantRepository.findByWorkshopIdWithUser(workshop.getId())
                 .stream()
@@ -490,19 +496,23 @@ public class WorkshopServiceImpl implements WorkshopService {
                     p.getUser().getAvatarUrl()
                 ))
                 .toList();
-            return mapToDto(workshop, participants, participants.size());
+            return mapToDto(workshop, participants, participants.size(), includeSensitive);
         }
 
         Integer participantCount = Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()));
-        return mapToDto(workshop, null, participantCount);
+        return mapToDto(workshop, null, participantCount, includeSensitive);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants) {
         Integer participantCount = participants == null ? null : participants.size();
-        return mapToDto(workshop, participants, participantCount);
+        return mapToDto(workshop, participants, participantCount, true);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants, Integer participantCount) {
+        return mapToDto(workshop, participants, participantCount, true);
+    }
+
+    private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants, Integer participantCount, boolean includeSensitive) {
         List<WorkshopParticipantDto> safeParticipants = participants == null ? null : participants;
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
@@ -515,34 +525,51 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         return new WorkshopResponseDto(
             workshop.getId().toString(),
+            workshop.getHostName(),
             workshop.getTitle(),
             workshop.getDescription(),
             workshop.getCategory(),
-            workshop.getSkillLevel(),
             resolveEffectiveStatus(workshop),
             workshop.getDate(),
             workshop.getTime(),
             workshop.getDuration(),
             workshop.getIsOnline(),
-            safeCopySet(workshop.getLocation()),
+            workshop.getLocation(),
             workshop.getMaxParticipants(),
             participantCount,
             workshop.getCreditCost(),
             workshop.getCreditReward(),
+            includeSensitive ? workshop.getContactNumber() : null,
+            workshop.getMaterialsProvided(),
+            workshop.getMaterialsNeededFromClub(),
+            workshop.getVenueRequirements(),
+            workshop.getOtherImportantInfo(),
+            workshop.getDetailsConfirmed(),
+            workshop.getSubmitterUsername(),
+            includeSensitive ? workshop.getSubmitterEmail() : null,
             facilitatorDto,
             safeParticipants,
-            safeCopySet(workshop.getTags()),
-            safeCopySet(workshop.getMaterials()),
-            safeCopySet(workshop.getRequirements()),
             workshop.getCreatedAt()
             );
     }
 
-    private <T> java.util.Set<T> safeCopySet(java.util.Set<T> source) {
-        if (source == null) {
-            return null;
+    private WorkshopResponseDto mapToDtoForViewer(Workshop workshop, Authentication authentication) {
+        boolean admin = isAdmin(authentication);
+        boolean includeSensitive = canViewSensitiveWorkshopInfo(workshop, authentication);
+        return mapToDto(workshop, admin, includeSensitive);
+    }
+
+    private boolean canViewSensitiveWorkshopInfo(Workshop workshop, Authentication authentication) {
+        if (isAdmin(authentication)) {
+            return true;
         }
-        return java.util.Set.copyOf(source);
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+
+        UUID requesterId = extractUserUuid(authentication);
+        UUID facilitatorId = workshop.getFacilitator() != null ? workshop.getFacilitator().getId() : null;
+        return requesterId != null && facilitatorId != null && facilitatorId.equals(requesterId);
     }
 
     private String resolveEffectiveStatus(Workshop workshop) {

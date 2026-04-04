@@ -23,20 +23,29 @@ export interface Facilitator {
 
 export interface Workshop {
   id: string;
+  hostName?: string;
   title: string;
   description: string;
   category: string;
-  skillLevel: 'Beginner' | 'Intermediate' | 'Advanced';
+  skillLevel?: 'Beginner' | 'Intermediate' | 'Advanced';
   status: 'pending' | 'approved' | 'rejected' | 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   date: string;
   time: string;
   duration?: number; // in minutes
   isOnline: boolean;
   location: string | string[];
-  maxParticipants: number;
+  maxParticipants?: number;
   currentParticipants?: number;
   creditCost: number;      // 参与者付出的积分
   creditReward: number;    // 讲师获得的积分
+  contactNumber?: string;
+  materialsProvided?: string;
+  materialsNeededFromClub?: string;
+  venueRequirements?: string;
+  otherImportantInfo?: string;
+  detailsConfirmed?: boolean;
+  submitterUsername?: string;
+  submitterEmail?: string;
   facilitator: Facilitator | null;
   tags?: string[];
   image?: string;

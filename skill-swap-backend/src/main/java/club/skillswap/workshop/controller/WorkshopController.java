@@ -4,6 +4,7 @@ import club.skillswap.common.dto.ApiMessageDto;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.service.WorkshopService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +27,7 @@ public class WorkshopController {
 
     @PostMapping
     public ResponseEntity<ApiMessageDto> createWorkshop(
-            @RequestBody WorkshopCreateRequestDto createRequestDto,
+            @Valid @RequestBody WorkshopCreateRequestDto createRequestDto,
             Authentication authentication,
             @RequestHeader(value = "X-Mock-User", required = false) String mockUserId) {
         // 鏀寔 dev 涓嬬殑 X-Mock-User 鐢ㄤ簬鏈湴娴嬭瘯

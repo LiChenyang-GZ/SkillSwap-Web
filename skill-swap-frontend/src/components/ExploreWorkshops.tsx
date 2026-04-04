@@ -13,22 +13,19 @@ import {
   MapPin,
   Globe,
 } from 'lucide-react';
-import { categories, skillLevels } from '../lib/mock-data';
+import { categories } from '../lib/mock-data';
 
 export function ExploreWorkshops() {
   const { workshops, user, attendWorkshop, setCurrentPage } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
 
   const isUpcoming = (status?: string) => {
     const normalized = (status || '').toLowerCase();
     return normalized === 'upcoming' || normalized === 'approved';
   };
 
-  // Filter workshops based on search and filters
-  // matchesSearch, matchesCategory, matchesSkillLevel, matchesLocation
+  // Filter workshops based on search and category
   // Return only upcoming workshops
   const filteredWorkshops = workshops.filter(workshop => {
     const matchesSearch = workshop.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -36,12 +33,8 @@ export function ExploreWorkshops() {
                          workshop.facilitator?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = selectedCategory === 'all' || workshop.category === selectedCategory;
-    const matchesSkillLevel = selectedSkillLevel === 'all' || workshop.skillLevel === selectedSkillLevel;
-    const matchesLocation = selectedLocation === 'all' || 
-                          (selectedLocation === 'online' && workshop.isOnline) ||
-                          (selectedLocation === 'in-person' && !workshop.isOnline);
     
-    return matchesSearch && matchesCategory && matchesSkillLevel && matchesLocation && isUpcoming(workshop.status);
+    return matchesSearch && matchesCategory && isUpcoming(workshop.status);
   });
 
   const isUserAttending = (workshopId: string) => {
@@ -62,7 +55,7 @@ export function ExploreWorkshops() {
 
         {/* Filters */}
         <div className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Search */}
             <div className="lg:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -87,30 +80,6 @@ export function ExploreWorkshops() {
               </SelectContent>
             </Select>
 
-            {/* Skill Level Filter */}
-            <Select value={selectedSkillLevel} onValueChange={setSelectedSkillLevel} modal={false}>
-              <SelectTrigger>
-                <SelectValue placeholder="Skill Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                {skillLevels.map(level => (
-                  <SelectItem key={level} value={level}>{level}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Location Filter */}
-            <Select value={selectedLocation} onValueChange={setSelectedLocation} modal={false}>
-              <SelectTrigger>
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="online">Online</SelectItem>
-                <SelectItem value="in-person">In-Person</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
@@ -236,8 +205,6 @@ export function ExploreWorkshops() {
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('all');
-                  setSelectedSkillLevel('all');
-                  setSelectedLocation('all');
                 }}
               >
                 Clear Filters

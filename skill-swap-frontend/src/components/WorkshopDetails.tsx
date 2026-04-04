@@ -100,7 +100,9 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   }
 
   const isUserAttending = workshop.participants?.some((p) => p.id === user?.id) || false;
-  const isFull = (workshop.currentParticipants ?? 0) >= workshop.maxParticipants;
+  const isFull = typeof workshop.maxParticipants === 'number'
+    ? (workshop.currentParticipants ?? 0) >= workshop.maxParticipants
+    : false;
   const normalizedStatus = (workshop.status || "").toLowerCase();
   const isCancelled = normalizedStatus === "cancelled";
   const isPending = normalizedStatus === "pending";
@@ -214,32 +216,18 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
             </div>
 
             {/* Materials Section */}
-            {(workshop.materials?.length ?? 0) > 0 && (
+            {(workshop.materialsProvided || '').trim() && (
               <div className="pb-8">
-                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">What to Bring</h2>
-                <ul className="space-y-2">
-                  {workshop.materials?.map((material, idx) => (
-                    <li key={idx} className="text-base text-foreground flex items-start">
-                      <span className="mr-3">•</span>
-                      <span>{material}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Provided</h2>
+                <p className="text-base leading-relaxed text-foreground">{workshop.materialsProvided}</p>
               </div>
             )}
 
-            {/* Requirements Section */}
-            {(workshop.requirements?.length ?? 0) > 0 && (
+            {/* Club Materials Section */}
+            {(workshop.materialsNeededFromClub || '').trim() && (
               <div className="pb-8">
-                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Requirements</h2>
-                <ul className="space-y-2">
-                  {workshop.requirements?.map((req, idx) => (
-                    <li key={idx} className="text-base text-foreground flex items-start">
-                      <span className="mr-3">•</span>
-                      <span>{req}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Needed From Club</h2>
+                <p className="text-base leading-relaxed text-foreground">{workshop.materialsNeededFromClub}</p>
               </div>
             )}
 
@@ -249,7 +237,11 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                 <div className="space-y-4">
                   <div className="flex items-center text-base">
                     <Users className="w-5 h-5 mr-2 text-muted-foreground" />
-                    <span>{workshop.currentParticipants ?? 0} of {workshop.maxParticipants} attending</span>
+                    <span>
+                      {workshop.currentParticipants ?? 0}
+                      {typeof workshop.maxParticipants === 'number' ? ` of ${workshop.maxParticipants}` : ''}
+                      {' '}attending
+                    </span>
                   </div>
 
                   {(workshop.participants?.length ?? 0) > 0 && (
@@ -328,12 +320,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
             <div className="sticky top-24 space-y-6">
               {/* Key Info Card */}
               <div className="bg-muted rounded-lg p-6 space-y-6">
-                {/* Skill Level */}
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Skill Level</p>
-                  <Badge variant="outline" className="text-base">{workshop.skillLevel}</Badge>
-                </div>
-
                 {/* Access */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Access</p>
@@ -363,7 +349,11 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                     <span className="text-base">{workshop.time}</span>
                   </div>
                   {workshop.duration && (
-                    <p className="text-xs text-muted-foreground mt-1">{workshop.duration} hours</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {workshop.duration >= 60 && workshop.duration % 60 === 0
+                        ? `${workshop.duration / 60} ${workshop.duration === 60 ? 'hour' : 'hours'}`
+                        : `${workshop.duration} mins`}
+                    </p>
                   )}
                 </div>
 
@@ -379,26 +369,16 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                     ) : (
                       <>
                         <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
-                        <span className="text-base">{workshop.location}</span>
+                        <span className="text-base">
+                          {typeof workshop.location === 'string' && workshop.location.trim()
+                            ? workshop.location
+                            : 'To be confirmed by admin'}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
               </div>
-
-              {/* Tags */}
-              {(workshop.tags?.length ?? 0) > 0 && (
-                <div className="pt-4">
-                  <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase">Tags</p>
-                  <div className="flex flex-wrap gap-2">
-                    {workshop.tags?.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

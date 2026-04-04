@@ -10,40 +10,48 @@ import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
+import { Checkbox } from './ui/checkbox';
 import { Calendar, Check, Clock, Globe, MapPin, RefreshCw, ShieldCheck, X } from 'lucide-react';
-import { categories, skillLevels } from '../lib/mock-data';
+import { categories } from '../lib/mock-data';
 import { toast } from 'sonner';
+import type { WorkshopUpsertPayload } from '../lib/api';
 
 interface WorkshopFormState {
+  hostName: string;
   title: string;
   description: string;
   category: string;
-  skillLevel: Workshop['skillLevel'] | '';
+  contactNumber: string;
   duration: string;
   maxParticipants: string;
   date: string;
   time: string;
   location: string;
   isOnline: boolean;
-  tags: string[];
-  materials: string[];
-  requirements: string[];
+  materialsProvided: string;
+  materialsNeededFromClub: string;
+  venueRequirements: string;
+  otherImportantInfo: string;
+  detailsConfirmed: boolean;
 }
 
 const emptyForm: WorkshopFormState = {
+  hostName: '',
   title: '',
   description: '',
   category: '',
-  skillLevel: '',
+  contactNumber: '',
   duration: '',
   maxParticipants: '',
   date: '',
   time: '',
   location: '',
   isOnline: false,
-  tags: [],
-  materials: [],
-  requirements: [],
+  materialsProvided: '',
+  materialsNeededFromClub: '',
+  venueRequirements: '',
+  otherImportantInfo: '',
+  detailsConfirmed: false,
 };
 
 export function AdminReview() {
@@ -70,28 +78,28 @@ export function AdminReview() {
   const detailInFlightRef = useRef<Set<string>>(new Set());
   const pageSize = 8;
 
-  const normalizeArray = (items: string[] | undefined) =>
-    (items || []).map((item) => item.trim()).filter(Boolean);
-
   const buildFormState = (workshop: Workshop): WorkshopFormState => {
     const locationValue = Array.isArray(workshop.location)
       ? workshop.location[0] || ''
       : workshop.location || '';
 
     return {
+      hostName: workshop.hostName || '',
       title: workshop.title || '',
       description: workshop.description || '',
       category: workshop.category || '',
-      skillLevel: workshop.skillLevel || '',
+      contactNumber: workshop.contactNumber || '',
       duration: workshop.duration ? String(workshop.duration) : '',
       maxParticipants: workshop.maxParticipants ? String(workshop.maxParticipants) : '',
       date: workshop.date || '',
       time: workshop.time || '',
       location: workshop.isOnline ? '' : locationValue,
       isOnline: !!workshop.isOnline,
-      tags: normalizeArray(workshop.tags),
-      materials: normalizeArray(workshop.materials),
-      requirements: normalizeArray(workshop.requirements),
+      materialsProvided: workshop.materialsProvided || '',
+      materialsNeededFromClub: workshop.materialsNeededFromClub || '',
+      venueRequirements: workshop.venueRequirements || '',
+      otherImportantInfo: workshop.otherImportantInfo || '',
+      detailsConfirmed: !!workshop.detailsConfirmed,
     };
   };
 
@@ -100,15 +108,18 @@ export function AdminReview() {
     title: state.title.trim(),
     description: state.description.trim(),
     category: state.category.trim(),
-    skillLevel: state.skillLevel || '',
+    hostName: state.hostName.trim(),
+    contactNumber: state.contactNumber.trim(),
     duration: state.duration.trim(),
     maxParticipants: state.maxParticipants.trim(),
     date: state.date.trim(),
     time: state.time.trim(),
     location: state.location.trim(),
-    tags: normalizeArray(state.tags),
-    materials: normalizeArray(state.materials),
-    requirements: normalizeArray(state.requirements),
+    materialsProvided: state.materialsProvided.trim(),
+    materialsNeededFromClub: state.materialsNeededFromClub.trim(),
+    venueRequirements: state.venueRequirements.trim(),
+    otherImportantInfo: state.otherImportantInfo.trim(),
+    detailsConfirmed: state.detailsConfirmed,
   });
 
   const filteredWorkshops = useMemo(() => {
@@ -270,7 +281,7 @@ export function AdminReview() {
     setRejectComment('');
   }, [selectedWorkshop]);
 
-  const handleInputChange = (field: keyof WorkshopFormState, value: string | boolean | string[]) => {
+  const handleInputChange = (field: keyof WorkshopFormState, value: string | boolean) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -282,22 +293,23 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      const payload: Partial<Workshop> = {
+      const payload: WorkshopUpsertPayload = {
+        hostName: formData.hostName,
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        skillLevel: formData.skillLevel || undefined,
-        duration: formData.duration ? parseInt(formData.duration, 10) : undefined,
-        maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : undefined,
-        creditCost: 0,
-        creditReward: 0,
-        date: formData.date || undefined,
-        time: formData.time || undefined,
+        contactNumber: formData.contactNumber,
+        duration: formData.duration ? parseInt(formData.duration, 10) : 0,
+        maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : null,
+        date: formData.date,
+        time: formData.time,
         isOnline: formData.isOnline,
-        location: formData.isOnline ? ['Virtual'] : [formData.location].filter(Boolean),
-        tags: formData.tags,
-        materials: formData.materials,
-        requirements: formData.requirements,
+        location: formData.isOnline ? 'Online' : formData.location,
+        materialsProvided: formData.materialsProvided,
+        materialsNeededFromClub: formData.materialsNeededFromClub,
+        venueRequirements: formData.venueRequirements,
+        otherImportantInfo: formData.otherImportantInfo,
+        detailsConfirmed: formData.detailsConfirmed,
       };
 
       const updated = await workshopAPI.updatePendingByAdmin(selectedWorkshop.id, payload, sessionToken);
@@ -563,7 +575,17 @@ export function AdminReview() {
                       <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="title">Title</Label>
+                      <Label htmlFor="hostName">Host Name</Label>
+                      <Input
+                        id="hostName"
+                        value={formData.hostName}
+                        onChange={(e) => handleInputChange('hostName', e.target.value)}
+                        className="mt-1"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="title">Workshop Name / Skill Taught</Label>
                       <Input
                         id="title"
                         value={formData.title}
@@ -586,17 +608,14 @@ export function AdminReview() {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="skillLevel">Skill Level</Label>
-                      <Select value={formData.skillLevel} onValueChange={(value: Workshop['skillLevel']) => handleInputChange('skillLevel', value)} modal={false}>
-                        <SelectTrigger className="mt-1" disabled={!canEdit}>
-                          <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {skillLevels.map((level) => (
-                            <SelectItem key={level} value={level}>{level}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="contactNumber">Contact Number</Label>
+                      <Input
+                        id="contactNumber"
+                        value={formData.contactNumber}
+                        onChange={(e) => handleInputChange('contactNumber', e.target.value)}
+                        className="mt-1"
+                        disabled={!canEdit}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="duration">Duration (minutes)</Label>
@@ -610,7 +629,7 @@ export function AdminReview() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="maxParticipants">Max Participants</Label>
+                      <Label htmlFor="maxParticipants">Max Participants (optional)</Label>
                       <Input
                         id="maxParticipants"
                         type="number"
@@ -680,37 +699,63 @@ export function AdminReview() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label>Tags</Label>
-                      <Input
-                        value={formData.tags.join(', ')}
-                        onChange={(e) => handleInputChange('tags', e.target.value.split(',').map((t) => t.trim()).filter(Boolean))}
+                      <Label htmlFor="materialsProvided">Materials Provided</Label>
+                      <Textarea
+                        id="materialsProvided"
+                        value={formData.materialsProvided}
+                        onChange={(e) => handleInputChange('materialsProvided', e.target.value)}
+                        rows={3}
                         className="mt-1"
-                        placeholder="Comma separated"
                         disabled={!canEdit}
                       />
                     </div>
                     <div>
-                      <Label>Materials</Label>
-                      <Input
-                        value={formData.materials.join(', ')}
-                        onChange={(e) => handleInputChange('materials', e.target.value.split(',').map((t) => t.trim()).filter(Boolean))}
+                      <Label htmlFor="materialsNeededFromClub">Materials Needed From Club</Label>
+                      <Textarea
+                        id="materialsNeededFromClub"
+                        value={formData.materialsNeededFromClub}
+                        onChange={(e) => handleInputChange('materialsNeededFromClub', e.target.value)}
+                        rows={3}
                         className="mt-1"
-                        placeholder="Comma separated"
                         disabled={!canEdit}
                       />
                     </div>
                     <div>
-                      <Label>Requirements</Label>
-                      <Input
-                        value={formData.requirements.join(', ')}
-                        onChange={(e) => handleInputChange('requirements', e.target.value.split(',').map((t) => t.trim()).filter(Boolean))}
+                      <Label htmlFor="venueRequirements">Venue Requirements</Label>
+                      <Textarea
+                        id="venueRequirements"
+                        value={formData.venueRequirements}
+                        onChange={(e) => handleInputChange('venueRequirements', e.target.value)}
+                        rows={3}
                         className="mt-1"
-                        placeholder="Comma separated"
                         disabled={!canEdit}
                       />
                     </div>
+                    <div>
+                      <Label htmlFor="otherImportantInfo">Other Important Info</Label>
+                      <Textarea
+                        id="otherImportantInfo"
+                        value={formData.otherImportantInfo}
+                        onChange={(e) => handleInputChange('otherImportantInfo', e.target.value)}
+                        rows={3}
+                        className="mt-1"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-md border border-border px-3 py-3">
+                    <Checkbox
+                      id="detailsConfirmed"
+                      checked={formData.detailsConfirmed}
+                      onCheckedChange={(checked) => handleInputChange('detailsConfirmed', checked === true)}
+                      disabled={!canEdit}
+                    />
+                    <Label htmlFor="detailsConfirmed" className="leading-normal">
+                      Host confirms submitted details are accurate
+                    </Label>
                   </div>
 
                   <div>

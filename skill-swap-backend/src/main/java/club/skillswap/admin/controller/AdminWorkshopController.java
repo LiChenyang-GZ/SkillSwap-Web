@@ -5,6 +5,7 @@ import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.service.WorkshopService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -38,7 +39,7 @@ public class AdminWorkshopController {
     @PutMapping("/{id}")
     public ResponseEntity<WorkshopResponseDto> updatePendingWorkshop(
             @PathVariable Long id,
-            @RequestBody WorkshopCreateRequestDto request,
+            @Valid @RequestBody WorkshopCreateRequestDto request,
             Authentication authentication) {
         return ResponseEntity.ok(workshopService.updatePendingWorkshop(id, request, authentication));
     }
