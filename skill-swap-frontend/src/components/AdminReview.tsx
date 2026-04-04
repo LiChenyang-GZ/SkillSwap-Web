@@ -91,6 +91,7 @@ export function AdminReview() {
     return null;
   });
   const detailInFlightRef = useRef<Set<string>>(new Set());
+  const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const hasSession = Boolean(sessionToken);
   const pageSize = 8;
 
@@ -363,6 +364,15 @@ export function AdminReview() {
       ...prev,
       image: previewUrl,
     }));
+  };
+
+  const handlePreviewImage = () => {
+    if (!formData.image) {
+      toast.info('No image available to preview yet.');
+      return;
+    }
+
+    window.open(formData.image, '_blank', 'noopener,noreferrer');
   };
 
   const handleSave = async () => {
@@ -735,17 +745,29 @@ export function AdminReview() {
                         )}
                       </div>
                       <div className="space-y-2">
-                        <Input
+                        <input
+                          ref={imageFileInputRef}
                           id="workshopImageUpload"
                           type="file"
                           accept="image/*"
-                          disabled={!canEdit || isSaving}
+                          className="hidden"
                           onChange={(event) => {
                             const nextFile = event.target.files?.[0] || null;
                             handleImageFileSelection(nextFile);
                             event.target.value = '';
                           }}
                         />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => imageFileInputRef.current?.click()}
+                            disabled={!canEdit || isSaving}
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            Upload Cover Image
+                          </Button>
+                        </div>
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Upload className="w-3 h-3" />
                           Image is applied only after you click Save Changes.
