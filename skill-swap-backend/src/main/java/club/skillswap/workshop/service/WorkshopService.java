@@ -5,6 +5,7 @@ import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -39,4 +40,6 @@ public interface WorkshopService {
     void leaveWorkshop(Long workshopId, String userId);
 
     void requestWorkshopApproval(Long workshopId, Authentication authentication);
+
+    WorkshopResponseDto uploadWorkshopImage(Long workshopId, MultipartFile file, Authentication authentication);
 }

@@ -1,47 +1,39 @@
 import { useState } from 'react';
-import { useApp } from '../contexts/AppContext';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { 
-  Search, 
-  Calendar, 
+import { useApp } from '../../contexts/AppContext';
+import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  Search,
+  Calendar,
   Clock,
   MapPin,
   Globe,
 } from 'lucide-react';
-import { categories, skillLevels } from '../lib/mock-data';
+import { categories } from '../../lib/mock-data';
+import {
+  getUserWorkshopStatusBadgeVariant,
+  getUserWorkshopStatusLabel,
+  isUserWorkshopUpcomingOrOngoing,
+} from './workshopStatusPublicApi';
 
 export function ExploreWorkshops() {
   const { workshops, user, attendWorkshop, setCurrentPage } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedSkillLevel, setSelectedSkillLevel] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
 
-  const isUpcoming = (status?: string) => {
-    const normalized = (status || '').toLowerCase();
-    return normalized === 'upcoming' || normalized === 'approved';
-  };
-
-  // Filter workshops based on search and filters
-  // matchesSearch, matchesCategory, matchesSkillLevel, matchesLocation
-  // Return only upcoming workshops
+  // Filter workshops based on search and category
+  // Return only upcoming/ongoing workshops
   const filteredWorkshops = workshops.filter(workshop => {
     const matchesSearch = workshop.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          workshop.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          workshop.facilitator?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesCategory = selectedCategory === 'all' || workshop.category === selectedCategory;
-    const matchesSkillLevel = selectedSkillLevel === 'all' || workshop.skillLevel === selectedSkillLevel;
-    const matchesLocation = selectedLocation === 'all' || 
-                          (selectedLocation === 'online' && workshop.isOnline) ||
-                          (selectedLocation === 'in-person' && !workshop.isOnline);
-    
-    return matchesSearch && matchesCategory && matchesSkillLevel && matchesLocation && isUpcoming(workshop.status);
+
+    return matchesSearch && matchesCategory && isUserWorkshopUpcomingOrOngoing(workshop);
   });
 
   const isUserAttending = (workshopId: string) => {
@@ -62,7 +54,7 @@ export function ExploreWorkshops() {
 
         {/* Filters */}
         <div className="mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Search */}
             <div className="lg:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -87,30 +79,6 @@ export function ExploreWorkshops() {
               </SelectContent>
             </Select>
 
-            {/* Skill Level Filter */}
-            <Select value={selectedSkillLevel} onValueChange={setSelectedSkillLevel} modal={false}>
-              <SelectTrigger>
-                <SelectValue placeholder="Skill Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                {skillLevels.map(level => (
-                  <SelectItem key={level} value={level}>{level}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Location Filter */}
-            <Select value={selectedLocation} onValueChange={setSelectedLocation} modal={false}>
-              <SelectTrigger>
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="online">Online</SelectItem>
-                <SelectItem value="in-person">In-Person</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
@@ -130,8 +98,8 @@ export function ExploreWorkshops() {
                   {/* Workshop Image */}
                   <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden">
                     {workshop.image && (
-                      <img 
-                        src={workshop.image} 
+                      <img
+                        src={workshop.image}
                         alt={workshop.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
@@ -141,14 +109,12 @@ export function ExploreWorkshops() {
                   <div className="p-6">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
-                      <Badge variant="secondary">{workshop.category}</Badge>
-                      {/* 积分系统已停用：隐藏 workshop 积分价格。 */}
-                      {/*
-                      <Badge variant="outline" className="text-primary">
-                        <CreditCard className="w-3 h-3 mr-1" />
-                        {workshop.creditCost}
-                      </Badge>
-                      */}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{workshop.category}</Badge>
+                        <Badge variant={getUserWorkshopStatusBadgeVariant(workshop)}>
+                          {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
+                        </Badge>
+                      </div>
                       <Badge variant="outline">Open Access</Badge>
                     </div>
 
@@ -159,7 +125,7 @@ export function ExploreWorkshops() {
                     </p>
 
                     {/* Facilitator */}
-                    <div className="flex items-center space-x-3 mb-4">
+                    {/* <div className="flex items-center space-x-3 mb-4">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={workshop.facilitator?.avatarUrl} />
                         <AvatarFallback className="text-xs">
@@ -169,7 +135,7 @@ export function ExploreWorkshops() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{workshop.facilitator?.name}</p>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Workshop Details */}
                     <div className="space-y-2 mb-4 text-sm text-muted-foreground">
@@ -196,9 +162,9 @@ export function ExploreWorkshops() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="flex-1"
                         onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
                       >
@@ -209,7 +175,7 @@ export function ExploreWorkshops() {
                           Attending
                         </Badge>
                       ) : (
-                        <Button 
+                        <Button
                           size="sm"
                           onClick={() => attendWorkshop(workshop.id)}
                           className="shrink-0"
@@ -231,13 +197,11 @@ export function ExploreWorkshops() {
               <p className="text-muted-foreground mb-6">
                 Try adjusting your search terms or filters to find workshops.
               </p>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedCategory('all');
-                  setSelectedSkillLevel('all');
-                  setSelectedLocation('all');
                 }}
               >
                 Clear Filters

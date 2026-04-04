@@ -5,12 +5,12 @@ import { Toaster } from './components/ui/sonner';
 
 const HeroPage = React.lazy(() => import('./components/Hero').then((m) => ({ default: m.HeroPage })));
 const HomePage = React.lazy(() => import('./components/HomePage').then((m) => ({ default: m.HomePage })));
-const ExploreWorkshops = React.lazy(() => import('./components/ExploreWorkshops').then((m) => ({ default: m.ExploreWorkshops })));
+const ExploreWorkshops = React.lazy(() => import('./components/workshop/ExploreWorkshopsPage').then((m) => ({ default: m.ExploreWorkshops })));
 const Memory = React.lazy(() => import('./components/Memory').then((m) => ({ default: m.Memory })));
 const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
-const CreateWorkshop = React.lazy(() => import('./components/CreateWorkshop').then((m) => ({ default: m.CreateWorkshop })));
+const CreateWorkshop = React.lazy(() => import('./components/create-workshop/CreateWorkshopPage').then((m) => ({ default: m.CreateWorkshopPage })));
 const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
-const WorkshopDetails = React.lazy(() => import('./components/WorkshopDetails').then((m) => ({ default: m.WorkshopDetails })));
+const WorkshopDetails = React.lazy(() => import('./components/workshop/WorkshopDetailsPage').then((m) => ({ default: m.WorkshopDetails })));
 const MemoryDetail = React.lazy(() => import('./components/MemoryDetail.tsx').then((m) => ({ default: m.MemoryDetail })));
 const AdminReview = React.lazy(() => import('./components/AdminReview').then((m) => ({ default: m.AdminReview })));
 const MemoryStudio = React.lazy(() => import('./components/MemoryStudio.tsx').then((m) => ({ default: m.MemoryStudio })));
@@ -18,6 +18,7 @@ const Notifications = React.lazy(() => import('./components/Notifications').then
 
 function AppContent() {
   const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData } = useApp();
+  const lastAutoRefreshPageRef = React.useRef<string | null>(null);
 
   // Apply theme class to html element
   React.useEffect(() => {
@@ -31,8 +32,21 @@ function AppContent() {
   }, [isDarkMode]);
 
   React.useEffect(() => {
+    const previousPage = lastAutoRefreshPageRef.current;
+    if (previousPage === currentPage) {
+      return;
+    }
+    lastAutoRefreshPageRef.current = currentPage;
+
+    const isPublicPage = currentPage === 'home' || currentPage === 'explore';
+    const wasPublicPage = previousPage === 'home' || previousPage === 'explore';
+
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
-    if (currentPage === 'home' || currentPage === 'explore') {
+    if (isPublicPage) {
+      // Home 与 Explore 共享同一批 public 数据，互相切换时不重复请求。
+      if (wasPublicPage) {
+        return;
+      }
       void refreshData('public');
       return;
     }

@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Set;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -29,9 +28,6 @@ public class Workshop {
     @Column(columnDefinition = "text")
     private String description;
     private String category;
-    
-    @Column(name = "skill_level")
-    private String skillLevel;
 
     private Integer duration;
 
@@ -44,11 +40,8 @@ public class Workshop {
     private Boolean isOnline;
 
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "workshop_locations", joinColumns = @JoinColumn(name = "workshop_id"))
     @Column(name = "location")
-    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
-    private Set<String> location;
+    private String location;
 
     @Column(name = "max_participants")
     private Integer maxParticipants;
@@ -83,22 +76,49 @@ public class Workshop {
     @JoinColumn(name = "facilitator_id", nullable = false)
     private UserAccount facilitator; // 涓庣敤鎴峰疄浣撶殑澶氬涓€鍏崇郴
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "workshop_tags", joinColumns = @JoinColumn(name = "workshop_id"))
-    @Column(name = "tag")
-    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
-    private Set<String> tags;
+    @Column(name = "host_name")
+    private String hostName;
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "workshop_materials", joinColumns = @JoinColumn(name = "workshop_id"))
-    @Column(name = "material")
-    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
-    private Set<String> materials;
+    @Column(name = "contact_number")
+    private String contactNumber;
 
-    @ElementCollection(fetch = FetchType.LAZY)
-    @CollectionTable(name = "workshop_requirements", joinColumns = @JoinColumn(name = "workshop_id"))
-    @Column(name = "requirement")
-    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
-    private Set<String> requirements;
+    @Column(name = "materials_provided", columnDefinition = "text")
+    private String materialsProvided;
+
+    @Column(name = "materials_needed_from_club", columnDefinition = "text")
+    private String materialsNeededFromClub;
+
+    @Column(name = "venue_requirements", columnDefinition = "text")
+    private String venueRequirements;
+
+    @Column(name = "other_important_info", columnDefinition = "text")
+    private String otherImportantInfo;
+
+    @Column(name = "details_confirmed")
+    private Boolean detailsConfirmed;
+
+    @Column(name = "submitter_username")
+    private String submitterUsername;
+
+    @Column(name = "submitter_email")
+    private String submitterEmail;
+
+    @Column(name = "image_url", columnDefinition = "text")
+    private String imageUrl;
+
+    @Column(name = "week_number")
+    private Integer weekNumber;
+
+    @Column(name = "member_responsible")
+    private String memberResponsible;
+
+    @Column(name = "members_present", columnDefinition = "text")
+    private String membersPresent;
+
+    @Column(name = "event_submitted")
+    private Boolean eventSubmitted;
+
+    @Column(name = "usu_approval_status")
+    private String usuApprovalStatus;
 
 }

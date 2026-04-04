@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useApp } from '../contexts/AppContext';
-import { workshopAPI } from '../lib/api';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { useApp } from '../../contexts/AppContext';
+import { workshopAPI } from '../../lib/api';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   Calendar,
   Clock,
@@ -12,7 +12,7 @@ import {
   Globe,
   ArrowLeft,
 } from 'lucide-react';
-import { Workshop } from '../types';
+import { Workshop } from '../../types';
 import { toast } from 'sonner';
 
 interface WorkshopDetailsProps {
@@ -21,6 +21,7 @@ interface WorkshopDetailsProps {
 
 export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const { workshops, user, isAdmin, sessionToken, attendWorkshop, cancelWorkshopAttendance, setCurrentPage, upsertWorkshop } = useApp();
+  const hasSession = Boolean(sessionToken);
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const lastFetchedIdRef = useRef<string | null>(null);
@@ -52,7 +53,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
           upsertWorkshop(latest);
         }
       } catch (error) {
-        console.warn("Failed to refresh workshop details", error);
+        console.warn('Failed to refresh workshop details', error);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -65,7 +66,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
     return () => {
       isMounted = false;
     };
-  }, [workshopId, sessionToken, upsertWorkshop, workshops]);
+  }, [workshopId, hasSession, upsertWorkshop, workshops]);
 
   if (isLoading) {
     return (
@@ -100,15 +101,15 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   }
 
   const isUserAttending = workshop.participants?.some((p) => p.id === user?.id) || false;
-  const isFull = (workshop.currentParticipants ?? 0) >= workshop.maxParticipants;
-  const normalizedStatus = (workshop.status || "").toLowerCase();
-  const isCancelled = normalizedStatus === "cancelled";
-  const isPending = normalizedStatus === "pending";
-  const isRejected = normalizedStatus === "rejected";
+  const isFull = typeof workshop.maxParticipants === 'number'
+    ? (workshop.currentParticipants ?? 0) >= workshop.maxParticipants
+    : false;
+  const normalizedStatus = (workshop.status || '').toLowerCase();
+  const isCancelled = normalizedStatus === 'cancelled';
+  const isPending = normalizedStatus === 'pending';
+  const isRejected = normalizedStatus === 'rejected';
   const isHost = workshop.facilitator?.id === user?.id;
   const canViewRestricted = isAdmin || isHost;
-  // 积分系统已停用：不再根据余额限制报名。
-  // const hasEnoughCredits = user && user.creditBalance >= workshop.creditCost;
 
   if ((isPending || isRejected) && !canViewRestricted) {
     return (
@@ -144,23 +145,21 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
   const handleRequestApproval = async () => {
     if (!sessionToken) {
-      toast.error("Please sign in to request approval");
+      toast.error('Please sign in to request approval');
       return;
     }
     try {
       await workshopAPI.requestApproval(workshopId, sessionToken);
-      toast.success("Approval request sent to admins");
+      toast.success('Approval request sent to admins');
     } catch (error) {
-      console.error("Failed to request approval", error);
-      toast.error("Failed to send approval request");
+      console.error('Failed to request approval', error);
+      toast.error('Failed to send approval request');
     }
   };
-
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Back Button */}
         <Button
           variant="ghost"
           size="sm"
@@ -171,75 +170,34 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
           Back to Explore
         </Button>
 
-        {/* Top layout handled inside the grid: title/facilitator (left) + image/key-info (right) */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 ">
-          {/* Header row: title + facilitator (left) and image (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <div className="mb-4 lg:mb-6">
-              <h1 className="text-4xl font-bold leading-tight mb-8">{workshop.title}</h1>
-              <p className="text-sm font-semibold text-muted-foreground mb-8 uppercase">Hosted By</p>
-              <div className="flex items-center mt-2">
-                <Avatar className="w-16 h-16">
-                  <AvatarImage src={workshop.facilitator?.avatarUrl} />
-                  <AvatarFallback className="text-lg">
-                    {workshop.facilitator?.name?.split(' ').map((n) => n[0]).join('') || '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="ml-6">
-                  <p className="font-semibold text-lg">{workshop.facilitator?.name}</p>
-                  {workshop.facilitator?.bio && (
-                    <p className="text-sm text-muted-foreground mt-1">{workshop.facilitator?.bio}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Header right: image aligned with title/facilitator */}
-          <div className="lg:col-span-1">
             {workshop.image && (
-              <div className="aspect-video w-full h-full overflow-hidden rounded-lg bg-muted">
+              <div className="aspect-[16/7] w-full overflow-hidden rounded-lg bg-muted">
                 <img src={workshop.image} alt={workshop.title} className="w-full h-full object-cover" />
               </div>
             )}
-          </div>
 
-          {/* Content row: main details (left) */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* About Section */}
+            <div>
+              <h1 className="text-4xl font-bold leading-tight">{workshop.title}</h1>
+            </div>
+
             <div className="pb-8">
               <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">About</h2>
               <p className="text-base leading-relaxed text-foreground">{workshop.description}</p>
             </div>
 
-            {/* Materials Section */}
-            {(workshop.materials?.length ?? 0) > 0 && (
+            {(workshop.materialsProvided || '').trim() && (
               <div className="pb-8">
-                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">What to Bring</h2>
-                <ul className="space-y-2">
-                  {workshop.materials?.map((material, idx) => (
-                    <li key={idx} className="text-base text-foreground flex items-start">
-                      <span className="mr-3">•</span>
-                      <span>{material}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Provided</h2>
+                <p className="text-base leading-relaxed text-foreground">{workshop.materialsProvided}</p>
               </div>
             )}
 
-            {/* Requirements Section */}
-            {(workshop.requirements?.length ?? 0) > 0 && (
+            {(workshop.materialsNeededFromClub || '').trim() && (
               <div className="pb-8">
-                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Requirements</h2>
-                <ul className="space-y-2">
-                  {workshop.requirements?.map((req, idx) => (
-                    <li key={idx} className="text-base text-foreground flex items-start">
-                      <span className="mr-3">•</span>
-                      <span>{req}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Needed From Club</h2>
+                <p className="text-base leading-relaxed text-foreground">{workshop.materialsNeededFromClub}</p>
               </div>
             )}
 
@@ -249,7 +207,11 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                 <div className="space-y-4">
                   <div className="flex items-center text-base">
                     <Users className="w-5 h-5 mr-2 text-muted-foreground" />
-                    <span>{workshop.currentParticipants ?? 0} of {workshop.maxParticipants} attending</span>
+                    <span>
+                      {workshop.currentParticipants ?? 0}
+                      {typeof workshop.maxParticipants === 'number' ? ` of ${workshop.maxParticipants}` : ''}
+                      {' '}attending
+                    </span>
                   </div>
 
                   {(workshop.participants?.length ?? 0) > 0 && (
@@ -279,7 +241,6 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="mt-6">
               <div className="flex gap-4">
                 <div className="flex-1">
@@ -298,7 +259,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                       disabled={!isHost}
                       className="w-full"
                     >
-                      {isHost ? "Request Approval" : "Pending Approval"}
+                      {isHost ? 'Request Approval' : 'Pending Approval'}
                     </Button>
                   ) : isUserAttending ? (
                     <Button variant="outline" onClick={handleCancel} className="w-full">
@@ -323,24 +284,14 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
             </div>
           </div>
 
-          {/* Right sidebar: key info & tags (below image) */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
-              {/* Key Info Card */}
               <div className="bg-muted rounded-lg p-6 space-y-6">
-                {/* Skill Level */}
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Skill Level</p>
-                  <Badge variant="outline" className="text-base">{workshop.skillLevel}</Badge>
-                </div>
-
-                {/* Access */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Access</p>
                   <span className="text-lg font-semibold">Open to all members</span>
                 </div>
 
-                {/* Date */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Date</p>
                   <div className="flex items-center space-x-2">
@@ -355,19 +306,28 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                   </div>
                 </div>
 
-                {/* Time */}
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Time</p>
                   <div className="flex items-center space-x-2">
                     <Clock className="w-5 h-5 text-muted-foreground" />
                     <span className="text-base">{workshop.time}</span>
                   </div>
-                  {workshop.duration && (
-                    <p className="text-xs text-muted-foreground mt-1">{workshop.duration} hours</p>
-                  )}
                 </div>
 
-                {/* Location */}
+                {workshop.duration && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Duration</p>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-5 h-5 text-muted-foreground" />
+                      <span className="text-base">
+                        {workshop.duration >= 60 && workshop.duration % 60 === 0
+                          ? `${workshop.duration / 60} ${workshop.duration === 60 ? 'hour' : 'hours'}`
+                          : `${workshop.duration} mins`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Location</p>
                   <div className="flex items-start space-x-2">
@@ -379,26 +339,16 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                     ) : (
                       <>
                         <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
-                        <span className="text-base">{workshop.location}</span>
+                        <span className="text-base">
+                          {typeof workshop.location === 'string' && workshop.location.trim()
+                            ? workshop.location
+                            : 'To be confirmed by admin'}
+                        </span>
                       </>
                     )}
                   </div>
                 </div>
               </div>
-
-              {/* Tags */}
-              {(workshop.tags?.length ?? 0) > 0 && (
-                <div className="pt-4">
-                  <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase">Tags</p>
-                  <div className="flex flex-wrap gap-2">
-                    {workshop.tags?.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

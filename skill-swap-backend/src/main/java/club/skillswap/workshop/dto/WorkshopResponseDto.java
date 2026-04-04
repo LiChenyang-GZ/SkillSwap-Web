@@ -6,29 +6,39 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Set;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record WorkshopResponseDto(
     String id,
+    String hostName,
     String title,
     String description,
     String category,
-    String skillLevel,
     String status,
     LocalDate date,
     LocalTime time,
     Integer duration,
     Boolean isOnline,
-    Set<String> location,
+    String location,
     Integer maxParticipants,
     Integer currentParticipants,
     Integer creditCost,
     Integer creditReward,
+    String contactNumber,
+    String materialsProvided,
+    String materialsNeededFromClub,
+    String venueRequirements,
+    String otherImportantInfo,
+    Boolean detailsConfirmed,
+    String submitterUsername,
+    String submitterEmail,
+    String image,
+    Integer weekNumber,
+    String memberResponsible,
+    String membersPresent,
+    Boolean eventSubmitted,
+    String usuApprovalStatus,
     FacilitatorDto facilitator,
     List<WorkshopParticipantDto> participants,
-    Set<String> tags,
-    Set<String> materials,
-    Set<String> requirements,
     LocalDateTime createdAt
 ) {}

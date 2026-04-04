@@ -176,3 +176,19 @@
     @apply bg-input border border-border rounded-md px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring;
   }
 }
+
+  @layer base {
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    textarea:-webkit-autofill,
+    textarea:-webkit-autofill:hover,
+    textarea:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--color-foreground) !important;
+      caret-color: var(--color-foreground);
+      background-color: var(--color-input) !important;
+      box-shadow: 0 0 0 1000px var(--color-input) inset !important;
+      -webkit-box-shadow: 0 0 0 1000px var(--color-input) inset !important;
+      transition: background-color 9999s ease-out;
+    }
+  }

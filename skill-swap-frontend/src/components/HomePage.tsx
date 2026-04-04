@@ -14,16 +14,12 @@ import {
   BookOpen,
   Target
 } from 'lucide-react';
+import { isUserWorkshopUpcoming } from './workshop/workshopStatusPublicApi';
 
 export function HomePage() {
   const { user, workshops, setCurrentPage } = useApp();
-  const isUpcoming = (status?: string) => {
-    const normalized = (status || '').toLowerCase();
-    return normalized === 'upcoming' || normalized === 'approved';
-  };
-
   // Home 首屏仅展示公开的即将开始 workshop，不依赖参与者明细。
-  const upcomingWorkshops = workshops.filter((w) => isUpcoming(w.status));
+  const upcomingWorkshops = workshops.filter((w) => isUserWorkshopUpcoming(w));
 
   const featuredWorkshops = upcomingWorkshops.slice(0, 3);
 

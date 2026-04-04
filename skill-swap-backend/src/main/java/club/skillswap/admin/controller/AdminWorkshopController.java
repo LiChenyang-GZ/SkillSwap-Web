@@ -5,7 +5,9 @@ import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.service.WorkshopService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +16,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -38,7 +42,7 @@ public class AdminWorkshopController {
     @PutMapping("/{id}")
     public ResponseEntity<WorkshopResponseDto> updatePendingWorkshop(
             @PathVariable Long id,
-            @RequestBody WorkshopCreateRequestDto request,
+            @Valid @RequestBody WorkshopCreateRequestDto request,
             Authentication authentication) {
         return ResponseEntity.ok(workshopService.updatePendingWorkshop(id, request, authentication));
     }
@@ -66,5 +70,13 @@ public class AdminWorkshopController {
             Authentication authentication) {
         workshopService.cancelWorkshop(id, authentication);
         return ResponseEntity.ok(new ApiMessageDto("Workshop cancelled successfully."));
+    }
+
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<WorkshopResponseDto> uploadWorkshopImage(
+            @PathVariable Long id,
+            @RequestPart("file") MultipartFile file,
+            Authentication authentication) {
+        return ResponseEntity.ok(workshopService.uploadWorkshopImage(id, file, authentication));
     }
 }

@@ -15,25 +15,15 @@ import {
   Globe,
   Edit
 } from 'lucide-react';
+import {
+  getUserWorkshopStatusBadgeVariant,
+  getUserWorkshopStatusLabel,
+  isUserWorkshopUpcoming,
+  isUserWorkshopVisible,
+} from './workshop/workshopStatusPublicApi';
 
 export function Dashboard() {
   const { user, workshops, setCurrentPage, cancelWorkshopAttendance } = useApp();
-  const normalizeStatus = (status?: string) => (status || 'pending').toLowerCase();
-  const displayStatus = (status?: string) => {
-    const normalized = normalizeStatus(status);
-    return normalized === 'approved' ? 'upcoming' : normalized;
-  };
-  const statusBadgeVariant = (status?: string) => {
-    const normalized = normalizeStatus(status);
-    if (normalized === 'rejected') return 'destructive';
-    if (normalized === 'approved' || normalized === 'upcoming') return 'default';
-    if (normalized === 'pending') return 'secondary';
-    return 'outline';
-  };
-  const isUpcoming = (status?: string) => {
-    const normalized = (status || '').toLowerCase();
-    return normalized === 'upcoming' || normalized === 'approved';
-  };
 
   // Early return if no user
   if (!user) {
@@ -47,14 +37,14 @@ export function Dashboard() {
   // Get user's attended workshops
   const attendedWorkshops = workshops.filter(w => 
     (w.participants ?? []).some(p => p.id === user.id)
-  );
+  ).filter((w) => isUserWorkshopVisible(w));
 
   // Get user's hosted workshops
-  const hostedWorkshops = workshops.filter(w => w.facilitator?.id === user.id);
+  const hostedWorkshops = workshops.filter(w => w.facilitator?.id === user.id).filter((w) => isUserWorkshopVisible(w));
 
   // Calculate stats  ?? better to store numbers in database and fetch 
-  const upcomingAttended = attendedWorkshops.filter(w => isUpcoming(w.status)).length;
-  const upcomingHosted = hostedWorkshops.filter(w => isUpcoming(w.status)).length;
+  const upcomingAttended = attendedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
+  const upcomingHosted = hostedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
@@ -238,11 +228,11 @@ export function Dashboard() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Badge 
-                                variant={statusBadgeVariant(workshop.status)}
+                                variant={getUserWorkshopStatusBadgeVariant(workshop)}
                               >
-                                {displayStatus(workshop.status)}
+                                {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                               </Badge>
-                              {isUpcoming(workshop.status) && (
+                              {isUserWorkshopUpcoming(workshop) && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -325,9 +315,9 @@ export function Dashboard() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Badge 
-                                variant={statusBadgeVariant(workshop.status)}
+                                variant={getUserWorkshopStatusBadgeVariant(workshop)}
                               >
-                                {displayStatus(workshop.status)}
+                                {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                               </Badge>
 
                             </div>

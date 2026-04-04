@@ -15,6 +15,7 @@ import {
 
 export function Notifications() {
   const { sessionToken, refreshNotificationsUnreadCount, isAuthenticated, setCurrentPage, upsertWorkshop } = useApp();
+  const hasSession = Boolean(sessionToken);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
@@ -32,17 +33,14 @@ export function Notifications() {
     let isMounted = true;
 
     const loadNotifications = async () => {
-      if (!isAuthenticated) {
+      if (!isAuthenticated || !hasSession) {
+        setNotifications([]);
         setIsLoading(false);
         return;
       }
 
-      if (!sessionToken) {
-        return;
-      }
-
       try {
-        const data = await notificationAPI.getAll(sessionToken);
+        const data = await notificationAPI.getAll(sessionToken!);
         if (isMounted) {
           setNotifications(data);
         }
@@ -60,7 +58,7 @@ export function Notifications() {
     return () => {
       isMounted = false;
     };
-  }, [sessionToken, isAuthenticated]);
+  }, [hasSession, isAuthenticated]);
 
   const handleMarkRead = async (notificationId: string) => {
     try {

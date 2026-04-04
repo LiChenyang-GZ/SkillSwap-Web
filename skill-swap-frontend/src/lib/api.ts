@@ -2,7 +2,36 @@
 
 import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
-import { mockUser, mockUsers, mockTransactions } from './mock-data';
+// Legacy in-memory fallback data used by development-only helper APIs.
+import {
+  mockUser as legacyMockUser,
+  mockUsers as legacyMockUsers,
+  mockTransactions as legacyMockTransactions,
+} from './mock-data';
+
+export interface WorkshopUpsertPayload {
+  hostName: string;
+  title: string;
+  description?: string;
+  category: string;
+  duration: number;
+  maxParticipants?: number | null;
+  date: string;
+  time: string;
+  isOnline: boolean;
+  location?: string;
+  contactNumber: string;
+  materialsProvided?: string;
+  materialsNeededFromClub?: string;
+  venueRequirements?: string;
+  otherImportantInfo?: string;
+  weekNumber?: number | null;
+  memberResponsible?: string;
+  membersPresent?: string;
+  eventSubmitted?: boolean;
+  usuApprovalStatus?: 'pending' | 'approved';
+  detailsConfirmed: boolean;
+}
 
 // Backend API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
@@ -62,16 +91,20 @@ function enrichWorkshop(workshop: any): Workshop {
     ? workshop.participants.map((p: any) => ({
         id: String(p.id),
         username: p.username || p.name || 'Unknown',
+        email: p.email || p.userEmail || p.user_email || p.mail || '',
         avatarUrl: p.avatarUrl || p.avatar_url || p.avatar,
       }))
     : undefined;
 
   const normalizedStatus = String(workshop.status || '').toLowerCase();
+  const resolvedImage = resolveAssetUrl(workshop.image || workshop.imageUrl || workshop.image_url);
+  const usuApprovalStatusRaw = String(workshop.usuApprovalStatus || workshop.usu_approval_status || 'pending').toLowerCase();
 
   return {
     id: String(workshop.id),
+    hostName: workshop.hostName,
     title: workshop.title,
-    description: workshop.description,
+    description: workshop.description || '',
     category: workshop.category,
     skillLevel: workshop.skillLevel,
     status: normalizedStatus as Workshop['status'],
@@ -79,14 +112,35 @@ function enrichWorkshop(workshop: any): Workshop {
     time: workshop.time,
     duration: workshop.duration,
     isOnline: workshop.isOnline,
-    location: workshop.location || workshop.locations || [],
+    location: workshop.location || workshop.locations || '',
     maxParticipants: workshop.maxParticipants,
     currentParticipants: workshop.currentParticipants ?? (participants?.length ?? 0),
     creditCost: workshop.creditCost,
     creditReward: workshop.creditReward,
+    contactNumber: workshop.contactNumber,
+    materialsProvided: workshop.materialsProvided,
+    materialsNeededFromClub: workshop.materialsNeededFromClub,
+    venueRequirements: workshop.venueRequirements,
+    otherImportantInfo: workshop.otherImportantInfo,
+    detailsConfirmed: workshop.detailsConfirmed,
+    submitterUsername: workshop.submitterUsername,
+    submitterEmail: workshop.submitterEmail,
+    weekNumber: workshop.weekNumber ?? workshop.week_number,
+    memberResponsible: workshop.memberResponsible ?? workshop.member_responsible,
+    membersPresent: workshop.membersPresent ?? workshop.members_present,
+    eventSubmitted: Boolean(workshop.eventSubmitted ?? workshop.event_submitted),
+    usuApprovalStatus: usuApprovalStatusRaw === 'approved' ? 'approved' : 'pending',
+    rejectionNote:
+      workshop.rejectionNote ||
+      workshop.rejection_note ||
+      workshop.rejectComment ||
+      workshop.reject_comment ||
+      workshop.adminComment ||
+      workshop.admin_comment ||
+      '',
     facilitator,
     tags: workshop.tags,
-    image: workshop.image || getDefaultImage(workshop.category),
+    image: resolvedImage || getDefaultImage(workshop.category),
     createdAt: workshop.createdAt,
     participants: participants as any,
     materials: workshop.materials,
@@ -274,7 +328,7 @@ export const authAPI = {
 
   // Mock sign-in (just return the first mock user)
   signInMock: async () => {
-    return mockUsers[0]; // ✅ always use the first mock user
+    return legacyMockUsers[0]; // ✅ always use the first mock user
   },
 
   // Mock sign-up (local only, creates a fake user object)
@@ -292,7 +346,7 @@ export const authAPI = {
       rating: 0,
       createdAt: new Date().toISOString(),
     };
-    mockUsers.push(newUser); // add to in-memory list
+    legacyMockUsers.push(newUser); // add to in-memory list
     return newUser;
   },
 
@@ -326,7 +380,7 @@ export const authAPI = {
     if (data.session?.user) {
       return data.session.user;
     }
-    return mockUsers[0]; // fallback mock user
+    return legacyMockUsers[0]; // fallback mock user
   },
 };
 
@@ -337,7 +391,7 @@ export const userAPI = {
   // 获取当前用户 profile（需要认证）
   getProfile: async (): Promise<User> => {
     // TODO: 当后端 /api/v1/users/me 实现后，改为真实调用
-    return mockUser;
+    return legacyMockUser;
   },
 
   // 根据 ID 获取用户
@@ -347,14 +401,14 @@ export const userAPI = {
       return data;
     } catch (error) {
       console.warn("⚠️ Backend unavailable, using mock data");
-      return mockUsers.find((u) => u.id === id) || null;
+      return legacyMockUsers.find((u) => u.id === id) || null;
     }
   },
 
   // Update profile locally
   updateProfile: async (updates: Partial<User>): Promise<User> => {
-    Object.assign(mockUser, updates);
-    return { ...mockUser };
+    Object.assign(legacyMockUser, updates);
+    return { ...legacyMockUser };
   },
 };
 
@@ -435,7 +489,7 @@ export const workshopAPI = {
   },
 
   // 创建工作坊（后端仅返回 success message）
-  create: async (workshopData: Partial<Workshop>, token: string): Promise<void> => {
+  create: async (workshopData: WorkshopUpsertPayload, token: string): Promise<void> => {
     try {
       await apiCall<{ message: string }>(
         "/api/v1/workshops",
@@ -509,7 +563,7 @@ export const workshopAPI = {
   },
 
   // 管理员：编辑待审核工作坊
-  updatePendingByAdmin: async (workshopId: string, workshopData: Partial<Workshop>, token?: string | null): Promise<Workshop> => {
+  updatePendingByAdmin: async (workshopId: string, workshopData: WorkshopUpsertPayload, token?: string | null): Promise<Workshop> => {
     const backendId = toBackendWorkshopId(workshopId);
     const data = await apiCall<any>(
       `/api/v1/admin/workshops/${backendId}`,
@@ -519,6 +573,23 @@ export const workshopAPI = {
       },
       token
     );
+    return enrichWorkshop(data);
+  },
+
+  uploadImageByAdmin: async (workshopId: string, file: File, token?: string | null): Promise<Workshop> => {
+    const backendId = toBackendWorkshopId(workshopId);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const data = await apiCall<any>(
+      `/api/v1/admin/workshops/${backendId}/image`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+      token
+    );
+
     return enrichWorkshop(data);
   },
 
@@ -560,7 +631,7 @@ export const workshopAPI = {
 // TRANSACTION API
 // ----------------------
 export const transactionAPI = {
-  getAll: async () => mockTransactions,
+  getAll: async () => legacyMockTransactions,
 
   add: async (tx: any) => {
     const newTx = {
@@ -568,7 +639,7 @@ export const transactionAPI = {
       timestamp: new Date().toISOString(),
       ...tx,
     };
-    mockTransactions.push(newTx);
+    legacyMockTransactions.push(newTx);
     return newTx;
   },
 };
