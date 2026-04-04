@@ -241,7 +241,7 @@ export const authAPI = {
   signInWithGoogle: async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/home` },
+      options: { redirectTo: `${window.location.origin}/explore` },
     });
     if (error) throw error;
     return data;
@@ -252,7 +252,7 @@ export const authAPI = {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/home`,
+        emailRedirectTo: `${window.location.origin}/explore`,
       },
     });
     if (error) throw error;

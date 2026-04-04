@@ -37,6 +37,12 @@ interface AppContextType {
   deleteWorkshop: (workshopId: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateCurrentUserProfile: (updates: {
+    username?: string;
+    avatarUrl?: string;
+    bio?: string;
+    skills?: string[];
+  }) => Promise<User>;
   refreshData: (mode?: "public" | "mine" | "full") => Promise<void>;
   clearCache: () => void;
   upsertWorkshop: (workshop: Workshop) => void;
@@ -85,13 +91,13 @@ const pageFromPath = (pathname: string) => {
   const normalizedPath = normalizePath(pathname);
   if (normalizedPath.startsWith("/workshops/")) {
     const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
-    return workshopId ? `workshop-${workshopId}` : "home";
+    return workshopId ? `workshop-${workshopId}` : "explore";
   }
   if (normalizedPath.startsWith("/memory/")) {
     const slug = decodeURIComponent(normalizedPath.slice("/memory/".length));
     return slug ? `memory-entry-${slug}` : "memory";
   }
-  return PATH_TO_PAGE[normalizedPath] || "home";
+  return PATH_TO_PAGE[normalizedPath] || "explore";
 };
 
 const pathFromPage = (page: string) => {
@@ -103,13 +109,13 @@ const pathFromPage = (page: string) => {
     const slug = page.slice("memory-entry-".length);
     return `/memory/${encodeURIComponent(slug)}`;
   }
-  return PAGE_TO_PATH[page] || "/home";
+  return PAGE_TO_PATH[page] || "/explore";
 };
 
 const resolvePostLoginPage = () => {
   const requestedPage = pageFromPath(window.location.pathname);
   if (requestedPage === "hero" || requestedPage === "auth") {
-    return "home";
+    return "explore";
   }
   return requestedPage;
 };
@@ -335,7 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
 
           if (event === "SIGNED_IN") {
-            setCurrentPage("home");
+            setCurrentPage("explore");
             toast.success(`Welcome, ${mapped.username}!`);
           }
         } catch (e) {
@@ -721,7 +727,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("skill-swap-auth", "true");
         localStorage.setItem("skill-swap-user", JSON.stringify(userData));
         localStorage.setItem("skill-swap-sessionToken", loginResult.access_token);
-        setCurrentPage("home");
+        setCurrentPage("explore");
         toast.success(`Welcome, ${userData.username}!`);
       } catch (error) {
         console.error("❌ Dev login failed:", error);
@@ -750,6 +756,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("skill-swap-sessionToken");
     setCurrentPage("hero");
     toast.success("Signed out successfully");
+  };
+
+  const updateCurrentUserProfile = async (updates: {
+    username?: string;
+    avatarUrl?: string;
+    bio?: string;
+    skills?: string[];
+  }): Promise<User> => {
+    if (!sessionToken) {
+      throw new Error("Please sign in again before updating your profile.");
+    }
+
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    const response = await fetch(`${base}/api/v1/users/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || `Failed to update profile (${response.status}).`);
+    }
+
+    const profile = await response.json();
+    const mapped = mapBackendUser(profile);
+
+    setUser(mapped);
+    localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
+
+    const payload = decodeJwtPayload(sessionToken) as { sub?: string } | null;
+    recentProfileCacheRef.current = {
+      subject: payload?.sub ?? null,
+      user: mapped,
+      at: Date.now(),
+    };
+
+    return mapped;
   };
 
   // --------------------------
@@ -919,6 +966,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteWorkshop,
         signIn,
         signOut,
+        updateCurrentUserProfile,
         refreshData,
         clearCache,
         upsertWorkshop,

@@ -1,9 +1,14 @@
+import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { toast } from 'sonner';
 import { 
   Calendar, 
   Users, 
@@ -23,7 +28,11 @@ import {
 } from './workshop/workshopStatusPublicApi';
 
 export function Dashboard() {
-  const { user, workshops, setCurrentPage, cancelWorkshopAttendance } = useApp();
+  const { user, workshops, setCurrentPage, cancelWorkshopAttendance, updateCurrentUserProfile } = useApp();
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editUsername, setEditUsername] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Early return if no user
   if (!user) {
@@ -46,6 +55,34 @@ export function Dashboard() {
   const upcomingAttended = attendedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
   const upcomingHosted = hostedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
 
+  useEffect(() => {
+    setEditUsername(user.username);
+  }, [user.username]);
+
+  const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextUsername = editUsername.trim();
+
+    if (!nextUsername) {
+      setProfileError('Name cannot be empty.');
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileError(null);
+    try {
+      await updateCurrentUserProfile({ username: nextUsername });
+      toast.success('Profile updated successfully.');
+      setIsEditProfileOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update profile.';
+      setProfileError(message);
+      toast.error(message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -54,7 +91,7 @@ export function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold mb-2">My Dashboard</h1>
             <p className="text-muted-foreground">
-              Track your learning journey and workshop activities
+              👋 Welcome back, {user.username.split(' ')[0] || 'Member'}! Track your learning journey and workshop activities.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0">
@@ -77,8 +114,7 @@ export function Dashboard() {
                       {user.username.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
-                  <h2 className="text-xl font-semibold mb-1">{user.username}</h2>
-                  <p className="text-muted-foreground text-sm mb-4">{user.email}</p>
+                  <h2 className="text-xl font-semibold mb-4 break-words">{user.username}</h2>
                   
                   <div className="flex items-center justify-center space-x-1 mb-4">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -86,7 +122,16 @@ export function Dashboard() {
                     <span className="text-muted-foreground text-sm">/5.0</span>
                   </div>
 
-                  <Button variant="outline" size="sm" className="w-full mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mb-4"
+                    onClick={() => {
+                      setProfileError(null);
+                      setEditUsername(user.username);
+                      setIsEditProfileOpen(true);
+                    }}
+                  >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Profile
                   </Button>
@@ -344,6 +389,56 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveProfile} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-profile-name">Name</Label>
+              <Input
+                id="dashboard-profile-name"
+                value={editUsername}
+                onChange={(event) => setEditUsername(event.target.value)}
+                maxLength={80}
+                placeholder="Enter your display name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-profile-email">Email</Label>
+              <Input
+                id="dashboard-profile-email"
+                value={user.email}
+                readOnly
+                disabled
+              />
+              <p className="text-xs text-muted-foreground">Email is managed by authentication and cannot be changed here.</p>
+            </div>
+
+            {profileError && (
+              <p className="text-sm text-destructive">{profileError}</p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditProfileOpen(false)}
+                disabled={isSavingProfile}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSavingProfile}>
+                {isSavingProfile ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -167,7 +167,19 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
 
         if (updateRequest.getUsername() != null) {
-            userToUpdate.setUsername(updateRequest.getUsername());
+            String nextUsername = updateRequest.getUsername().trim();
+            if (nextUsername.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username must not be blank.");
+            }
+
+            if (!nextUsername.equals(userToUpdate.getUsername())) {
+                userRepository.findByUsername(nextUsername)
+                    .filter(existing -> !existing.getId().equals(userId))
+                    .ifPresent(existing -> {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists.");
+                    });
+                userToUpdate.setUsername(nextUsername);
+            }
         }
         if (updateRequest.getAvatarUrl() != null) {
             userToUpdate.setAvatarUrl(updateRequest.getAvatarUrl());

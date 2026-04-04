@@ -56,7 +56,7 @@ public class UserController {
             @RequestBody UpdateProfileRequestDto updateRequest) {
         
         UserAccount updatedUser = userService.updateCurrentUserProfile(jwt, updateRequest);
-        UserProfileDto userProfileDto = UserProfileDto.fromEntity(updatedUser);
+        UserProfileDto userProfileDto = userService.getUserProfileWithStats(updatedUser.getId());
         
         return ResponseEntity.ok(userProfileDto);
     }

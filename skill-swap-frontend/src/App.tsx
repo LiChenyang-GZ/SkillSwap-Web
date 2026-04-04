@@ -119,8 +119,8 @@ function AppContent() {
           </div>
         </div>;
       default:
-        // Show Hero page for non-authenticated users, Home page for authenticated users
-        return isAuthenticated ? <HomePage /> : <HeroPage />;
+        // Show Hero page for non-authenticated users, Explore page for authenticated users
+        return isAuthenticated ? <ExploreWorkshops /> : <HeroPage />;
     }
   };
 
