@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { workshopAPI } from '../lib/api';
 import { Workshop } from '../types';
@@ -148,39 +148,30 @@ export function AdminReview() {
     detailsConfirmed: state.detailsConfirmed,
   });
 
-  const filteredWorkshops = useMemo(() => {
-    if (statusFilter === 'all') return workshops;
-    return workshops.filter((workshop) => (workshop.status || '').toLowerCase() === statusFilter);
-  }, [workshops, statusFilter]);
+  const filteredWorkshops =
+    statusFilter === 'all'
+      ? workshops
+      : workshops.filter((workshop) => (workshop.status || '').toLowerCase() === statusFilter);
 
-  const sortedWorkshops = useMemo(() => {
-    const list = [...filteredWorkshops];
-    list.sort((a, b) => {
-      const aTime = new Date(`${a.date || '0000-01-01'}T${a.time || '00:00'}`).getTime();
-      const bTime = new Date(`${b.date || '0000-01-01'}T${b.time || '00:00'}`).getTime();
-      return bTime - aTime;
-    });
-    return list;
-  }, [filteredWorkshops]);
+  const sortedWorkshops = [...filteredWorkshops].sort((a, b) => {
+    const aTime = new Date(`${a.date || '0000-01-01'}T${a.time || '00:00'}`).getTime();
+    const bTime = new Date(`${b.date || '0000-01-01'}T${b.time || '00:00'}`).getTime();
+    return bTime - aTime;
+  });
 
   const totalPages = Math.max(1, Math.ceil(sortedWorkshops.length / pageSize));
-  const pagedWorkshops = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedWorkshops.slice(start, start + pageSize);
-  }, [sortedWorkshops, currentPage]);
+  const start = (currentPage - 1) * pageSize;
+  const pagedWorkshops = sortedWorkshops.slice(start, start + pageSize);
 
-  const selectedWorkshop = useMemo(
-    () => sortedWorkshops.find((w) => w.id === selectedId) || null,
-    [sortedWorkshops, selectedId]
-  );
+  const selectedWorkshop = sortedWorkshops.find((w) => w.id === selectedId) || null;
   const selectedHasDetail = selectedWorkshop ? !!loadedDetailIds[selectedWorkshop.id] : false;
 
-  const isDirty = useMemo(() => {
+  const isDirty = (() => {
     if (!selectedWorkshop) return false;
     const baseline = normalizeFormState(buildFormState(selectedWorkshop));
     const current = normalizeFormState(formData);
     return JSON.stringify(baseline) !== JSON.stringify(current);
-  }, [formData, selectedWorkshop]);
+  })();
 
   const loadWorkshopDetail = async (workshopId: string, force = false) => {
     if (!sessionToken || !workshopId) return;

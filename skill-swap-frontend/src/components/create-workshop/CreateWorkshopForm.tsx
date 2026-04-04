@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { categories } from '../../lib/mock-data';
 import { useApp } from '../../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -23,30 +23,18 @@ import { useCreateWorkshopSubmit } from './useCreateWorkshopSubmit';
 export function CreateWorkshopForm() {
   const { user, setCurrentPage } = useApp();
   const [values, setValues] = useState<CreateWorkshopFormValues>(defaultCreateWorkshopFormValues);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<CreateWorkshopFieldErrors>({});
-  const [showValidationFeedback, setShowValidationFeedback] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);
   const { isSubmitting, submit } = useCreateWorkshopSubmit();
 
   const validationResult = validateCreateWorkshopForm(values);
   const canSubmit = isCreateWorkshopFormSubmittable(values);
+  const fieldErrors: CreateWorkshopFieldErrors = hasSubmitted ? validationResult.fieldErrors : {};
+  const error = hasSubmitted ? validationResult.formError : null;
 
-  const setField = <K extends keyof CreateWorkshopFormValues>(field: K, value: CreateWorkshopFormValues[K]) => {
+  const setField = (field: CreateWorkshopFormField, value: string | boolean) => {
     setValues((prev) => ({ ...prev, [field]: value }));
   };
-
-  useEffect(() => {
-    if (!showValidationFeedback) return;
-    const nextValidationResult = validateCreateWorkshopForm(values);
-    setFieldErrors((prev) => {
-      if (JSON.stringify(prev) === JSON.stringify(nextValidationResult.fieldErrors)) {
-        return prev;
-      }
-      return nextValidationResult.fieldErrors;
-    });
-    setError((prev) => (prev === nextValidationResult.formError ? prev : nextValidationResult.formError));
-  }, [showValidationFeedback, values]);
 
   const invalidClassName = 'border-destructive focus-visible:ring-destructive';
   const getFieldClassName = (field: CreateWorkshopFormField) =>
@@ -84,17 +72,13 @@ export function CreateWorkshopForm() {
     event.preventDefault();
 
     if (!validationResult.isValid) {
-      setShowValidationFeedback(true);
-      setFieldErrors(validationResult.fieldErrors);
-      setError(validationResult.formError);
+      setHasSubmitted(true);
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       focusFirstInvalidField(validationResult.firstInvalidField);
       return;
     }
 
-    setShowValidationFeedback(false);
-    setFieldErrors({});
-    setError(null);
+    setHasSubmitted(false);
     await submit(values);
   };
 

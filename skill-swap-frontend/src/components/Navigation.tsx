@@ -4,11 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
   Home,
   Search,
-  Plus,
   LayoutDashboard,
   History,
   MessageSquare,
   Bell,
+  Target,
   ShieldCheck,
   PenSquare,
   Moon,
@@ -29,7 +29,6 @@ import {
 const navItems = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'explore', label: 'Explore', icon: Search },
-  { id: 'create', label: 'Create', icon: Plus },
   { id: 'memory', label: 'Memory', icon: History },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },
 ];
@@ -125,6 +124,10 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => setCurrentPage('dashboard')}>
                     <LayoutDashboard className="w-4 h-4" />
                     Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setCurrentPage('create')}>
+                    <Target className="w-4 h-4" />
+                    Host a Workshop
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setCurrentPage('notifications')}>
                     <div className="relative">
@@ -246,6 +249,18 @@ export function Navigation() {
                     >
                       <LayoutDashboard className="w-4 h-4" />
                       <span>Dashboard</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setCurrentPage('create');
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start flex items-center space-x-3"
+                    >
+                      <Target className="w-4 h-4" />
+                      <span>Host a Workshop</span>
                     </Button>
                     <Button
                       variant="ghost"
