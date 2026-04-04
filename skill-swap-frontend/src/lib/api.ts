@@ -91,6 +91,7 @@ function enrichWorkshop(workshop: any): Workshop {
     ? workshop.participants.map((p: any) => ({
         id: String(p.id),
         username: p.username || p.name || 'Unknown',
+        email: p.email || p.userEmail || p.user_email || p.mail || '',
         avatarUrl: p.avatarUrl || p.avatar_url || p.avatar,
       }))
     : undefined;
@@ -129,6 +130,14 @@ function enrichWorkshop(workshop: any): Workshop {
     membersPresent: workshop.membersPresent ?? workshop.members_present,
     eventSubmitted: Boolean(workshop.eventSubmitted ?? workshop.event_submitted),
     usuApprovalStatus: usuApprovalStatusRaw === 'approved' ? 'approved' : 'pending',
+    rejectionNote:
+      workshop.rejectionNote ||
+      workshop.rejection_note ||
+      workshop.rejectComment ||
+      workshop.reject_comment ||
+      workshop.adminComment ||
+      workshop.admin_comment ||
+      '',
     facilitator,
     tags: workshop.tags,
     image: resolvedImage || getDefaultImage(workshop.category),

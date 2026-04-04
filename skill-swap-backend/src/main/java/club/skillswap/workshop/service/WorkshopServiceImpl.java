@@ -379,7 +379,8 @@ public class WorkshopServiceImpl implements WorkshopService {
                     p -> new WorkshopParticipantDto(
                         p.getUser().getId().toString(),
                         p.getUser().getUsername(),
-                        p.getUser().getAvatarUrl()
+                        p.getUser().getAvatarUrl(),
+                        p.getUser().getEmail()
                     ),
                     Collectors.toList()
                 )
@@ -568,7 +569,8 @@ public class WorkshopServiceImpl implements WorkshopService {
                 .map(p -> new WorkshopParticipantDto(
                     p.getUser().getId().toString(),
                     p.getUser().getUsername(),
-                    p.getUser().getAvatarUrl()
+                    p.getUser().getAvatarUrl(),
+                    p.getUser().getEmail()
                 ))
                 .toList();
             return mapToDto(workshop, participants, participants.size(), includeSensitive);

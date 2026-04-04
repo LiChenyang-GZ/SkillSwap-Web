@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
-import { Calendar, Check, Clock, Globe, MapPin, RefreshCw, ShieldCheck, Upload, X } from 'lucide-react';
+import { Calendar, Check, Clock, Download, Globe, MapPin, RefreshCw, ShieldCheck, Upload, Users, X } from 'lucide-react';
 import { categories } from '../lib/mock-data';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import type { WorkshopUpsertPayload } from '../lib/api';
 
 interface WorkshopFormState {
@@ -314,13 +315,14 @@ export function AdminReview() {
       setFormData(emptyForm);
       setPendingImageFile(null);
       clearLocalImagePreview();
+      setRejectComment('');
       return;
     }
 
     setPendingImageFile(null);
     clearLocalImagePreview();
     setFormData(buildFormState(selectedWorkshop));
-    setRejectComment('');
+    setRejectComment(selectedWorkshop.rejectionNote || '');
   }, [selectedWorkshop]);
 
   useEffect(() => {
@@ -451,6 +453,7 @@ export function AdminReview() {
             ? {
                 ...w,
                 status: 'rejected',
+                rejectionNote: rejectComment || '',
               }
             : w
         )
@@ -494,6 +497,49 @@ export function AdminReview() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleExportParticipantsExcel = (workshop: Workshop) => {
+    const participants = workshop.participants ?? [];
+    const participantCount = participants.length || workshop.currentParticipants || 0;
+
+    if (participantCount === 0) {
+      toast.info('No participant data to export.');
+      return;
+    }
+
+    const exportedAt = new Date().toISOString();
+    const rows = participants.length > 0
+      ? participants.map((participant, index) => ({
+          No: index + 1,
+          Workshop: workshop.title,
+          Status: workshop.status,
+          Date: workshop.date,
+          Time: workshop.time,
+          ParticipantName: participant.username || 'Unknown',
+          ParticipantEmail: participant.email || '',
+          ExportedAt: exportedAt,
+        }))
+      : [{
+          No: '',
+          Workshop: workshop.title,
+          Status: workshop.status,
+          Date: workshop.date,
+          Time: workshop.time,
+          ParticipantName: '',
+          ParticipantEmail: '',
+          ExportedAt: exportedAt,
+          Note: `${participantCount} participant(s) joined, but detail list is not available in API response.`,
+        }];
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Participants');
+
+    const safeTitle = workshop.title.replace(/[\\/:*?"<>|]/g, '').trim() || 'workshop';
+    const fileName = `${safeTitle.slice(0, 40)}-participants.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    toast.success('Participant list exported.');
   };
 
   if (!sessionToken) {
@@ -669,6 +715,10 @@ export function AdminReview() {
                     const canReject = normalizedStatus === 'pending' && !hasStarted;
                     const canEdit = !hasStarted && !['completed', 'cancelled'].includes(normalizedStatus);
                     const canCancel = !hasStarted && ['approved', 'upcoming'].includes(normalizedStatus);
+                    const shouldShowParticipants = ['approved', 'completed'].includes(normalizedStatus);
+                    const shouldShowRejectionNote = normalizedStatus !== 'approved';
+                    const participants = selectedWorkshop.participants ?? [];
+                    const participantCount = participants.length || selectedWorkshop.currentParticipants || 0;
 
                     return (
                       <>
@@ -958,18 +1008,68 @@ export function AdminReview() {
                     </Label>
                   </div>
 
-                  <div>
-                    <Label htmlFor="rejectComment">Rejection Note (optional)</Label>
-                    <Textarea
-                      id="rejectComment"
-                      value={rejectComment}
-                      onChange={(e) => setRejectComment(e.target.value)}
-                      rows={2}
-                      className="mt-1"
-                      placeholder="Optional note for the host"
-                      disabled={!canReject}
-                    />
-                  </div>
+                  {shouldShowParticipants && (
+                    <div className="rounded-md border border-border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-muted-foreground" />
+                          <h3 className="text-sm font-medium">Participants</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">
+                            {participantCount} attendee{participantCount === 1 ? '' : 's'}
+                          </Badge>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleExportParticipantsExcel(selectedWorkshop)}
+                            disabled={participantCount === 0}
+                          >
+                            <Download className="w-4 h-4 mr-2" />
+                            Export Excel
+                          </Button>
+                        </div>
+                      </div>
+
+                      {participants.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          {participantCount > 0
+                            ? `${participantCount} attendee(s) joined, but participant details are not available from the current API response.`
+                            : 'No participants have joined this workshop yet.'}
+                        </p>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                          {participants.map((participant) => {
+                            const displayName = participant.username || participant.email || `User ${participant.id}`;
+                            const email = participant.email || 'Email unavailable from API';
+
+                            return (
+                              <div key={participant.id} className="rounded-md border border-border px-3 py-2">
+                                <p className="text-sm font-medium">{displayName}</p>
+                                <p className="text-xs text-muted-foreground">{email}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {shouldShowRejectionNote && (
+                    <div>
+                      <Label htmlFor="rejectComment">Rejection Note (optional)</Label>
+                      <Textarea
+                        id="rejectComment"
+                        value={rejectComment}
+                        onChange={(e) => setRejectComment(e.target.value)}
+                        rows={2}
+                        className="mt-1"
+                        placeholder="Optional note for the host"
+                        disabled={!canReject}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap gap-3">
                     <Button variant="outline" onClick={handleSave} disabled={isSaving || !canEdit || !isDirty}>
