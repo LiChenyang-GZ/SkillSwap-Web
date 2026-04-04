@@ -6,10 +6,11 @@ import {
   Search,
   Plus,
   LayoutDashboard,
-  Trophy,
+  History,
   MessageSquare,
   Bell,
   ShieldCheck,
+  PenSquare,
   Moon,
   Sun,
   Menu,
@@ -29,7 +30,7 @@ const navItems = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'explore', label: 'Explore', icon: Search },
   { id: 'create', label: 'Create', icon: Plus },
-  { id: 'pastWorkshops', label: 'Past Workshops', icon: Trophy },
+  { id: 'memory', label: 'Memory', icon: History },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },
 ];
 
@@ -82,7 +83,7 @@ export function Navigation() {
 
           {/* User Section */}
           <div className="flex items-center space-x-4">
-            {/* 积分系统已停用：导航栏不再展示积分入口。 */}
+            {/* 积分系统已停用：导航栏不再展示积分入口�?*/}
             {/*
             {user && (
               <Badge 
@@ -140,6 +141,12 @@ export function Navigation() {
                       Admin Review
                     </DropdownMenuItem>
                   )}
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => setCurrentPage('adminMemory')}>
+                      <PenSquare className="w-4 h-4" />
+                      Memory Studio
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   {isAuthenticated ? (
                     <DropdownMenuItem variant="destructive" onClick={signOut}>
@@ -177,7 +184,7 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center space-x-3">
-            {/* 积分系统已停用：移动端导航不再展示积分入口。 */}
+            {/* 积分系统已停用：移动端导航不再展示积分入口�?*/}
             {/*
             {user && (
               <Badge 
@@ -271,6 +278,20 @@ export function Navigation() {
                         <span>Admin Review</span>
                       </Button>
                     )}
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCurrentPage('adminMemory');
+                          setIsMobileMenuOpen(false);
+                        }}
+                        className="w-full justify-start flex items-center space-x-3"
+                      >
+                        <PenSquare className="w-4 h-4" />
+                        <span>Memory Studio</span>
+                      </Button>
+                    )}
                   </>
                 )}
                 <Button
@@ -316,3 +337,4 @@ export function Navigation() {
     </>
   );
 }
+

@@ -47,6 +47,22 @@ export interface Workshop {
   requirements?: string[];
 }
 
+export interface MemoryEntry {
+  id: string;
+  version?: number;
+  title: string;
+  slug: string;
+  coverUrl?: string;
+  content?: string;
+  mediaUrls: string[];
+  status: 'draft' | 'published' | 'archived';
+  publishedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
 export interface CreditTransaction {
   id: string;
   userId: string;

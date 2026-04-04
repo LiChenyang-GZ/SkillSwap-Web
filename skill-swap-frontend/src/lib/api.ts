@@ -1,11 +1,28 @@
 // lib/api.ts
 
-import { NotificationItem, Workshop, User } from '@/types';
+import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
 import { mockUser, mockUsers, mockTransactions } from './mock-data';
 
 // Backend API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+export function resolveAssetUrl(url?: string): string {
+  if (!url) return '';
+
+  const trimmed = String(url).trim();
+  if (!trimmed) return '';
+
+  if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('/')) {
+    return `${API_BASE_URL}${trimmed}`;
+  }
+
+  return `${API_BASE_URL}/${trimmed}`;
+}
 
 // 默认图片（按类别）
 function getDefaultImage(category: string): string {
@@ -77,6 +94,35 @@ function enrichWorkshop(workshop: any): Workshop {
   };
 }
 
+function enrichMemory(entry: any): MemoryEntry {
+  const normalizeMemoryUrl = (value?: string): string => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    const unquoted = raw.replace(/^['\"]|['\"]$/g, '');
+    const markdownImage = unquoted.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
+    const resolved = markdownImage?.[1]?.trim() || unquoted;
+    return resolveAssetUrl(resolved);
+  };
+
+  const rawMediaUrls = Array.isArray(entry.mediaUrls) ? entry.mediaUrls : [];
+  return {
+    id: String(entry.id),
+    version: typeof entry.version === 'number' ? entry.version : Number(entry.version ?? 0),
+    title: entry.title || '',
+    slug: entry.slug || '',
+    coverUrl: normalizeMemoryUrl(entry.coverUrl || ''),
+    content: entry.content || '',
+    mediaUrls: rawMediaUrls.map((url: string) => normalizeMemoryUrl(url)).filter(Boolean),
+    status: (entry.status || 'draft') as MemoryEntry['status'],
+    publishedAt: entry.publishedAt,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    createdBy: entry.createdBy,
+    updatedBy: entry.updatedBy,
+  };
+}
+
 function toBackendWorkshopId(workshopId: string): string {
   // 兼容 mock id: workshop-1 -> 1
   const match = /^workshop-(\d+)$/.exec(workshopId);
@@ -92,8 +138,9 @@ async function apiCall<T>(
   options: RequestInit = {},
   token?: string | null
 ): Promise<T> {
+  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
+    ...(isFormDataBody ? {} : { "Content-Type": "application/json" }),
     ...options.headers,
   };
 
@@ -115,10 +162,21 @@ async function apiCall<T>(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(error || `API Error: ${response.status}`);
+    const apiError = new Error(error || `API Error: ${response.status}`) as Error & { status?: number };
+    apiError.status = response.status;
+    throw apiError;
   }
 
-  return response.json();
+  const raw = await response.text();
+  if (!raw) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return raw as T;
+  }
 }
 
 // ----------------------
@@ -558,5 +616,82 @@ export const notificationAPI = {
 
   markAllRead: async (token?: string | null): Promise<void> => {
     await apiCall<void>("/api/v1/notifications/read-all", { method: "POST" }, token);
+  },
+};
+
+// ----------------------
+// MEMORY API
+// ----------------------
+export const memoryAPI = {
+  getPublic: async (): Promise<MemoryEntry[]> => {
+    const data = await apiCall<any[]>('/api/v1/memories');
+    return data.map(enrichMemory);
+  },
+
+  getBySlug: async (slug: string): Promise<MemoryEntry | null> => {
+    try {
+      const data = await apiCall<any>(`/api/v1/memories/${encodeURIComponent(slug)}`);
+      return enrichMemory(data);
+    } catch {
+      return null;
+    }
+  },
+
+  getAllForAdmin: async (token?: string | null): Promise<MemoryEntry[]> => {
+    const data = await apiCall<any[]>('/api/v1/admin/memories', {}, token);
+    return data.map(enrichMemory);
+  },
+
+  createByAdmin: async (payload: Partial<MemoryEntry>, token?: string | null): Promise<MemoryEntry> => {
+    const data = await apiCall<any>(
+      '/api/v1/admin/memories',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token
+    );
+    return enrichMemory(data);
+  },
+
+  updateByAdmin: async (id: string, payload: Partial<MemoryEntry>, token?: string | null): Promise<MemoryEntry> => {
+    const data = await apiCall<any>(
+      `/api/v1/admin/memories/${id}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      token
+    );
+    return enrichMemory(data);
+  },
+
+  deleteByAdmin: async (id: string, token?: string | null): Promise<void> => {
+    await apiCall<void>(
+      `/api/v1/admin/memories/${id}`,
+      {
+        method: 'DELETE',
+      },
+      token
+    );
+  },
+
+  uploadMediaByAdmin: async (file: File, token?: string | null): Promise<{ url: string; path: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiCall<{ url: string; path: string }>(
+      '/api/v1/admin/memories/media',
+      {
+        method: 'POST',
+        body: formData,
+      },
+      token
+    );
+
+    return {
+      ...response,
+      url: resolveAssetUrl(response.url || response.path),
+    };
   },
 };

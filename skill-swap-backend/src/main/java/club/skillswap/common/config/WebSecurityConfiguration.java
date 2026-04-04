@@ -64,6 +64,7 @@ public class WebSecurityConfiguration {
                 .requestMatchers("/health").permitAll()
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/workshops", "/api/v1/workshops/public", "/api/v1/workshops/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/memories", "/api/v1/memories/*").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             );
