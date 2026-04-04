@@ -173,42 +173,18 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
           Back to Explore
         </Button>
 
-        {/* Top layout handled inside the grid: title/facilitator (left) + image/key-info (right) */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 ">
-          {/* Header row: title + facilitator (left) and image (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <div className="mb-4 lg:mb-6">
-              <h1 className="text-4xl font-bold leading-tight mb-8">{workshop.title}</h1>
-              <p className="text-sm font-semibold text-muted-foreground mb-8 uppercase">Hosted By</p>
-              <div className="flex items-center mt-2">
-                <Avatar className="w-16 h-16">
-                  <AvatarImage src={workshop.facilitator?.avatarUrl} />
-                  <AvatarFallback className="text-lg">
-                    {workshop.facilitator?.name?.split(' ').map((n) => n[0]).join('') || '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="ml-6">
-                  <p className="font-semibold text-lg">{workshop.facilitator?.name}</p>
-                  {workshop.facilitator?.bio && (
-                    <p className="text-sm text-muted-foreground mt-1">{workshop.facilitator?.bio}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Header right: image aligned with title/facilitator */}
-          <div className="lg:col-span-1">
             {workshop.image && (
-              <div className="aspect-video w-full h-full overflow-hidden rounded-lg bg-muted">
+              <div className="aspect-[16/7] w-full overflow-hidden rounded-lg bg-muted">
                 <img src={workshop.image} alt={workshop.title} className="w-full h-full object-cover" />
               </div>
             )}
-          </div>
 
-          {/* Content row: main details (left) */}
-          <div className="lg:col-span-2 space-y-8">
+            <div>
+              <h1 className="text-4xl font-bold leading-tight">{workshop.title}</h1>
+            </div>
+
             {/* About Section */}
             <div className="pb-8">
               <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">About</h2>
@@ -348,14 +324,21 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                     <Clock className="w-5 h-5 text-muted-foreground" />
                     <span className="text-base">{workshop.time}</span>
                   </div>
-                  {workshop.duration && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {workshop.duration >= 60 && workshop.duration % 60 === 0
-                        ? `${workshop.duration / 60} ${workshop.duration === 60 ? 'hour' : 'hours'}`
-                        : `${workshop.duration} mins`}
-                    </p>
-                  )}
                 </div>
+
+                {workshop.duration && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Duration</p>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-5 h-5 text-muted-foreground" />
+                      <span className="text-base">
+                        {workshop.duration >= 60 && workshop.duration % 60 === 0
+                          ? `${workshop.duration / 60} ${workshop.duration === 60 ? 'hour' : 'hours'}`
+                          : `${workshop.duration} mins`}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Location */}
                 <div>

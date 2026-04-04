@@ -46,6 +46,11 @@ export interface Workshop {
   detailsConfirmed?: boolean;
   submitterUsername?: string;
   submitterEmail?: string;
+  weekNumber?: number;
+  memberResponsible?: string;
+  membersPresent?: string;
+  eventSubmitted?: boolean;
+  usuApprovalStatus?: 'pending' | 'approved';
   facilitator: Facilitator | null;
   tags?: string[];
   image?: string;

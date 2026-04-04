@@ -3,6 +3,7 @@ package club.skillswap.workshop.dto;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDate;
@@ -40,12 +41,23 @@ public record WorkshopCreateRequestDto(
     Integer maxParticipants,
 
     @NotBlank(message = "Contact number is required.")
+    @Pattern(
+        regexp = "^0\\d{9}$",
+        message = "Contact number must be an Australian 10-digit number."
+    )
     String contactNumber,
 
     String materialsProvided,
     String materialsNeededFromClub,
     String venueRequirements,
     String otherImportantInfo,
+
+    @Positive(message = "Week number must be greater than 0 when provided.")
+    Integer weekNumber,
+    String memberResponsible,
+    String membersPresent,
+    Boolean eventSubmitted,
+    String usuApprovalStatus,
 
     @NotNull(message = "Details confirmation is required.")
     @AssertTrue(message = "You must confirm that the details are accurate.")

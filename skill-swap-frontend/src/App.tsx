@@ -8,7 +8,7 @@ const HomePage = React.lazy(() => import('./components/HomePage').then((m) => ({
 const ExploreWorkshops = React.lazy(() => import('./components/ExploreWorkshops').then((m) => ({ default: m.ExploreWorkshops })));
 const Memory = React.lazy(() => import('./components/Memory').then((m) => ({ default: m.Memory })));
 const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
-const CreateWorkshop = React.lazy(() => import('./components/CreateWorkshop').then((m) => ({ default: m.CreateWorkshop })));
+const CreateWorkshop = React.lazy(() => import('./components/create-workshop/CreateWorkshopPage').then((m) => ({ default: m.CreateWorkshopPage })));
 const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
 const WorkshopDetails = React.lazy(() => import('./components/WorkshopDetails').then((m) => ({ default: m.WorkshopDetails })));
 const MemoryDetail = React.lazy(() => import('./components/MemoryDetail.tsx').then((m) => ({ default: m.MemoryDetail })));

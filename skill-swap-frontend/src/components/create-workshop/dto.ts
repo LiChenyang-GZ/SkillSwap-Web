@@ -1,5 +1,5 @@
 import type { WorkshopUpsertPayload } from '../../lib/api';
-import type { CreateWorkshopFormValues } from './schema';
+import { normalizeAustralianContactNumber, type CreateWorkshopFormValues } from './schema';
 
 export function toWorkshopUpsertPayload(values: CreateWorkshopFormValues): WorkshopUpsertPayload {
   const maxParticipants = values.maxParticipants.trim();
@@ -15,7 +15,7 @@ export function toWorkshopUpsertPayload(values: CreateWorkshopFormValues): Works
     time: values.time,
     isOnline: values.isOnline,
     location: values.isOnline ? 'Online' : '',
-    contactNumber: values.contactNumber.trim(),
+    contactNumber: normalizeAustralianContactNumber(values.contactNumber),
     materialsProvided: values.materialsProvided.trim(),
     materialsNeededFromClub: values.materialsNeededFromClub.trim(),
     venueRequirements: values.venueRequirements.trim(),

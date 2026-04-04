@@ -15,6 +15,7 @@ import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,13 +23,20 @@ import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Map;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -36,10 +44,18 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WorkshopServiceImpl implements WorkshopService {
 
+    private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
+
     private final WorkshopRepository workshopRepository;
     private final UserService userService;
     private final WorkshopParticipantRepository participantRepository;
     private final NotificationService notificationService;
+
+    @Value("${app.upload.base-dir:uploads}")
+    private String uploadBaseDir;
+
+    @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
+    private long maxImageBytes;
 
     @Override
     @Transactional
@@ -65,6 +81,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setVenueRequirements(createRequestDto.venueRequirements());
         workshop.setOtherImportantInfo(createRequestDto.otherImportantInfo());
         workshop.setDetailsConfirmed(Boolean.TRUE.equals(createRequestDto.detailsConfirmed()));
+        workshop.setWeekNumber(createRequestDto.weekNumber());
+        workshop.setMemberResponsible(createRequestDto.memberResponsible());
+        workshop.setMembersPresent(createRequestDto.membersPresent());
+        workshop.setEventSubmitted(Boolean.TRUE.equals(createRequestDto.eventSubmitted()));
+        workshop.setUsuApprovalStatus(normalizeUsuApprovalStatus(createRequestDto.usuApprovalStatus()));
         // 积分系统已停用：创建 workshop 时不再使用请求中的积分配置。
         // workshop.setCreditCost(createRequestDto.creditCost());
         // workshop.setCreditReward(createRequestDto.creditReward());
@@ -180,9 +201,57 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setVenueRequirements(updateRequestDto.venueRequirements());
         workshop.setOtherImportantInfo(updateRequestDto.otherImportantInfo());
         workshop.setDetailsConfirmed(Boolean.TRUE.equals(updateRequestDto.detailsConfirmed()));
+        workshop.setWeekNumber(updateRequestDto.weekNumber());
+        workshop.setMemberResponsible(updateRequestDto.memberResponsible());
+        workshop.setMembersPresent(updateRequestDto.membersPresent());
+        workshop.setEventSubmitted(Boolean.TRUE.equals(updateRequestDto.eventSubmitted()));
+        workshop.setUsuApprovalStatus(normalizeUsuApprovalStatus(updateRequestDto.usuApprovalStatus()));
 
         Workshop saved = workshopRepository.save(workshop);
         notifyWorkshopAdminUpdate(saved);
+        return mapToDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public WorkshopResponseDto uploadWorkshopImage(Long workshopId, MultipartFile file, Authentication authentication) {
+        requireAdmin(authentication);
+
+        Workshop workshop = workshopRepository.findById(workshopId)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required.");
+        }
+
+        String contentType = trimToNull(file.getContentType());
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image uploads are supported.");
+        }
+
+        if (file.getSize() > maxImageBytes) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
+        }
+
+        String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
+        String fileName = UUID.randomUUID() + extension;
+
+        Path targetDirectory = Paths.get(uploadBaseDir, "workshops").toAbsolutePath().normalize();
+        Path targetFile = targetDirectory.resolve(fileName).normalize();
+
+        if (!targetFile.startsWith(targetDirectory)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
+        }
+
+        try {
+            Files.createDirectories(targetDirectory);
+            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
+        }
+
+        workshop.setImageUrl("/uploads/workshops/" + fileName);
+        Workshop saved = workshopRepository.save(workshop);
         return mapToDto(saved);
     }
 
@@ -471,6 +540,12 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getDetailsConfirmed(),
             workshop.getSubmitterUsername(),
             null,
+            workshop.getImageUrl(),
+            workshop.getWeekNumber(),
+            workshop.getMemberResponsible(),
+            workshop.getMembersPresent(),
+            workshop.getEventSubmitted(),
+            workshop.getUsuApprovalStatus(),
             facilitatorDto,
             null,
             workshop.getCreatedAt()
@@ -547,6 +622,12 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getDetailsConfirmed(),
             workshop.getSubmitterUsername(),
             includeSensitive ? workshop.getSubmitterEmail() : null,
+            workshop.getImageUrl(),
+            workshop.getWeekNumber(),
+            workshop.getMemberResponsible(),
+            workshop.getMembersPresent(),
+            workshop.getEventSubmitted(),
+            workshop.getUsuApprovalStatus(),
             facilitatorDto,
             safeParticipants,
             workshop.getCreatedAt()
@@ -570,6 +651,57 @@ public class WorkshopServiceImpl implements WorkshopService {
         UUID requesterId = extractUserUuid(authentication);
         UUID facilitatorId = workshop.getFacilitator() != null ? workshop.getFacilitator().getId() : null;
         return requesterId != null && facilitatorId != null && facilitatorId.equals(requesterId);
+    }
+
+    private String normalizeUsuApprovalStatus(String status) {
+        String normalized = trimToNull(status);
+        if (normalized == null) {
+            return "pending";
+        }
+
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        if (!"pending".equals(lower) && !"approved".equals(lower)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "USU approval status must be pending or approved.");
+        }
+
+        return lower;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String resolveImageFileExtension(String originalFilename, String contentType) {
+        String fallback = switch (contentType.toLowerCase(Locale.ROOT)) {
+            case "image/png" -> ".png";
+            case "image/jpeg" -> ".jpg";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            case "image/svg+xml" -> ".svg";
+            default -> ".bin";
+        };
+
+        String fileName = trimToNull(originalFilename);
+        if (fileName == null) {
+            return fallback;
+        }
+
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
+            return fallback;
+        }
+
+        String extension = fileName.substring(dotIndex).toLowerCase(Locale.ROOT);
+        if (!extension.matches("\\.[a-z0-9]{1,10}")) {
+            return fallback;
+        }
+
+        return extension;
     }
 
     private String resolveEffectiveStatus(Workshop workshop) {

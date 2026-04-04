@@ -11,12 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
-import { Calendar, Check, Clock, Globe, MapPin, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { Calendar, Check, Clock, Globe, MapPin, RefreshCw, ShieldCheck, Upload, X } from 'lucide-react';
 import { categories } from '../lib/mock-data';
 import { toast } from 'sonner';
 import type { WorkshopUpsertPayload } from '../lib/api';
 
 interface WorkshopFormState {
+  image: string;
   hostName: string;
   title: string;
   description: string;
@@ -32,10 +33,16 @@ interface WorkshopFormState {
   materialsNeededFromClub: string;
   venueRequirements: string;
   otherImportantInfo: string;
+  weekNumber: string;
+  memberResponsible: string;
+  membersPresent: string;
+  eventSubmitted: 'true' | 'false';
+  usuApprovalStatus: 'pending' | 'approved';
   detailsConfirmed: boolean;
 }
 
 const emptyForm: WorkshopFormState = {
+  image: '',
   hostName: '',
   title: '',
   description: '',
@@ -51,6 +58,11 @@ const emptyForm: WorkshopFormState = {
   materialsNeededFromClub: '',
   venueRequirements: '',
   otherImportantInfo: '',
+  weekNumber: '',
+  memberResponsible: '',
+  membersPresent: '',
+  eventSubmitted: 'false',
+  usuApprovalStatus: 'pending',
   detailsConfirmed: false,
 };
 
@@ -63,6 +75,8 @@ export function AdminReview() {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [localImagePreviewUrl, setLocalImagePreviewUrl] = useState<string | null>(null);
   const [rejectComment, setRejectComment] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('pending');
@@ -84,6 +98,7 @@ export function AdminReview() {
       : workshop.location || '';
 
     return {
+      image: workshop.image || '',
       hostName: workshop.hostName || '',
       title: workshop.title || '',
       description: workshop.description || '',
@@ -99,6 +114,11 @@ export function AdminReview() {
       materialsNeededFromClub: workshop.materialsNeededFromClub || '',
       venueRequirements: workshop.venueRequirements || '',
       otherImportantInfo: workshop.otherImportantInfo || '',
+      weekNumber: workshop.weekNumber ? String(workshop.weekNumber) : '',
+      memberResponsible: workshop.memberResponsible || '',
+      membersPresent: workshop.membersPresent || '',
+      eventSubmitted: workshop.eventSubmitted ? 'true' : 'false',
+      usuApprovalStatus: workshop.usuApprovalStatus === 'approved' ? 'approved' : 'pending',
       detailsConfirmed: !!workshop.detailsConfirmed,
     };
   };
@@ -115,10 +135,16 @@ export function AdminReview() {
     date: state.date.trim(),
     time: state.time.trim(),
     location: state.location.trim(),
+    image: state.image.trim(),
     materialsProvided: state.materialsProvided.trim(),
     materialsNeededFromClub: state.materialsNeededFromClub.trim(),
     venueRequirements: state.venueRequirements.trim(),
     otherImportantInfo: state.otherImportantInfo.trim(),
+    weekNumber: state.weekNumber.trim(),
+    memberResponsible: state.memberResponsible.trim(),
+    membersPresent: state.membersPresent.trim(),
+    eventSubmitted: state.eventSubmitted,
+    usuApprovalStatus: state.usuApprovalStatus,
     detailsConfirmed: state.detailsConfirmed,
   });
 
@@ -274,17 +300,54 @@ export function AdminReview() {
   useEffect(() => {
     if (!selectedWorkshop) {
       setFormData(emptyForm);
+      setPendingImageFile(null);
+      clearLocalImagePreview();
       return;
     }
 
+    setPendingImageFile(null);
+    clearLocalImagePreview();
     setFormData(buildFormState(selectedWorkshop));
     setRejectComment('');
   }, [selectedWorkshop]);
+
+  useEffect(() => {
+    return () => {
+      clearLocalImagePreview();
+    };
+  }, []);
 
   const handleInputChange = (field: keyof WorkshopFormState, value: string | boolean) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+    }));
+  };
+
+  const clearLocalImagePreview = () => {
+    setLocalImagePreviewUrl((previousUrl) => {
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      return null;
+    });
+  };
+
+  const normalizeContactNumber = (value: string) => value.replace(/\D/g, '');
+
+  const handleImageFileSelection = (file: File | null) => {
+    if (!file) {
+      return;
+    }
+
+    clearLocalImagePreview();
+
+    const previewUrl = URL.createObjectURL(file);
+    setLocalImagePreviewUrl(previewUrl);
+    setPendingImageFile(file);
+    setFormData((prev) => ({
+      ...prev,
+      image: previewUrl,
     }));
   };
 
@@ -298,7 +361,7 @@ export function AdminReview() {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        contactNumber: formData.contactNumber,
+        contactNumber: normalizeContactNumber(formData.contactNumber),
         duration: formData.duration ? parseInt(formData.duration, 10) : 0,
         maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : null,
         date: formData.date,
@@ -309,11 +372,22 @@ export function AdminReview() {
         materialsNeededFromClub: formData.materialsNeededFromClub,
         venueRequirements: formData.venueRequirements,
         otherImportantInfo: formData.otherImportantInfo,
+        weekNumber: formData.weekNumber ? parseInt(formData.weekNumber, 10) : null,
+        memberResponsible: formData.memberResponsible,
+        membersPresent: formData.membersPresent,
+        eventSubmitted: formData.eventSubmitted === 'true',
+        usuApprovalStatus: formData.usuApprovalStatus,
         detailsConfirmed: formData.detailsConfirmed,
       };
 
-      const updated = await workshopAPI.updatePendingByAdmin(selectedWorkshop.id, payload, sessionToken);
+      let updated = await workshopAPI.updatePendingByAdmin(selectedWorkshop.id, payload, sessionToken);
+      if (pendingImageFile) {
+        updated = await workshopAPI.uploadImageByAdmin(selectedWorkshop.id, pendingImageFile, sessionToken);
+      }
+
       setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setPendingImageFile(null);
+      clearLocalImagePreview();
       toast.success('Workshop updated successfully.');
     } catch (error) {
       console.error('Failed to update workshop:', error);
@@ -573,6 +647,41 @@ export function AdminReview() {
 
                     return (
                       <>
+                  <div className="space-y-3">
+                    <Label htmlFor="workshopImageUpload">Workshop Cover Image</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-4 items-start">
+                      <div className="aspect-video w-full rounded-md border border-border bg-muted overflow-hidden">
+                        {formData.image ? (
+                          <img src={formData.image} alt={formData.title || 'Workshop cover'} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground px-3 text-center">
+                            No custom cover uploaded yet. Category fallback image will be used.
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Input
+                          id="workshopImageUpload"
+                          type="file"
+                          accept="image/*"
+                          disabled={!canEdit || isSaving}
+                          onChange={(event) => {
+                            const nextFile = event.target.files?.[0] || null;
+                            handleImageFileSelection(nextFile);
+                            event.target.value = '';
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Upload className="w-3 h-3" />
+                          Image is applied only after you click Save Changes.
+                        </p>
+                        {localImagePreviewUrl && (
+                          <p className="text-xs text-secondary">New image selected. Click Save Changes to apply.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="hostName">Host Name</Label>
@@ -661,6 +770,72 @@ export function AdminReview() {
                         disabled={!canEdit}
                       />
                     </div>
+                    <div>
+                      <Label htmlFor="weekNumber">Week #</Label>
+                      <Input
+                        id="weekNumber"
+                        type="number"
+                        min={1}
+                        value={formData.weekNumber}
+                        onChange={(e) => handleInputChange('weekNumber', e.target.value)}
+                        className="mt-1"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="memberResponsible">Member Responsible</Label>
+                      <Input
+                        id="memberResponsible"
+                        value={formData.memberResponsible}
+                        onChange={(e) => handleInputChange('memberResponsible', e.target.value)}
+                        className="mt-1"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="eventSubmitted">Event Submit</Label>
+                      <Select
+                        value={formData.eventSubmitted}
+                        onValueChange={(value: 'true' | 'false') => handleInputChange('eventSubmitted', value)}
+                        modal={false}
+                      >
+                        <SelectTrigger className="mt-1" disabled={!canEdit}>
+                          <SelectValue placeholder="Select value" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="false">false</SelectItem>
+                          <SelectItem value="true">true</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="usuApprovalStatus">Approved by USU</Label>
+                      <Select
+                        value={formData.usuApprovalStatus}
+                        onValueChange={(value: 'pending' | 'approved') => handleInputChange('usuApprovalStatus', value)}
+                        modal={false}
+                      >
+                        <SelectTrigger className="mt-1" disabled={!canEdit}>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">pending</SelectItem>
+                          <SelectItem value="approved">approved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="membersPresent">Member/s Present for Event</Label>
+                    <Textarea
+                      id="membersPresent"
+                      value={formData.membersPresent}
+                      onChange={(e) => handleInputChange('membersPresent', e.target.value)}
+                      rows={2}
+                      className="mt-1"
+                      disabled={!canEdit}
+                    />
                   </div>
 
                   <div>

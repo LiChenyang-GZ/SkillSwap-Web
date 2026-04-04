@@ -3,7 +3,7 @@ import { CreateWorkshopForm } from './CreateWorkshopForm';
 export function CreateWorkshopPage() {
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <header className="space-y-3">
           <h1 className="text-3xl font-bold">Create Workshop</h1>
           <p className="text-muted-foreground">

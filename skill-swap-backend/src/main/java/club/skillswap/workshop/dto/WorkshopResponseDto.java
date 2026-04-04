@@ -32,6 +32,12 @@ public record WorkshopResponseDto(
     Boolean detailsConfirmed,
     String submitterUsername,
     String submitterEmail,
+    String image,
+    Integer weekNumber,
+    String memberResponsible,
+    String membersPresent,
+    Boolean eventSubmitted,
+    String usuApprovalStatus,
     FacilitatorDto facilitator,
     List<WorkshopParticipantDto> participants,
     LocalDateTime createdAt

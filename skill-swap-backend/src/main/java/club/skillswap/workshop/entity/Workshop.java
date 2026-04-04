@@ -103,4 +103,22 @@ public class Workshop {
     @Column(name = "submitter_email")
     private String submitterEmail;
 
+    @Column(name = "image_url", columnDefinition = "text")
+    private String imageUrl;
+
+    @Column(name = "week_number")
+    private Integer weekNumber;
+
+    @Column(name = "member_responsible")
+    private String memberResponsible;
+
+    @Column(name = "members_present", columnDefinition = "text")
+    private String membersPresent;
+
+    @Column(name = "event_submitted")
+    private Boolean eventSubmitted;
+
+    @Column(name = "usu_approval_status")
+    private String usuApprovalStatus;
+
 }

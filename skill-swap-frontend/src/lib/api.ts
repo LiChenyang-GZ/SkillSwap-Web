@@ -20,6 +20,11 @@ export interface WorkshopUpsertPayload {
   materialsNeededFromClub?: string;
   venueRequirements?: string;
   otherImportantInfo?: string;
+  weekNumber?: number | null;
+  memberResponsible?: string;
+  membersPresent?: string;
+  eventSubmitted?: boolean;
+  usuApprovalStatus?: 'pending' | 'approved';
   detailsConfirmed: boolean;
 }
 
@@ -86,6 +91,8 @@ function enrichWorkshop(workshop: any): Workshop {
     : undefined;
 
   const normalizedStatus = String(workshop.status || '').toLowerCase();
+  const resolvedImage = resolveAssetUrl(workshop.image || workshop.imageUrl || workshop.image_url);
+  const usuApprovalStatusRaw = String(workshop.usuApprovalStatus || workshop.usu_approval_status || 'pending').toLowerCase();
 
   return {
     id: String(workshop.id),
@@ -112,9 +119,14 @@ function enrichWorkshop(workshop: any): Workshop {
     detailsConfirmed: workshop.detailsConfirmed,
     submitterUsername: workshop.submitterUsername,
     submitterEmail: workshop.submitterEmail,
+    weekNumber: workshop.weekNumber ?? workshop.week_number,
+    memberResponsible: workshop.memberResponsible ?? workshop.member_responsible,
+    membersPresent: workshop.membersPresent ?? workshop.members_present,
+    eventSubmitted: Boolean(workshop.eventSubmitted ?? workshop.event_submitted),
+    usuApprovalStatus: usuApprovalStatusRaw === 'approved' ? 'approved' : 'pending',
     facilitator,
     tags: workshop.tags,
-    image: workshop.image || getDefaultImage(workshop.category),
+    image: resolvedImage || getDefaultImage(workshop.category),
     createdAt: workshop.createdAt,
     participants: participants as any,
     materials: workshop.materials,
@@ -547,6 +559,23 @@ export const workshopAPI = {
       },
       token
     );
+    return enrichWorkshop(data);
+  },
+
+  uploadImageByAdmin: async (workshopId: string, file: File, token?: string | null): Promise<Workshop> => {
+    const backendId = toBackendWorkshopId(workshopId);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const data = await apiCall<any>(
+      `/api/v1/admin/workshops/${backendId}/image`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+      token
+    );
+
     return enrichWorkshop(data);
   },
 
