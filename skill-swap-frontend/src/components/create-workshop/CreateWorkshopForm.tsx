@@ -346,19 +346,6 @@ export function CreateWorkshopForm() {
               />
             </div>
           </div>
-
-          <Card className="border-dashed">
-            <CardContent className="p-4 text-sm text-muted-foreground space-y-2">
-              <p className="font-medium text-foreground">Submitted account</p>
-              <p>Username: {user?.username || 'Unknown'}</p>
-              <p>Email: {user?.email || 'Unknown'}</p>
-              <p className="flex items-start gap-2 pt-1">
-                <Info className="w-4 h-4 mt-0.5" />
-                <span>The account info is attached automatically during submission.</span>
-              </p>
-            </CardContent>
-          </Card>
-
           <div
             className={`flex items-center gap-3 rounded-md border border-border px-3 py-3${getFieldError('detailsConfirmed') ? ' border-destructive' : ''}`}
           >
