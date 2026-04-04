@@ -1,30 +1,46 @@
-export interface CreateWorkshopFormValues {
-  hostName: string;
-  title: string;
-  category: string;
-  contactNumber: string;
-  date: string;
-  time: string;
-  duration: string;
-  maxParticipants: string;
-  isOnline: boolean;
-  materialsProvided: string;
-  materialsNeededFromClub: string;
-  venueRequirements: string;
-  otherImportantInfo: string;
-  detailsConfirmed: boolean;
-}
+import { z } from 'zod';
 
+const nonEmptyString = (message: string) =>
+  z.string().refine((value) => value.trim().length > 0, { message });
+
+const positiveIntegerString = (value: string): boolean => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0;
+};
+
+export const createWorkshopFormSchema = z.object({
+  hostName: nonEmptyString('Host name is required.'),
+  title: nonEmptyString('Workshop name/skill taught is required.'),
+  category: nonEmptyString('Category is required.'),
+  contactNumber: z
+    .string()
+    .refine((value) => value.trim().length > 0, { message: 'Contact number is required.' })
+    .refine((value) => /^0\d{9}$/.test(normalizeAustralianContactNumber(value)), {
+      message: 'Please enter a valid Australian 10-digit number.',
+    }),
+  date: nonEmptyString('Confirmed workshop date is required.'),
+  time: nonEmptyString('Confirmed workshop time is required.'),
+  duration: z
+    .string()
+    .refine((value) => value.trim().length > 0, { message: 'Duration is required.' })
+    .refine((value) => positiveIntegerString(value), {
+      message: 'Duration must be a positive integer in minutes.',
+    }),
+  maxParticipants: z.string().refine((value) => !value.trim() || positiveIntegerString(value), {
+    message: 'Maximum participants must be a positive integer.',
+  }),
+  isOnline: z.boolean(),
+  materialsProvided: z.string(),
+  materialsNeededFromClub: z.string(),
+  venueRequirements: z.string(),
+  otherImportantInfo: z.string(),
+  detailsConfirmed: z.boolean().refine((value) => value, {
+    message: 'Please confirm that the details are accurate before submitting.',
+  }),
+});
+
+export type CreateWorkshopFormValues = z.infer<typeof createWorkshopFormSchema>;
 export type CreateWorkshopFormField = keyof CreateWorkshopFormValues;
-
-export type CreateWorkshopFieldErrors = Partial<Record<CreateWorkshopFormField, string>>;
-
-export interface CreateWorkshopValidationResult {
-  isValid: boolean;
-  fieldErrors: CreateWorkshopFieldErrors;
-  formError: string | null;
-  firstInvalidField: CreateWorkshopFormField | null;
-}
 
 export const defaultCreateWorkshopFormValues: CreateWorkshopFormValues = {
   hostName: '',
@@ -45,60 +61,6 @@ export const defaultCreateWorkshopFormValues: CreateWorkshopFormValues = {
 
 export function normalizeAustralianContactNumber(value: string): string {
   return value.replace(/\D/g, '');
-}
-
-function validateFields(values: CreateWorkshopFormValues): CreateWorkshopFieldErrors {
-  const fieldErrors: CreateWorkshopFieldErrors = {};
-
-  if (!values.hostName.trim()) fieldErrors.hostName = 'Host name is required.';
-  if (!values.title.trim()) fieldErrors.title = 'Workshop name/skill taught is required.';
-  if (!values.category.trim()) fieldErrors.category = 'Category is required.';
-
-  if (!values.contactNumber.trim()) {
-    fieldErrors.contactNumber = 'Contact number is required.';
-  } else {
-    const normalizedContactNumber = normalizeAustralianContactNumber(values.contactNumber);
-    if (!/^0\d{9}$/.test(normalizedContactNumber)) {
-      fieldErrors.contactNumber = 'Please enter a valid Australian 10-digit number.';
-    }
-  }
-
-  if (!values.date.trim()) fieldErrors.date = 'Confirmed workshop date is required.';
-  if (!values.time.trim()) fieldErrors.time = 'Confirmed workshop time is required.';
-
-  if (!values.duration.trim()) {
-    fieldErrors.duration = 'Duration is required.';
-  } else {
-    const parsedDuration = Number(values.duration);
-    if (!Number.isInteger(parsedDuration) || parsedDuration <= 0) {
-      fieldErrors.duration = 'Duration must be a positive integer in minutes.';
-    }
-  }
-
-  if (values.maxParticipants.trim()) {
-    const parsedMaxParticipants = Number(values.maxParticipants);
-    if (!Number.isInteger(parsedMaxParticipants) || parsedMaxParticipants <= 0) {
-      fieldErrors.maxParticipants = 'Maximum participants must be a positive integer.';
-    }
-  }
-
-  if (!values.detailsConfirmed) {
-    fieldErrors.detailsConfirmed = 'Please confirm that the details are accurate before submitting.';
-  }
-
-  return fieldErrors;
-}
-
-export function validateCreateWorkshopForm(values: CreateWorkshopFormValues): CreateWorkshopValidationResult {
-  const fieldErrors = validateFields(values);
-  const invalidFields = Object.keys(fieldErrors) as CreateWorkshopFormField[];
-
-  return {
-    isValid: invalidFields.length === 0,
-    fieldErrors,
-    formError: invalidFields.length > 0 ? 'Please review the highlighted fields before submitting.' : null,
-    firstInvalidField: invalidFields[0] ?? null,
-  };
 }
 
 export function isCreateWorkshopFormSubmittable(values: CreateWorkshopFormValues): boolean {

@@ -1,4 +1,6 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { categories } from '../../lib/mock-data';
 import { useApp } from '../../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -11,10 +13,9 @@ import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { AlertCircle, Globe, Info } from 'lucide-react';
 import {
+  createWorkshopFormSchema,
   defaultCreateWorkshopFormValues,
   isCreateWorkshopFormSubmittable,
-  validateCreateWorkshopForm,
-  type CreateWorkshopFieldErrors,
   type CreateWorkshopFormField,
   type CreateWorkshopFormValues,
 } from './schema';
@@ -22,23 +23,40 @@ import { useCreateWorkshopSubmit } from './useCreateWorkshopSubmit';
 
 export function CreateWorkshopForm() {
   const { user, setCurrentPage } = useApp();
-  const [values, setValues] = useState<CreateWorkshopFormValues>(defaultCreateWorkshopFormValues);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);
   const { isSubmitting, submit } = useCreateWorkshopSubmit();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, submitCount },
+  } = useForm<CreateWorkshopFormValues>({
+    resolver: zodResolver(createWorkshopFormSchema),
+    defaultValues: defaultCreateWorkshopFormValues,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
+    shouldFocusError: false,
+  });
 
-  const validationResult = validateCreateWorkshopForm(values);
+  const values = watch();
+  const hasSubmitted = submitCount > 0;
   const canSubmit = isCreateWorkshopFormSubmittable(values);
-  const fieldErrors: CreateWorkshopFieldErrors = hasSubmitted ? validationResult.fieldErrors : {};
-  const error = hasSubmitted ? validationResult.formError : null;
+  const error = hasSubmitted && Object.keys(errors).length > 0
+    ? 'Please review the highlighted fields before submitting.'
+    : null;
 
-  const setField = (field: CreateWorkshopFormField, value: string | boolean) => {
-    setValues((prev) => ({ ...prev, [field]: value }));
+  const getFieldError = (field: CreateWorkshopFormField): string | null => {
+    if (!hasSubmitted) return null;
+    const message = errors[field]?.message;
+    return typeof message === 'string' ? message : null;
   };
 
   const invalidClassName = 'border-destructive focus-visible:ring-destructive';
-  const getFieldClassName = (field: CreateWorkshopFormField) =>
-    `mt-1${fieldErrors[field] ? ` ${invalidClassName}` : ''}`;
+  const getFieldClassName = (field: CreateWorkshopFormField) => {
+    const fieldError = getFieldError(field);
+    return `mt-1${fieldError ? ` ${invalidClassName}` : ''}`;
+  };
 
   const fieldElementIdMap: Record<CreateWorkshopFormField, string> = {
     hostName: 'hostName',
@@ -57,6 +75,18 @@ export function CreateWorkshopForm() {
     detailsConfirmed: 'detailsConfirmed',
   };
 
+  const validationFieldOrder: CreateWorkshopFormField[] = [
+    'hostName',
+    'title',
+    'category',
+    'contactNumber',
+    'date',
+    'time',
+    'duration',
+    'maxParticipants',
+    'detailsConfirmed',
+  ];
+
   const focusFirstInvalidField = (field: CreateWorkshopFormField | null) => {
     if (!field) return;
     requestAnimationFrame(() => {
@@ -68,22 +98,20 @@ export function CreateWorkshopForm() {
     });
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!validationResult.isValid) {
-      setHasSubmitted(true);
-      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      focusFirstInvalidField(validationResult.firstInvalidField);
-      return;
-    }
-
-    setHasSubmitted(false);
-    await submit(values);
+  const handleValidSubmit = async (nextValues: CreateWorkshopFormValues) => {
+    await submit(nextValues);
   };
 
+  const handleInvalidSubmit = () => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const firstInvalidField = validationFieldOrder.find((field) => Boolean(errors[field])) ?? null;
+    focusFirstInvalidField(firstInvalidField);
+  };
+
+  const formSubmitHandler = handleSubmit(handleValidSubmit, handleInvalidSubmit);
+
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
+    <form ref={formRef} onSubmit={formSubmitHandler} className="space-y-6" autoComplete="off">
       <input
         tabIndex={-1}
         aria-hidden="true"
@@ -115,38 +143,38 @@ export function CreateWorkshopForm() {
               <Input
                 id="hostName"
                 autoComplete="off"
-                value={values.hostName}
-                onChange={(e) => setField('hostName', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.hostName)}
+                {...register('hostName')}
+                aria-invalid={Boolean(getFieldError('hostName'))}
                 className={getFieldClassName('hostName')}
                 placeholder="Your display name for this workshop"
               />
-              {fieldErrors.hostName && <p className="mt-1 text-xs text-destructive">{fieldErrors.hostName}</p>}
+              {getFieldError('hostName') && <p className="mt-1 text-xs text-destructive">{getFieldError('hostName')}</p>}
             </div>
             <div>
               <Label htmlFor="title">Workshop Name / Skill Taught *</Label>
               <Input
                 id="title"
                 autoComplete="off"
-                value={values.title}
-                onChange={(e) => setField('title', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.title)}
+                {...register('title')}
+                aria-invalid={Boolean(getFieldError('title'))}
                 className={getFieldClassName('title')}
                 placeholder="e.g., Acrylic Painting Basics"
               />
-              {fieldErrors.title && <p className="mt-1 text-xs text-destructive">{fieldErrors.title}</p>}
+              {getFieldError('title') && <p className="mt-1 text-xs text-destructive">{getFieldError('title')}</p>}
             </div>
             <div>
               <Label htmlFor="category">Category *</Label>
               <Select
                 value={values.category}
-                onValueChange={(next: string) => setField('category', next)}
+                onValueChange={(next: string) => {
+                  setValue('category', next, { shouldDirty: true, shouldValidate: true });
+                }}
                 modal={false}
               >
                 <SelectTrigger
                   id="category-trigger"
-                  aria-invalid={Boolean(fieldErrors.category)}
-                  className={`mt-1${fieldErrors.category ? ` ${invalidClassName}` : ''}`}
+                  aria-invalid={Boolean(getFieldError('category'))}
+                  className={`mt-1${getFieldError('category') ? ` ${invalidClassName}` : ''}`}
                 >
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -158,20 +186,19 @@ export function CreateWorkshopForm() {
                   ))}
                 </SelectContent>
               </Select>
-              {fieldErrors.category && <p className="mt-1 text-xs text-destructive">{fieldErrors.category}</p>}
+              {getFieldError('category') && <p className="mt-1 text-xs text-destructive">{getFieldError('category')}</p>}
             </div>
             <div>
               <Label htmlFor="contactNumber">Contact number *</Label>
               <Input
                 id="contactNumber"
                 autoComplete="off"
-                value={values.contactNumber}
-                onChange={(e) => setField('contactNumber', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.contactNumber)}
+                {...register('contactNumber')}
+                aria-invalid={Boolean(getFieldError('contactNumber'))}
                 className={getFieldClassName('contactNumber')}
                 placeholder="e.g., 04XXXXXXXX"
               />
-              {fieldErrors.contactNumber && <p className="mt-1 text-xs text-destructive">{fieldErrors.contactNumber}</p>}
+              {getFieldError('contactNumber') && <p className="mt-1 text-xs text-destructive">{getFieldError('contactNumber')}</p>}
             </div>
             <div>
               <Label htmlFor="date">Confirmed workshop date *</Label>
@@ -179,12 +206,11 @@ export function CreateWorkshopForm() {
                 id="date"
                 type="date"
                 autoComplete="off"
-                value={values.date}
-                onChange={(e) => setField('date', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.date)}
+                {...register('date')}
+                aria-invalid={Boolean(getFieldError('date'))}
                 className={getFieldClassName('date')}
               />
-              {fieldErrors.date && <p className="mt-1 text-xs text-destructive">{fieldErrors.date}</p>}
+              {getFieldError('date') && <p className="mt-1 text-xs text-destructive">{getFieldError('date')}</p>}
             </div>
             <div>
               <Label htmlFor="time">Confirmed workshop time *</Label>
@@ -192,12 +218,11 @@ export function CreateWorkshopForm() {
                 id="time"
                 type="time"
                 autoComplete="off"
-                value={values.time}
-                onChange={(e) => setField('time', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.time)}
+                {...register('time')}
+                aria-invalid={Boolean(getFieldError('time'))}
                 className={getFieldClassName('time')}
               />
-              {fieldErrors.time && <p className="mt-1 text-xs text-destructive">{fieldErrors.time}</p>}
+              {getFieldError('time') && <p className="mt-1 text-xs text-destructive">{getFieldError('time')}</p>}
             </div>
             <div>
               <Label htmlFor="duration">Duration (minutes) *</Label>
@@ -206,13 +231,12 @@ export function CreateWorkshopForm() {
                 type="number"
                 min={1}
                 autoComplete="off"
-                value={values.duration}
-                onChange={(e) => setField('duration', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.duration)}
+                {...register('duration')}
+                aria-invalid={Boolean(getFieldError('duration'))}
                 className={getFieldClassName('duration')}
                 placeholder="e.g., 60"
               />
-              {fieldErrors.duration && <p className="mt-1 text-xs text-destructive">{fieldErrors.duration}</p>}
+              {getFieldError('duration') && <p className="mt-1 text-xs text-destructive">{getFieldError('duration')}</p>}
             </div>
             <div>
               <Label htmlFor="maxParticipants">Maximum participants preferred (optional)</Label>
@@ -221,13 +245,12 @@ export function CreateWorkshopForm() {
                 type="number"
                 min={1}
                 autoComplete="off"
-                value={values.maxParticipants}
-                onChange={(e) => setField('maxParticipants', e.target.value)}
-                aria-invalid={Boolean(fieldErrors.maxParticipants)}
+                {...register('maxParticipants')}
+                aria-invalid={Boolean(getFieldError('maxParticipants'))}
                 className={getFieldClassName('maxParticipants')}
                 placeholder="e.g., 30"
               />
-              {fieldErrors.maxParticipants && <p className="mt-1 text-xs text-destructive">{fieldErrors.maxParticipants}</p>}
+              {getFieldError('maxParticipants') && <p className="mt-1 text-xs text-destructive">{getFieldError('maxParticipants')}</p>}
             </div>
           </div>
 
@@ -236,7 +259,12 @@ export function CreateWorkshopForm() {
               <Globe className="w-4 h-4" />
               <span>{values.isOnline ? 'Online workshop' : 'In-person workshop (location confirmed by admin later)'}</span>
             </div>
-            <Switch checked={values.isOnline} onCheckedChange={(checked: boolean) => setField('isOnline', checked)} />
+            <Switch
+              checked={values.isOnline}
+              onCheckedChange={(checked: boolean) => {
+                setValue('isOnline', checked, { shouldDirty: true, shouldValidate: true });
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -246,8 +274,7 @@ export function CreateWorkshopForm() {
                 id="materialsProvided"
                 rows={3}
                 autoComplete="off"
-                value={values.materialsProvided}
-                onChange={(e) => setField('materialsProvided', e.target.value)}
+                {...register('materialsProvided')}
                 className="mt-1"
                 placeholder="e.g., brushes, printed worksheet"
               />
@@ -258,8 +285,7 @@ export function CreateWorkshopForm() {
                 id="materialsNeededFromClub"
                 rows={3}
                 autoComplete="off"
-                value={values.materialsNeededFromClub}
-                onChange={(e) => setField('materialsNeededFromClub', e.target.value)}
+                {...register('materialsNeededFromClub')}
                 className="mt-1"
                 placeholder="e.g., projector, extra tables"
               />
@@ -273,8 +299,7 @@ export function CreateWorkshopForm() {
                 id="venueRequirements"
                 rows={3}
                 autoComplete="off"
-                value={values.venueRequirements}
-                onChange={(e) => setField('venueRequirements', e.target.value)}
+                {...register('venueRequirements')}
                 className="mt-1"
                 placeholder="e.g., room size, table setup"
               />
@@ -285,8 +310,7 @@ export function CreateWorkshopForm() {
                 id="otherImportantInfo"
                 rows={3}
                 autoComplete="off"
-                value={values.otherImportantInfo}
-                onChange={(e) => setField('otherImportantInfo', e.target.value)}
+                {...register('otherImportantInfo')}
                 className="mt-1"
               />
             </div>
@@ -305,18 +329,20 @@ export function CreateWorkshopForm() {
           </Card>
 
           <div
-            className={`flex items-center gap-3 rounded-md border border-border px-3 py-3${fieldErrors.detailsConfirmed ? ' border-destructive' : ''}`}
+            className={`flex items-center gap-3 rounded-md border border-border px-3 py-3${getFieldError('detailsConfirmed') ? ' border-destructive' : ''}`}
           >
             <Checkbox
               id="detailsConfirmed"
               checked={values.detailsConfirmed}
-              onCheckedChange={(checked) => setField('detailsConfirmed', checked === true)}
+              onCheckedChange={(checked) => {
+                setValue('detailsConfirmed', checked === true, { shouldDirty: true, shouldValidate: true });
+              }}
             />
             <Label htmlFor="detailsConfirmed" className="leading-normal cursor-pointer">
               I confirm that the above details are accurate *
             </Label>
           </div>
-          {fieldErrors.detailsConfirmed && <p className="mt-2 text-xs text-destructive">{fieldErrors.detailsConfirmed}</p>}
+          {getFieldError('detailsConfirmed') && <p className="mt-2 text-xs text-destructive">{getFieldError('detailsConfirmed')}</p>}
         </CardContent>
       </Card>
 

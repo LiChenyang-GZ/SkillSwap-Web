@@ -21,6 +21,7 @@ interface WorkshopDetailsProps {
 
 export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const { workshops, user, isAdmin, sessionToken, attendWorkshop, cancelWorkshopAttendance, setCurrentPage, upsertWorkshop } = useApp();
+  const hasSession = Boolean(sessionToken);
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const lastFetchedIdRef = useRef<string | null>(null);
@@ -65,7 +66,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
     return () => {
       isMounted = false;
     };
-  }, [workshopId, sessionToken, upsertWorkshop, workshops]);
+  }, [workshopId, hasSession, upsertWorkshop, workshops]);
 
   if (isLoading) {
     return (

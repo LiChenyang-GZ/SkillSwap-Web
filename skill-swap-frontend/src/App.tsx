@@ -18,6 +18,7 @@ const Notifications = React.lazy(() => import('./components/Notifications').then
 
 function AppContent() {
   const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData } = useApp();
+  const lastAutoRefreshPageRef = React.useRef<string | null>(null);
 
   // Apply theme class to html element
   React.useEffect(() => {
@@ -31,6 +32,11 @@ function AppContent() {
   }, [isDarkMode]);
 
   React.useEffect(() => {
+    if (lastAutoRefreshPageRef.current === currentPage) {
+      return;
+    }
+    lastAutoRefreshPageRef.current = currentPage;
+
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
     if (currentPage === 'home' || currentPage === 'explore') {
       void refreshData('public');

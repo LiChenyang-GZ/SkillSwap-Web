@@ -90,6 +90,7 @@ export function AdminReview() {
     return null;
   });
   const detailInFlightRef = useRef<Set<string>>(new Set());
+  const hasSession = Boolean(sessionToken);
   const pageSize = 8;
 
   const buildFormState = (workshop: Workshop): WorkshopFormState => {
@@ -183,7 +184,11 @@ export function AdminReview() {
     setIsDetailLoading(true);
     try {
       const detail = await workshopAPI.getById(workshopId, sessionToken);
-      if (!detail) return;
+      if (!detail) {
+        // Fallback to summary data instead of keeping the details pane in loading state forever.
+        setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
+        return;
+      }
 
       setWorkshops((prev) => prev.map((w) => (w.id === detail.id ? { ...w, ...detail } : w)));
       setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
@@ -211,7 +216,15 @@ export function AdminReview() {
           ? await workshopAPI.getPendingForAdmin(sessionToken)
           : await workshopAPI.getAllForAdmin(sessionToken);
 
-      setLoadedDetailIds({});
+      setLoadedDetailIds((previous) => {
+        const next: Record<string, boolean> = {};
+        data.forEach((workshop) => {
+          if (previous[workshop.id]) {
+            next[workshop.id] = true;
+          }
+        });
+        return next;
+      });
       setWorkshops(data);
 
       if (data.length > 0) {
@@ -222,6 +235,7 @@ export function AdminReview() {
             ? selectedId
             : fallbackId;
         setSelectedId(nextSelectedId);
+        void loadWorkshopDetail(nextSelectedId);
       } else {
         setSelectedId(null);
       }
@@ -235,14 +249,21 @@ export function AdminReview() {
   };
 
   useEffect(() => {
+    if (!hasSession) {
+      setWorkshops([]);
+      setSelectedId(null);
+      setLoadedDetailIds({});
+      return;
+    }
+
     const mode = statusFilter === 'pending' ? 'pending' : 'all';
     void loadWorkshops(mode);
-  }, [sessionToken, statusFilter]);
+  }, [hasSession, statusFilter]);
 
   useEffect(() => {
     if (!selectedId) return;
     void loadWorkshopDetail(selectedId);
-  }, [selectedId, sessionToken]);
+  }, [selectedId, hasSession]);
 
   useEffect(() => {
     if (sortedWorkshops.length === 0) {
@@ -619,9 +640,22 @@ export function AdminReview() {
               ) : !selectedWorkshop ? (
                 <div className="text-sm text-muted-foreground">Select a submission to review.</div>
               ) : !selectedHasDetail ? (
-                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Loading detailed submission...
+                <div className="text-sm text-muted-foreground space-y-3">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Loading detailed submission...
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedWorkshop?.id) {
+                        void loadWorkshopDetail(selectedWorkshop.id, true);
+                      }
+                    }}
+                  >
+                    Retry loading details
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-6">

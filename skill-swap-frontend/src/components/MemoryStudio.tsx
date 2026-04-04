@@ -73,14 +73,6 @@ Write your memory story here...
 
 const ENTRY_PAGE_SIZE = 10;
 
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-}
-
 function parseFrontMatter(documentText: string): { meta: Record<string, string>; body: string } {
   const normalized = documentText.replace(/\r\n/g, '\n');
   const match = normalized.match(/^\uFEFF?(?:\s*\n)*---\n([\s\S]*?)\n---\n?/);
@@ -184,6 +176,7 @@ function getErrorStatus(error: unknown): number | null {
 
 export function MemoryStudio() {
   const { sessionToken, isAdmin, setCurrentPage } = useApp();
+  const hasSession = Boolean(sessionToken);
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [documentText, setDocumentText] = useState<string>(EMPTY_DOC);
@@ -206,7 +199,6 @@ export function MemoryStudio() {
   );
 
   const parsedDoc = useMemo(() => parseMemoryDocument(documentText), [documentText]);
-  const resolvedSlugPreview = useMemo(() => slugify(parsedDoc.title), [parsedDoc.title]);
   const activeStatus: MemoryEntry['status'] = selectedEntry?.status || 'draft';
   const isReadOnlyEntry = Boolean(selectedEntry && activeStatus !== 'draft');
   const editorActionsDisabled = isSaving || isUploadingImage || isReadOnlyEntry;
@@ -329,8 +321,16 @@ export function MemoryStudio() {
   };
 
   useEffect(() => {
+    if (!hasSession) {
+      setEntries([]);
+      setSelectedId(null);
+      setIsCreatingNew(false);
+      setDocumentText(EMPTY_DOC);
+      setSelectedStatus('draft');
+      return;
+    }
     void loadEntries();
-  }, [sessionToken]);
+  }, [hasSession]);
 
   useEffect(() => {
     if (!selectedEntry) return;
