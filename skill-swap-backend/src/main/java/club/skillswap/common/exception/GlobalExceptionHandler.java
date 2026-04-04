@@ -2,6 +2,8 @@ package club.skillswap.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -10,15 +12,20 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
 
 import club.skillswap.common.dto.ErrorResponseDto;
 
 import java.time.Instant;
+import java.util.Locale;
 
 // @RestControllerAdvice 娉ㄨВ琛ㄦ槑杩欐槸涓€涓叏灞€鐨勫紓甯稿鐞嗙粍浠?
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * 澶勭悊鎴戜滑鑷畾涔夌殑 ResourceNotFoundException
@@ -78,8 +85,7 @@ public class GlobalExceptionHandler {
         // 浠庡紓甯镐腑鎻愬彇绗竴涓敊璇俊鎭綔涓烘垜浠殑 message
         String errorMessage = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
 
-        System.err.println("An unexpected error occurred: ");
-        ex.printStackTrace();
+        log.debug("Validation failed: {}", errorMessage);
 
         ErrorResponseDto errorResponse = new ErrorResponseDto(
                 Instant.now(),
@@ -89,6 +95,37 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({MaxUploadSizeExceededException.class, MultipartException.class})
+    public ResponseEntity<ErrorResponseDto> handleMultipartUploadException(Exception ex, HttpServletRequest request) {
+        String message = ex.getMessage() == null ? "" : ex.getMessage();
+        String normalized = message.toLowerCase(Locale.ROOT);
+
+        boolean isTooLarge = ex instanceof MaxUploadSizeExceededException
+                || normalized.contains("maximum upload size")
+                || normalized.contains("size exceeds")
+                || normalized.contains("payload too large");
+
+        if (isTooLarge) {
+            ErrorResponseDto body = new ErrorResponseDto(
+                    Instant.now(),
+                    HttpStatus.PAYLOAD_TOO_LARGE.value(),
+                    "Payload Too Large",
+                    "Image is too large. Maximum allowed size is 10MB.",
+                    request.getRequestURI()
+            );
+            return new ResponseEntity<>(body, HttpStatus.PAYLOAD_TOO_LARGE);
+        }
+
+        ErrorResponseDto body = new ErrorResponseDto(
+                Instant.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Bad Request",
+                "Invalid upload request.",
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
     /**
@@ -126,7 +163,7 @@ public class GlobalExceptionHandler {
             Instant.now(), 409, "Conflict",
             "Cannot delete: related records exist.", req.getRequestURI()
         );
-        ex.printStackTrace();
+        log.warn("Data integrity violation: {}", ex.getMessage());
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
@@ -137,14 +174,13 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleGlobalException(Exception ex, HttpServletRequest request) {
-        // 鎵撳嵃璇︾粏鐨勯敊璇棩蹇?
-        ex.printStackTrace();
+        log.error("Unhandled exception at {}", request.getRequestURI(), ex);
 
         ErrorResponseDto errorResponse = new ErrorResponseDto(
                 Instant.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
-                "An unexpected error occurred: " + ex.getMessage(),
+            "An unexpected server error occurred. Please try again later.",
                 request.getRequestURI()
         );
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);

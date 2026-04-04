@@ -12,7 +12,7 @@ import {
   // mockWorkshops,
   // mockTransactions,
 } from "../lib/mock-data";
-import { authAPI, notificationAPI, workshopAPI } from "../lib/api";
+import { authAPI, notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
 import { supabase } from "../utils/supabase/supabase";
 import { toast } from "sonner";
 
@@ -43,6 +43,7 @@ interface AppContextType {
     bio?: string;
     skills?: string[];
   }) => Promise<User>;
+  uploadCurrentUserAvatar: (file: File) => Promise<User>;
   refreshData: (mode?: "public" | "mine" | "full") => Promise<void>;
   clearCache: () => void;
   upsertWorkshop: (workshop: Workshop) => void;
@@ -426,7 +427,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: userProfile.id,
       email: userProfile.email,
       username: userProfile.username,
-      avatarUrl: userProfile.avatarUrl || "",
+      avatarUrl: resolveAssetUrl(userProfile.avatarUrl || ""),
       bio: userProfile.bio || "",
       // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
       // creditBalance: userProfile.creditBalance ?? 100,
@@ -451,7 +452,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: sbUser?.id || "",
       email,
       username,
-      avatarUrl: metadata.avatar_url || "",
+      avatarUrl: resolveAssetUrl(metadata.avatar_url || ""),
       bio: "",
       creditBalance: 0,
       skills: [],
@@ -758,6 +759,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast.success("Signed out successfully");
   };
 
+  const parseApiErrorMessage = async (response: Response, fallbackMessage: string): Promise<string> => {
+    const raw = await response.text();
+    let message = raw;
+
+    try {
+      const parsed = JSON.parse(raw);
+      message = parsed?.message || parsed?.error || raw;
+    } catch {
+      // Keep raw response text when not JSON.
+    }
+
+    const normalized = typeof message === "string" ? message.trim() : "";
+    const lower = normalized.toLowerCase();
+
+    if (
+      response.status === 413 ||
+      lower.includes("maximum upload size") ||
+      lower.includes("size exceeds") ||
+      lower.includes("payload too large")
+    ) {
+      return "Image is too large. Please upload an image up to 10MB.";
+    }
+
+    const cleaned = normalized
+      .replace(/^an unexpected error occurred:\s*/i, "")
+      .replace(/\s+caused by:.*/i, "")
+      .trim();
+
+    return cleaned || fallbackMessage;
+  };
+
   const updateCurrentUserProfile = async (updates: {
     username?: string;
     avatarUrl?: string;
@@ -779,8 +811,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     if (!response.ok) {
-      const message = await response.text();
+      const message = await parseApiErrorMessage(response, `Failed to update profile (${response.status}).`);
       throw new Error(message || `Failed to update profile (${response.status}).`);
+    }
+
+    const profile = await response.json();
+    const mapped = mapBackendUser(profile);
+
+    setUser(mapped);
+    localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
+
+    const payload = decodeJwtPayload(sessionToken) as { sub?: string } | null;
+    recentProfileCacheRef.current = {
+      subject: payload?.sub ?? null,
+      user: mapped,
+      at: Date.now(),
+    };
+
+    return mapped;
+  };
+
+  const uploadCurrentUserAvatar = async (file: File): Promise<User> => {
+    if (!sessionToken) {
+      throw new Error("Please sign in again before updating your avatar.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    const response = await fetch(`${base}/api/v1/users/me/avatar`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const message = await parseApiErrorMessage(response, `Failed to upload avatar (${response.status}).`);
+      throw new Error(message || `Failed to upload avatar (${response.status}).`);
     }
 
     const profile = await response.json();
@@ -967,6 +1037,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         signIn,
         signOut,
         updateCurrentUserProfile,
+        uploadCurrentUserAvatar,
         refreshData,
         clearCache,
         upsertWorkshop,

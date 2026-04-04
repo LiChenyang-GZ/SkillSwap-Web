@@ -121,7 +121,7 @@ public class WorkshopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
         
-        String userId = authentication.getName();
+        String userId = extractAuthenticatedUserId(authentication);
         workshopService.joinWorkshop(id, userId);
         return ResponseEntity.ok(new ApiMessageDto("Successfully joined workshop"));
     }
@@ -135,8 +135,15 @@ public class WorkshopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
         
-        String userId = authentication.getName();
+        String userId = extractAuthenticatedUserId(authentication);
         workshopService.leaveWorkshop(id, userId);
         return ResponseEntity.ok(new ApiMessageDto("Successfully left workshop"));
+    }
+
+    private String extractAuthenticatedUserId(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            return jwtAuth.getToken().getSubject();
+        }
+        return authentication.getName();
     }
 }

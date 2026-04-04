@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -28,11 +28,14 @@ import {
 } from './workshop/workshopStatusPublicApi';
 
 export function Dashboard() {
-  const { user, workshops, setCurrentPage, cancelWorkshopAttendance, updateCurrentUserProfile } = useApp();
+  const { user, workshops, setCurrentPage, cancelWorkshopAttendance, updateCurrentUserProfile, uploadCurrentUserAvatar } = useApp();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editUsername, setEditUsername] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Early return if no user
   if (!user) {
@@ -59,6 +62,33 @@ export function Dashboard() {
     setEditUsername(user.username);
   }, [user.username]);
 
+  useEffect(() => {
+    return () => {
+      if (pendingAvatarPreviewUrl) {
+        URL.revokeObjectURL(pendingAvatarPreviewUrl);
+      }
+    };
+  }, [pendingAvatarPreviewUrl]);
+
+  const resetEditProfileDraft = () => {
+    setProfileError(null);
+    setEditUsername(user.username);
+    setPendingAvatarFile(null);
+    setPendingAvatarPreviewUrl((previousUrl) => {
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      return null;
+    });
+  };
+
+  const handleEditProfileOpenChange = (open: boolean) => {
+    if (!open) {
+      resetEditProfileDraft();
+    }
+    setIsEditProfileOpen(open);
+  };
+
   const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextUsername = editUsername.trim();
@@ -68,11 +98,25 @@ export function Dashboard() {
       return;
     }
 
+    const hasNameChange = nextUsername !== user.username.trim();
+    const hasAvatarChange = pendingAvatarFile !== null;
+
+    if (!hasNameChange && !hasAvatarChange) {
+      setIsEditProfileOpen(false);
+      return;
+    }
+
     setIsSavingProfile(true);
     setProfileError(null);
     try {
-      await updateCurrentUserProfile({ username: nextUsername });
+      if (hasNameChange) {
+        await updateCurrentUserProfile({ username: nextUsername });
+      }
+      if (pendingAvatarFile) {
+        await uploadCurrentUserAvatar(pendingAvatarFile);
+      }
       toast.success('Profile updated successfully.');
+      resetEditProfileDraft();
       setIsEditProfileOpen(false);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to update profile.';
@@ -81,6 +125,39 @@ export function Dashboard() {
     } finally {
       setIsSavingProfile(false);
     }
+  };
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      const message = 'Only image files are supported.';
+      setProfileError(message);
+      toast.error(message);
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const message = 'Image size must be 10MB or smaller.';
+      setProfileError(message);
+      toast.error(message);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setProfileError(null);
+    setPendingAvatarFile(file);
+    setPendingAvatarPreviewUrl((previousUrl) => {
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      return previewUrl;
+    });
   };
 
   return (
@@ -127,8 +204,7 @@ export function Dashboard() {
                     size="sm"
                     className="w-full mb-4"
                     onClick={() => {
-                      setProfileError(null);
-                      setEditUsername(user.username);
+                      resetEditProfileDraft();
                       setIsEditProfileOpen(true);
                     }}
                   >
@@ -141,7 +217,7 @@ export function Dashboard() {
                   )}
 
                   {/* Skills */}
-                  <div className="text-left">
+                  {/* <div className="text-left">
                     <h3 className="font-medium mb-2">Skills</h3>
                     <div className="flex flex-wrap gap-1">
                       {user.skills.map((skill) => (
@@ -150,7 +226,7 @@ export function Dashboard() {
                         </Badge>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>
@@ -390,12 +466,45 @@ export function Dashboard() {
         </div>
       </div>
 
-      <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+      <Dialog open={isEditProfileOpen} onOpenChange={handleEditProfileOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Profile</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveProfile} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Avatar</Label>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-14 w-14">
+                  <AvatarImage src={pendingAvatarPreviewUrl ?? user.avatarUrl} alt={user.username} />
+                  <AvatarFallback>
+                    {user.username.split(' ').map((n) => n[0]).join('') || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarFileChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSavingProfile}
+                    onClick={() => avatarFileInputRef.current?.click()}
+                  >
+                    Choose Avatar
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP, up to 10MB.</p>
+                  {pendingAvatarFile && (
+                    <p className="text-xs text-foreground mt-1">Selected: {pendingAvatarFile.name}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="dashboard-profile-name">Name</Label>
               <Input
@@ -416,7 +525,6 @@ export function Dashboard() {
                 readOnly
                 disabled
               />
-              <p className="text-xs text-muted-foreground">Email is managed by authentication and cannot be changed here.</p>
             </div>
 
             {profileError && (
@@ -427,7 +535,7 @@ export function Dashboard() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsEditProfileOpen(false)}
+                onClick={() => handleEditProfileOpenChange(false)}
                 disabled={isSavingProfile}
               >
                 Cancel

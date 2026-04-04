@@ -1,10 +1,11 @@
 package club.skillswap.user.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import club.skillswap.common.exception.DomainException;
@@ -19,6 +20,11 @@ import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Locale;
@@ -30,9 +36,17 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 public class UserService {
 
+    private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
+
     private final UserRepository userRepository;
     private final WorkshopRepository workshopRepository;
     private final WorkshopParticipantRepository participantRepository;
+
+    @Value("${app.upload.base-dir:uploads}")
+    private String uploadBaseDir;
+
+    @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
+    private long maxImageBytes;
 
     /**
      * 鏍规嵁鐢ㄦ埛 ID 鏌ユ壘鐢ㄦ埛鍏紑淇℃伅銆?
@@ -125,12 +139,7 @@ public class UserService {
             UserAccount newUser = new UserAccount();
             newUser.setId(userId);
             String baseUsername = buildBaseUsername(userId, jwtEmail);
-            
-            String finalUsername = baseUsername;
-            while (userRepository.findByUsername(finalUsername).isPresent()) {
-                finalUsername = baseUsername + "_" + RandomStringUtils.randomAlphanumeric(4);
-            }
-            newUser.setUsername(finalUsername);
+            newUser.setUsername(baseUsername);
             newUser.setEmail(jwtEmail);
             newUser.setRole(roleFromJwt);
             return userRepository.save(newUser);
@@ -171,15 +180,7 @@ public class UserService {
             if (nextUsername.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username must not be blank.");
             }
-
-            if (!nextUsername.equals(userToUpdate.getUsername())) {
-                userRepository.findByUsername(nextUsername)
-                    .filter(existing -> !existing.getId().equals(userId))
-                    .ifPresent(existing -> {
-                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already exists.");
-                    });
-                userToUpdate.setUsername(nextUsername);
-            }
+            userToUpdate.setUsername(nextUsername);
         }
         if (updateRequest.getAvatarUrl() != null) {
             userToUpdate.setAvatarUrl(updateRequest.getAvatarUrl());
@@ -206,6 +207,48 @@ public class UserService {
         }
 
         return userRepository.save(userToUpdate);
+    }
+
+    @Transactional
+    public UserProfileDto uploadCurrentUserAvatar(Jwt jwt, MultipartFile file) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        UserAccount user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
+
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required.");
+        }
+
+        String contentType = trimToNull(file.getContentType());
+        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image uploads are supported.");
+        }
+
+        if (file.getSize() > maxImageBytes) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
+        }
+
+        String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
+        String fileName = UUID.randomUUID() + extension;
+
+        Path targetDirectory = Paths.get(uploadBaseDir, "avatars").toAbsolutePath().normalize();
+        Path targetFile = targetDirectory.resolve(fileName).normalize();
+
+        if (!targetFile.startsWith(targetDirectory)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
+        }
+
+        try {
+            Files.createDirectories(targetDirectory);
+            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
+        }
+
+        user.setAvatarUrl("/uploads/avatars/" + fileName);
+        userRepository.save(user);
+
+        return getUserProfileWithStats(userId);
     }
 
     /**
@@ -260,6 +303,35 @@ public class UserService {
 
     private String normalizeSkill(String skill) {
         return skill == null ? null : skill.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String resolveImageFileExtension(String originalFilename, String contentType) {
+        String candidate = null;
+        if (originalFilename != null) {
+            int dotIndex = originalFilename.lastIndexOf('.');
+            if (dotIndex >= 0 && dotIndex < originalFilename.length() - 1) {
+                candidate = originalFilename.substring(dotIndex).toLowerCase(Locale.ROOT);
+            }
+        }
+
+        if (candidate != null && candidate.matches("\\.[a-z0-9]{1,5}")) {
+            return candidate;
+        }
+
+        return switch (contentType.toLowerCase(Locale.ROOT)) {
+            case "image/png" -> ".png";
+            case "image/gif" -> ".gif";
+            case "image/webp" -> ".webp";
+            default -> ".jpg";
+        };
     }
 
     private void requireNonBlank(String skill) {

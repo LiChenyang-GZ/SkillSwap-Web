@@ -9,9 +9,11 @@ import club.skillswap.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import java.util.UUID;
@@ -59,6 +61,14 @@ public class UserController {
         UserProfileDto userProfileDto = userService.getUserProfileWithStats(updatedUser.getId());
         
         return ResponseEntity.ok(userProfileDto);
+    }
+
+    @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserProfileDto> uploadCurrentUserAvatar(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestPart("file") MultipartFile file) {
+        UserProfileDto updated = userService.uploadCurrentUserAvatar(jwt, file);
+        return ResponseEntity.ok(updated);
     }
 
     /**

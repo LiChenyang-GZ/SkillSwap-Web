@@ -203,10 +203,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
             {isAdmin && (
               <div>
-                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Participants</h2>
+                <h2 className="text-sm font-semibold text-foreground mb-4 uppercase">Participants</h2>
                 <div className="space-y-4">
                   <div className="flex items-center text-base">
-                    <Users className="w-5 h-5 mr-2 text-muted-foreground" />
+                    <Users className="w-5 h-5 mr-2 text-foreground" />
                     <span>
                       {workshop.currentParticipants ?? 0}
                       {typeof workshop.maxParticipants === 'number' ? ` of ${workshop.maxParticipants}` : ''}
@@ -216,7 +216,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
                   {(workshop.participants?.length ?? 0) > 0 && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-3">Going:</p>
+                      <p className="text-sm text-foreground mb-3">Going:</p>
                       <div className="flex flex-wrap gap-3">
                         {workshop.participants?.slice(0, 6).map((participant) => (
                           <div key={participant.id} className="flex items-center space-x-2">
