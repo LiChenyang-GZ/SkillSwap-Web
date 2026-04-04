@@ -366,15 +366,6 @@ export function AdminReview() {
     }));
   };
 
-  const handlePreviewImage = () => {
-    if (!formData.image) {
-      toast.info('No image available to preview yet.');
-      return;
-    }
-
-    window.open(formData.image, '_blank', 'noopener,noreferrer');
-  };
-
   const handleSave = async () => {
     if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
     setIsSaving(true);
