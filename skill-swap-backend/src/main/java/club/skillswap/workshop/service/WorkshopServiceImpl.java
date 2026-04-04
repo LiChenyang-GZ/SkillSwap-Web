@@ -727,11 +727,22 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         LocalDateTime startDateTime = LocalDateTime.of(date, time != null ? time : LocalTime.MIDNIGHT);
-        if (startDateTime.isBefore(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(startDateTime)) {
+            return "upcoming";
+        }
+
+        Integer durationMinutes = workshop.getDuration();
+        if (durationMinutes != null && durationMinutes > 0) {
+            LocalDateTime endDateTime = startDateTime.plusMinutes(durationMinutes);
+            if (now.isBefore(endDateTime)) {
+                return "ongoing";
+            }
+
             return "completed";
         }
 
-        return normalized;
+        return "ongoing";
     }
 
     private String normalizeStatus(String status) {
