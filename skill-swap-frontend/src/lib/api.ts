@@ -2,6 +2,7 @@
 
 import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
+import { getAuthRedirectUrl } from './authRedirect';
 // Legacy in-memory fallback data used by development-only helper APIs.
 import {
   mockUser as legacyMockUser,
@@ -294,7 +295,7 @@ export const authAPI = {
   signInWithGoogle: async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/explore` },
+      options: { redirectTo: getAuthRedirectUrl() },
     });
     if (error) throw error;
     return data;
@@ -305,7 +306,7 @@ export const authAPI = {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/explore`,
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     });
     if (error) throw error;
