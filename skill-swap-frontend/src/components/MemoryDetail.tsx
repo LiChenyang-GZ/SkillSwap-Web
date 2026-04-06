@@ -6,10 +6,17 @@ import { Button } from './ui/button';
 import { ArrowLeft, CalendarDays, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 
 interface MemoryDetailProps {
   slug: string;
 }
+
+const markdownSanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), 'u'],
+};
 
 function stripFrontMatter(content?: string): string {
   if (!content) return '';
@@ -99,9 +106,10 @@ export function MemoryDetail({ slug }: MemoryDetailProps) {
           )}
         </header>
 
-        <article className="prose prose-sm md:prose-base dark:prose-invert max-w-none px-1">
+        <article className="markdown-preview max-w-none px-1">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
             components={{
               img: ({ src, alt }) => (
                 <img

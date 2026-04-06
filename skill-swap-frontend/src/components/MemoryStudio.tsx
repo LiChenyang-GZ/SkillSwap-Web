@@ -41,11 +41,18 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { toast } from 'sonner';
 
 type EditorMode = 'write' | 'preview' | 'split';
 
 const LOCK_HEARTBEAT_MS = 60_000;
+
+const markdownSanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), 'u'],
+};
 
 interface ParsedMemoryDocument {
   body: string;
@@ -977,9 +984,10 @@ export function MemoryStudio() {
                 {(mode === 'preview' || mode === 'split') && (
                   <div className="space-y-2">
                     <div className="text-sm font-medium">Preview</div>
-                    <div className="min-h-[520px] rounded-md border border-border bg-card px-4 py-4 overflow-auto prose prose-sm dark:prose-invert max-w-none">
+                    <div className="markdown-preview min-h-[520px] rounded-md border border-border bg-card px-4 py-4 overflow-auto max-w-none">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
                         components={{
                           img: ({ src, alt }) => (
                             <img
