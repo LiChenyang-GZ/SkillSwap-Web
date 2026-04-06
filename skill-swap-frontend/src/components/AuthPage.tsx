@@ -15,7 +15,6 @@ import {
   EyeOff,
   ArrowLeft
 } from 'lucide-react';
-import { GoogleIcon } from './ui/google-icon';
 
 export function AuthPage() {
   const { setCurrentPage } = useApp();
@@ -117,19 +116,6 @@ export function AuthPage() {
     }
     setLoading(false);
   };
-
-  const handleGoogleAuth = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin + '/explore' },
-      });
-      if (error) alert(error.message);
-    } catch (err) {
-      console.error('Google sign-in error:', err);
-    }
-  };
-
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
@@ -237,28 +223,6 @@ export function AuthPage() {
                   </Button>
                 </div>
 
-                <div className="mt-6">
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-background text-muted-foreground">
-                        Or continue with
-                      </span>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    className="w-full mt-4 flex items-center justify-center gap-2"
-                    onClick={handleGoogleAuth}
-                    disabled={loading}
-                  >
-                    <GoogleIcon className="w-5 h-5" />
-                    Google
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -352,15 +316,6 @@ export function AuthPage() {
                   </Button>
                 </div>
 
-                <Button
-                  variant="outline"
-                  className="w-full mt-4 flex items-center justify-center gap-2"
-                  onClick={handleGoogleAuth}
-                  disabled={loading}
-                >
-                  <GoogleIcon className="w-5 h-5" />
-                  Sign up with Google
-                </Button>
               </CardContent>
             </Card>
           </TabsContent>

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 // 浣跨敤 record 绠€鍖栦唬鐮?
@@ -31,6 +32,8 @@ public record WorkshopCreateRequestDto(
 
     @NotNull(message = "Time is required.")
     LocalTime time,
+
+    LocalDateTime attendCloseAt,
 
     @NotNull(message = "isOnline is required.")
     Boolean isOnline,

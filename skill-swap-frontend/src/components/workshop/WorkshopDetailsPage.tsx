@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Workshop } from '../../types';
 import { toast } from 'sonner';
-import { resolveUserWorkshopStatus } from './workshopStatusPublicApi';
+import { getWorkshopAccessLabel, resolveUserWorkshopStatus } from './workshopStatusPublicApi';
 
 interface WorkshopDetailsProps {
   workshopId: string;
@@ -115,6 +115,21 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const isCompleted = resolvedUserStatus === 'completed' || normalizedStatus === 'completed';
   const isHost = workshop.facilitator?.id === user?.id;
   const canViewRestricted = isAdmin || isHost;
+  const attendCloseAt = (() => {
+    const rawAttendCloseAt = String(workshop.attendCloseAt || '').trim();
+    if (rawAttendCloseAt) {
+      const parsed = new Date(rawAttendCloseAt);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+
+    return null;
+  })();
+  const isAttendClosedByCutoff =
+    isUpcoming &&
+    attendCloseAt !== null &&
+    Date.now() >= attendCloseAt.getTime();
 
   if ((isPending || isRejected) && !canViewRestricted) {
     return (
@@ -292,6 +307,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                         Workshop Completed
                       </Button>
                     )
+                  ) : isAttendClosedByCutoff ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Attendance Closed
+                    </Button>
                   ) : isOngoing ? (
                     <Button disabled variant="outline" className="w-full">
                       Workshop In Progress
@@ -301,7 +320,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                       Workshop Full
                     </Button>
                   ) : (
-                    <Button onClick={handleAttend} className="w-full" size="lg" disabled={!isUpcoming}>
+                    <Button onClick={handleAttend} className="w-full" size="lg" disabled={!isUpcoming || isAttendClosedByCutoff}>
                       Attend Workshop
                     </Button>
                   )}
@@ -320,7 +339,19 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
               <div className="bg-muted rounded-lg p-6 space-y-6">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase">Access</p>
-                  <span className="text-lg font-semibold">Open to all members</span>
+                  <span className="text-lg font-semibold">{getWorkshopAccessLabel(workshop)}</span>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {attendCloseAt
+                      ? `Attendance closes at ${attendCloseAt.toLocaleString('en-AU', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                        })}`
+                      : 'Attendance close time will be announced by admin.'}
+                  </p>
                 </div>
 
                 <div>

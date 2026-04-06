@@ -23,6 +23,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import {
+  getWorkshopAccessLabel,
   getUserWorkshopStatusBadgeVariant,
   getUserWorkshopStatusLabel,
   isUserWorkshopVisible,
@@ -746,7 +747,7 @@ export function Dashboard() {
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <Badge variant="secondary">{workshop.category}</Badge>
-                                  <Badge variant="outline">Open Access</Badge>
+                                  <Badge variant="outline">{getWorkshopAccessLabel(workshop)}</Badge>
                                 </div>
                               </div>
                                 <div className="flex items-center gap-2 ml-4 shrink-0">

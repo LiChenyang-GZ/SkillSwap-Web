@@ -14,7 +14,7 @@ import {
   BookOpen,
   Target
 } from 'lucide-react';
-import { isUserWorkshopUpcoming } from './workshop/workshopStatusPublicApi';
+import { getWorkshopAccessLabel, isUserWorkshopUpcoming } from './workshop/workshopStatusPublicApi';
 
 export function HomePage() {
   const { user, workshops, setCurrentPage } = useApp();
@@ -246,7 +246,7 @@ export function HomePage() {
                       </Badge>
                       */}
                       <Badge variant="secondary" className="text-xs">
-                        Open Access
+                        {getWorkshopAccessLabel(workshop)}
                       </Badge>
                     </div>
                     <div className="flex items-center space-x-2">

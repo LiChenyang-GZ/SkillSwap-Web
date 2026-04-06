@@ -709,7 +709,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   const signIn = async (email: string, password: string) => {
     if (USE_SUPABASE) {
-      toast.info("Use Google login button for Supabase auth");
+      toast.info("Use email sign-in on the auth page for Supabase auth");
       return;
     }
 

@@ -36,6 +36,9 @@ public class Workshop {
     private LocalDate date;
     private LocalTime time;
 
+    @Column(name = "attend_close_at")
+    private LocalDateTime attendCloseAt;
+
     @Column(name = "is_online")
     private Boolean isOnline;
 

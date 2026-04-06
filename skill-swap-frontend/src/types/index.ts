@@ -31,6 +31,7 @@ export interface Workshop {
   status: 'pending' | 'approved' | 'rejected' | 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   date: string;
   time: string;
+  attendCloseAt?: string;
   duration?: number; // in minutes
   isOnline: boolean;
   location: string | string[];

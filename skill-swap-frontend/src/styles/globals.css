@@ -9,15 +9,15 @@
   --color-popover-foreground: #2D3748;
   --color-primary: #2D3748;
   --color-primary-foreground: #F7F3E9;
-  --color-secondary: #E67E22;
+  --color-secondary: #B45309;
   --color-secondary-foreground: #FFFFFF;
   --color-muted: #F0EBE1;
-  --color-muted-foreground: #718096;
+  --color-muted-foreground: #4A5568;
   --color-accent: #C53030;
   --color-accent-foreground: #FFFFFF;
   --color-destructive: #E53E3E;
   --color-destructive-foreground: #FFFFFF;
-  --color-border: color-mix(in srgb, #2D3748 10%, transparent);
+  --color-border: color-mix(in srgb, #2D3748 18%, transparent);
   --color-input: #F0EBE1;
   --color-ring: #E67E22;
   
@@ -84,6 +84,8 @@
     --color-muted-foreground: #A0AEC0;
     --color-accent: #FC8181;
     --color-accent-foreground: #1A202C;
+    --color-destructive: #E53E3E;
+    --color-destructive-foreground: #FFFFFF;
     --color-border: color-mix(in srgb, #F7F3E9 10%, transparent);
     --color-input: #4A5568;
     --color-ring: #E67E22;
@@ -106,6 +108,8 @@
   --color-muted-foreground: #A0AEC0;
   --color-accent: #FC8181;
   --color-accent-foreground: #1A202C;
+  --color-destructive: #E53E3E;
+  --color-destructive-foreground: #FFFFFF;
   --color-border: color-mix(in srgb, #F7F3E9 10%, transparent);
   --color-input: #4A5568;
   --color-ring: #E67E22;
@@ -121,15 +125,15 @@
   --color-popover-foreground: #2D3748;
   --color-primary: #2D3748;
   --color-primary-foreground: #F7F3E9;
-  --color-secondary: #E67E22;
+  --color-secondary: #B45309;
   --color-secondary-foreground: #FFFFFF;
   --color-muted: #F0EBE1;
-  --color-muted-foreground: #718096;
+  --color-muted-foreground: #4A5568;
   --color-accent: #C53030;
   --color-accent-foreground: #FFFFFF;
-  --color-destructive: #E53E3E;
+  --color-destructive: #B42318;
   --color-destructive-foreground: #FFFFFF;
-  --color-border: color-mix(in srgb, #2D3748 10%, transparent);
+  --color-border: color-mix(in srgb, #2D3748 18%, transparent);
   --color-input: #F0EBE1;
   --color-ring: #E67E22;
 }

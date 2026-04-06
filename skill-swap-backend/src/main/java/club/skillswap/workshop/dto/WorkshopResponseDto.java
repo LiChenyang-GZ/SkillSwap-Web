@@ -17,6 +17,7 @@ public record WorkshopResponseDto(
     String status,
     LocalDate date,
     LocalTime time,
+    LocalDateTime attendCloseAt,
     Integer duration,
     Boolean isOnline,
     String location,

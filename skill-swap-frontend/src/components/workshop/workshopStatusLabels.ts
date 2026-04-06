@@ -31,3 +31,38 @@ export function isUserWorkshopUpcomingOrOngoing(workshop: Workshop, now?: Date):
   const status = resolveUserWorkshopStatus(workshop, now);
   return status === 'upcoming' || status === 'ongoing';
 }
+
+function parseAttendCloseAt(workshop: Workshop): Date | null {
+  const raw = String(workshop.attendCloseAt || '').trim();
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function isWorkshopOpenForRegistration(workshop: Workshop, now: Date = new Date()): boolean {
+  const status = resolveUserWorkshopStatus(workshop, now);
+  if (status !== 'upcoming') {
+    return false;
+  }
+
+  const maxParticipants = Number(workshop.maxParticipants ?? 0);
+  const currentParticipants = Number(workshop.currentParticipants ?? 0);
+  const hasCapacityLimit = Number.isFinite(maxParticipants) && maxParticipants > 0;
+  if (hasCapacityLimit && currentParticipants >= maxParticipants) {
+    return false;
+  }
+
+  const attendCloseAt = parseAttendCloseAt(workshop);
+  if (attendCloseAt && now >= attendCloseAt) {
+    return false;
+  }
+
+  return true;
+}
+
+export function getWorkshopAccessLabel(workshop: Workshop, now?: Date): 'Open Access' | 'Close Access' {
+  return isWorkshopOpenForRegistration(workshop, now) ? 'Open Access' : 'Close Access';
+}
