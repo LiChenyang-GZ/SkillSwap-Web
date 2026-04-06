@@ -14,14 +14,12 @@ import {
 } from 'lucide-react';
 import { categories } from '../../lib/mock-data';
 import {
-  getUserWorkshopStatusBadgeVariant,
   getUserWorkshopStatusLabel,
   isUserWorkshopUpcomingOrOngoing,
-  resolveUserWorkshopStatus,
 } from './workshopStatusPublicApi';
 
 export function ExploreWorkshops() {
-  const { workshops, user, attendWorkshop, setCurrentPage } = useApp();
+  const { workshops, setCurrentPage } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -36,11 +34,6 @@ export function ExploreWorkshops() {
 
     return matchesSearch && matchesCategory && isUserWorkshopUpcomingOrOngoing(workshop);
   });
-
-  const isUserAttending = (workshopId: string) => {
-    const workshop = workshops.find(w => w.id === workshopId);
-    return workshop?.participants?.some(p => p.id === user?.id) || false;
-  };
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
@@ -94,7 +87,19 @@ export function ExploreWorkshops() {
         {filteredWorkshops.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredWorkshops.map((workshop) => (
-              <Card key={workshop.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
+              <Card
+                key={workshop.id}
+                className="group cursor-pointer border-0 shadow-md hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                role="button"
+                tabIndex={0}
+                onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setCurrentPage(`workshop-${workshop.id}`);
+                  }
+                }}
+              >
                 <CardContent className="p-0">
                   {/* Workshop Image */}
                   <div className="aspect-[4/3] bg-muted rounded-t-lg overflow-hidden">
@@ -102,7 +107,7 @@ export function ExploreWorkshops() {
                       <img
                         src={workshop.image}
                         alt={workshop.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                     )}
                   </div>
@@ -112,11 +117,11 @@ export function ExploreWorkshops() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary">{workshop.category}</Badge>
-                        <Badge variant={getUserWorkshopStatusBadgeVariant(workshop)}>
+                        <Badge variant="secondary">
                           {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                         </Badge>
                       </div>
-                      <Badge variant="outline">Open Access</Badge>
+                      <Badge variant="secondary">Open Access</Badge>
                     </div>
 
                     {/* Title & Description */}
@@ -161,31 +166,6 @@ export function ExploreWorkshops() {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
-                      >
-                        View Details
-                      </Button>
-                      {isUserAttending(workshop.id) ? (
-                        <Badge variant="secondary" className="px-3 py-1">
-                          Attending
-                        </Badge>
-                      ) : (
-                        <Button
-                          size="sm"
-                          disabled={resolveUserWorkshopStatus(workshop) === 'ongoing'}
-                          onClick={() => attendWorkshop(workshop.id)}
-                          className="shrink-0"
-                        >
-                          {resolveUserWorkshopStatus(workshop) === 'ongoing' ? 'In Progress' : 'Attend'}
-                        </Button>
-                      )}
-                    </div>
                   </div>
                 </CardContent>
               </Card>

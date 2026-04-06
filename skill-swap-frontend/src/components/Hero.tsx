@@ -201,7 +201,7 @@ export function HeroPage() {
                   {visibleMemories.map((entry) => (
                     <Card
                       key={entry.id}
-                      className="w-full sm:w-[320px] overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                      className="w-full sm:w-[320px] overflow-hidden border-0 shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer"
                       onClick={() => {
                         if (entry.slug) {
                           setCurrentPage(`memory-entry-${entry.slug}`);
