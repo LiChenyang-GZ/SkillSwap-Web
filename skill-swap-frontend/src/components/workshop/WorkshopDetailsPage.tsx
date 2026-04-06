@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Workshop } from '../../types';
 import { toast } from 'sonner';
+import { resolveUserWorkshopStatus } from './workshopStatusPublicApi';
 
 interface WorkshopDetailsProps {
   workshopId: string;
@@ -108,42 +109,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const isCancelled = normalizedStatus === 'cancelled';
   const isPending = normalizedStatus === 'pending';
   const isRejected = normalizedStatus === 'rejected';
-  const parseWorkshopStart = () => {
-    const rawDate = String(workshop.date || '').trim();
-    const rawTime = String(workshop.time || '').trim();
-    if (!rawDate) return null;
-
-    const datePart = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
-    const timePart = rawTime ? (rawTime.length === 5 ? `${rawTime}:00` : rawTime) : '00:00:00';
-    const parsed = new Date(`${datePart}T${timePart}`);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  };
-
-  const computeIsOngoingByTime = () => {
-    if (isCancelled || isRejected || isPending || normalizedStatus === 'completed') {
-      return false;
-    }
-
-    const start = parseWorkshopStart();
-    if (!start) {
-      return normalizedStatus === 'ongoing';
-    }
-
-    const now = new Date();
-    if (now < start) {
-      return false;
-    }
-
-    const durationMinutes = Number(workshop.duration);
-    if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
-      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-      return now < end;
-    }
-
-    return true;
-  };
-
-  const isOngoing = computeIsOngoingByTime();
+  const resolvedUserStatus = resolveUserWorkshopStatus(workshop);
+  const isUpcoming = resolvedUserStatus === 'upcoming';
+  const isOngoing = resolvedUserStatus === 'ongoing';
+  const isCompleted = resolvedUserStatus === 'completed' || normalizedStatus === 'completed';
   const isHost = workshop.facilitator?.id === user?.id;
   const canViewRestricted = isAdmin || isHost;
 
@@ -297,6 +266,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                     >
                       {isHost ? 'Request Approval' : 'Pending Approval'}
                     </Button>
+                  ) : isCompleted ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Workshop Completed
+                    </Button>
                   ) : isHost ? (
                     <Button
                       variant="secondary"
@@ -306,13 +279,17 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                       Hosted by Me
                     </Button>
                   ) : isUserAttending ? (
-                    isOngoing ? (
+                    isUpcoming ? (
+                      <Button variant="outline" onClick={handleCancel} className="w-full">
+                        Cancel Attendance
+                      </Button>
+                    ) : isOngoing ? (
                       <Button disabled variant="outline" className="w-full">
                         Workshop In Progress
                       </Button>
                     ) : (
-                      <Button variant="outline" onClick={handleCancel} className="w-full">
-                        Cancel Attendance
+                      <Button disabled variant="outline" className="w-full">
+                        Workshop Completed
                       </Button>
                     )
                   ) : isOngoing ? (
@@ -324,7 +301,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                       Workshop Full
                     </Button>
                   ) : (
-                    <Button onClick={handleAttend} className="w-full" size="lg">
+                    <Button onClick={handleAttend} className="w-full" size="lg" disabled={!isUpcoming}>
                       Attend Workshop
                     </Button>
                   )}

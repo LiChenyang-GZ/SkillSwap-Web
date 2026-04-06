@@ -575,6 +575,8 @@ public class WorkshopServiceImpl implements WorkshopService {
     }
 
     private WorkshopResponseDto mapToSummaryDto(Workshop workshop, boolean resolveStatus) {
+        Integer participantCount = Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()));
+
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
             facilitatorDto = new FacilitatorDto(
@@ -601,7 +603,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getIsOnline(),
             summaryLocation,
             workshop.getMaxParticipants(),
-            null,
+            participantCount,
             workshop.getCreditCost(),
             workshop.getCreditReward(),
             null,
