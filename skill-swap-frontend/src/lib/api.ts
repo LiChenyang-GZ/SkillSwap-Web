@@ -212,7 +212,6 @@ function enrichMemory(entry: any): MemoryEntry {
   const rawMediaUrls = Array.isArray(entry.mediaUrls) ? entry.mediaUrls : [];
   return {
     id: String(entry.id),
-    version: typeof entry.version === 'number' ? entry.version : Number(entry.version ?? 0),
     title: entry.title || '',
     slug: entry.slug || '',
     coverUrl: normalizeMemoryUrl(entry.coverUrl || ''),

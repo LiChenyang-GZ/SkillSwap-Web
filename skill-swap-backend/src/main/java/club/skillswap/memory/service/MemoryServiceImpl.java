@@ -21,10 +21,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +40,9 @@ public class MemoryServiceImpl implements MemoryService {
     private static final int MAX_SLUG_LENGTH = 220;
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
     private static final long DEFAULT_EDIT_LOCK_SECONDS = 180L;
+    private static final Pattern MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^\\]]*\\]\\(([^)]+)\\)");
+    private static final Pattern RAW_URL_PATTERN = Pattern.compile("https?://[^\\s)]+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern MEDIA_FILE_PATTERN = Pattern.compile(".*\\.(png|jpg|jpeg|gif|webp|svg|mp4|mov|webm)(\\?.*)?$", Pattern.CASE_INSENSITIVE);
 
     private final MemoryEntryRepository memoryEntryRepository;
     private final UserService userService;
@@ -97,20 +104,8 @@ public class MemoryServiceImpl implements MemoryService {
         MemoryEntry entry = memoryEntryRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Memory not found with ID: " + id));
 
-        boolean shouldEnforceLock = STATUS_DRAFT.equals(entry.getStatus());
-        if (shouldEnforceLock) {
+        if (STATUS_DRAFT.equals(entry.getStatus())) {
             requireActiveEditLockOwner(entry, actor, true);
-        }
-
-        if (!shouldEnforceLock) {
-            Long requestVersion = requestDto.version();
-            Long currentVersion = entry.getVersion();
-            if (requestVersion == null || currentVersion == null || !currentVersion.equals(requestVersion)) {
-                throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "This memory was updated by another admin. Please refresh and try again."
-                );
-            }
         }
 
         applyPayload(entry, requestDto, false);
@@ -136,7 +131,9 @@ public class MemoryServiceImpl implements MemoryService {
             requireActiveEditLockOwner(entry, actor, false);
         }
 
+        Set<String> mediaUrlsToDelete = collectMediaUrlsForCleanup(entry);
         memoryEntryRepository.delete(entry);
+        deleteStorageObjects(mediaUrlsToDelete);
     }
 
     @Override
@@ -393,7 +390,6 @@ public class MemoryServiceImpl implements MemoryService {
 
         return new MemoryEntryResponseDto(
                 entry.getId() != null ? entry.getId().toString() : null,
-            entry.getVersion(),
                 entry.getTitle(),
                 entry.getSlug(),
                 entry.getCoverUrl(),
@@ -409,6 +405,62 @@ public class MemoryServiceImpl implements MemoryService {
                 editLockOwnerName,
                 editLockExpiresAt
         );
+    }
+
+    private Set<String> collectMediaUrlsForCleanup(MemoryEntry entry) {
+        Set<String> urls = new LinkedHashSet<>();
+        String coverUrl = trimToNull(entry.getCoverUrl());
+        if (coverUrl != null) {
+            urls.add(coverUrl);
+        }
+
+        if (entry.getMedia() != null) {
+            for (MemoryMedia media : entry.getMedia()) {
+                if (media == null) {
+                    continue;
+                }
+                String mediaUrl = trimToNull(media.getMediaUrl());
+                if (mediaUrl != null) {
+                    urls.add(mediaUrl);
+                }
+            }
+        }
+
+        collectImageUrlsFromContent(entry.getContent(), urls);
+        return urls;
+    }
+
+    private void collectImageUrlsFromContent(String content, Set<String> urls) {
+        String normalizedContent = trimToNull(content);
+        if (normalizedContent == null) {
+            return;
+        }
+
+        Matcher markdownMatcher = MARKDOWN_IMAGE_PATTERN.matcher(normalizedContent);
+        while (markdownMatcher.find()) {
+            String url = trimToNull(markdownMatcher.group(1));
+            if (url != null) {
+                urls.add(url);
+            }
+        }
+
+        Matcher rawUrlMatcher = RAW_URL_PATTERN.matcher(normalizedContent);
+        while (rawUrlMatcher.find()) {
+            String url = trimToNull(rawUrlMatcher.group());
+            if (url != null && MEDIA_FILE_PATTERN.matcher(url).matches()) {
+                urls.add(url);
+            }
+        }
+    }
+
+    private void deleteStorageObjects(Set<String> urls) {
+        if (urls == null || urls.isEmpty()) {
+            return;
+        }
+
+        for (String url : urls) {
+            supabaseStorageService.deleteByPublicUrlQuietly(url);
+        }
     }
 
     private void requireActiveEditLockOwner(MemoryEntry entry, UserAccount actor, boolean touchExpiry) {

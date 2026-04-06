@@ -65,7 +65,6 @@ export interface Workshop {
 
 export interface MemoryEntry {
   id: string;
-  version?: number;
   title: string;
   slug: string;
   coverUrl?: string;

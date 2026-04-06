@@ -5,7 +5,6 @@ import java.util.List;
 
 public record MemoryEntryResponseDto(
         String id,
-        Long version,
         String title,
         String slug,
         String coverUrl,

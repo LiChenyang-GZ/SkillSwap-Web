@@ -44,7 +44,6 @@ import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
 
 type EditorMode = 'write' | 'preview' | 'split';
-type ConflictAction = 'save' | 'status';
 
 const LOCK_HEARTBEAT_MS = 60_000;
 
@@ -53,14 +52,6 @@ interface ParsedMemoryDocument {
   title: string;
   coverUrl: string;
   mediaUrls: string[];
-}
-
-interface ConflictDialogState {
-  action: ConflictAction;
-  entryId: string | null;
-  myDocument: string;
-  serverEntry: MemoryEntry | null;
-  serverEntries: MemoryEntry[];
 }
 
 const EMPTY_DOC = `---
@@ -207,7 +198,6 @@ export function MemoryStudio() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [lockMessage, setLockMessage] = useState<string | null>(null);
-  const [conflictDialog, setConflictDialog] = useState<ConflictDialogState | null>(null);
   const [deleteDialogEntry, setDeleteDialogEntry] = useState<MemoryEntry | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [entryPage, setEntryPage] = useState(1);
@@ -306,88 +296,6 @@ export function MemoryStudio() {
 
       return null;
     }
-  };
-
-  const openConflictDialog = async (params: {
-    action: ConflictAction;
-    entryId: string | null;
-    myDocument: string;
-  }): Promise<boolean> => {
-    if (!sessionToken || !params.entryId) {
-      toast.error('Conflict detected. Please refresh and retry.');
-      return false;
-    }
-
-    try {
-      const latestEntries = await memoryAPI.getAllForAdmin(sessionToken);
-      const latestEntry = latestEntries.find((item) => item.id === params.entryId) || null;
-
-      setConflictDialog({
-        action: params.action,
-        entryId: params.entryId,
-        myDocument: params.myDocument,
-        serverEntry: latestEntry,
-        serverEntries: latestEntries,
-      });
-      return true;
-    } catch (error) {
-      console.error(error);
-      toast.error('Conflict detected, but failed to load the latest server version.');
-      return false;
-    }
-  };
-
-  const handleKeepMyChangesAfterConflict = () => {
-    if (!conflictDialog) return;
-
-    const { entryId, myDocument, serverEntries, serverEntry } = conflictDialog;
-
-    if (serverEntries.length > 0) {
-      skipNextSelectionSyncRef.current = true;
-      setIsCreatingNew(false);
-      setEntries(serverEntries);
-
-      if (entryId && serverEntries.some((item) => item.id === entryId)) {
-        setSelectedId(entryId);
-        setSelectedStatus(serverEntry?.status || 'draft');
-      } else {
-        setSelectedId(serverEntries[0].id);
-        setSelectedStatus(serverEntries[0].status || 'draft');
-      }
-    }
-
-    setDocumentText(myDocument);
-    setConflictDialog(null);
-    toast.info('Kept your local edits. Server metadata has been refreshed.');
-  };
-
-  const handleReloadServerVersionAfterConflict = () => {
-    if (!conflictDialog) return;
-
-    const { entryId, serverEntry, serverEntries } = conflictDialog;
-    setIsCreatingNew(false);
-    setEntries(serverEntries);
-
-    if (serverEntry) {
-      setSelectedId(serverEntry.id);
-      setSelectedStatus(serverEntry.status || 'draft');
-      setDocumentText(buildDocumentFromEntry(serverEntry));
-    } else if (serverEntries.length > 0) {
-      const fallback = entryId
-        ? serverEntries.find((item) => item.id === entryId) || serverEntries[0]
-        : serverEntries[0];
-
-      setSelectedId(fallback.id);
-      setSelectedStatus(fallback.status || 'draft');
-      setDocumentText(buildDocumentFromEntry(fallback));
-    } else {
-      setSelectedId(null);
-      setSelectedStatus('draft');
-      setDocumentText(EMPTY_DOC);
-    }
-
-    setConflictDialog(null);
-    toast.success('Reloaded latest server version.');
   };
 
   const loadEntries = async () => {
@@ -655,7 +563,6 @@ export function MemoryStudio() {
     try {
       const statusToPersist = forcedStatus || selectedStatus;
       const payload: Partial<MemoryEntry> = {
-        version: selectedEntry?.version,
         title: parsedDoc.title,
         slug: undefined,
         coverUrl: parsedDoc.coverUrl || undefined,
@@ -691,14 +598,6 @@ export function MemoryStudio() {
         const msg = getErrorMessage(error) || 'This draft is currently locked by another admin.';
         setLockMessage(msg);
         toast.info(msg);
-        return;
-      }
-      if (status === 409) {
-        await openConflictDialog({
-          action: 'save',
-          entryId: selectedId,
-          myDocument: documentText,
-        });
         return;
       }
       toast.error('Failed to save memory.');
@@ -752,7 +651,7 @@ export function MemoryStudio() {
 
     setIsSaving(true);
     try {
-      const updated = await memoryAPI.updateByAdmin(entry.id, { status: nextStatus, version: entry.version }, sessionToken);
+      const updated = await memoryAPI.updateByAdmin(entry.id, { status: nextStatus }, sessionToken);
       setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       if (selectedId === entry.id) {
         setSelectedStatus(updated.status || nextStatus);
@@ -765,14 +664,6 @@ export function MemoryStudio() {
         const msg = getErrorMessage(error) || 'This draft is currently locked by another admin.';
         setLockMessage(msg);
         toast.info(msg);
-        return;
-      }
-      if (status === 409) {
-        await openConflictDialog({
-          action: 'status',
-          entryId: entry.id,
-          myDocument: documentText,
-        });
         return;
       }
       toast.error('Failed to update memory status.');
@@ -1111,54 +1002,6 @@ export function MemoryStudio() {
           </Card>
         </div>
       </div>
-
-      <Dialog
-        open={Boolean(conflictDialog)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setConflictDialog(null);
-          }
-        }}
-      >
-        <DialogContent className="max-w-6xl">
-          <DialogHeader>
-            <DialogTitle>Conflict Detected</DialogTitle>
-            <DialogDescription>
-              Another admin changed this memory on the server. Compare both versions and choose how to proceed.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">My Local Edits</p>
-              <pre className="max-h-[420px] overflow-auto rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 whitespace-pre-wrap break-words">
-                {conflictDialog?.myDocument || '*Empty*'}
-              </pre>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium">
-                Server Version
-                {conflictDialog?.action === 'status' ? ' (updated status by another admin)' : ''}
-              </p>
-              <pre className="max-h-[420px] overflow-auto rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 whitespace-pre-wrap break-words">
-                {conflictDialog?.serverEntry
-                  ? buildDocumentFromEntry(conflictDialog.serverEntry)
-                  : 'This entry no longer exists on the server.'}
-              </pre>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={handleKeepMyChangesAfterConflict}>
-              Keep My Changes
-            </Button>
-            <Button onClick={handleReloadServerVersionAfterConflict}>
-              Reload Server Version
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={Boolean(deleteDialogEntry)}

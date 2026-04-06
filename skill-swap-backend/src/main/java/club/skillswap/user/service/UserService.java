@@ -208,6 +208,7 @@ public class UserService {
         UUID userId = UUID.fromString(jwt.getSubject());
         UserAccount user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
+        String previousAvatarUrl = trimToNull(user.getAvatarUrl());
 
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required.");
@@ -229,6 +230,9 @@ public class UserService {
 
         user.setAvatarUrl(publicUrl);
         userRepository.save(user);
+        if (previousAvatarUrl != null && !previousAvatarUrl.equals(publicUrl)) {
+            supabaseStorageService.deleteByPublicUrlQuietly(previousAvatarUrl);
+        }
 
         return getUserProfileWithStats(userId);
     }
