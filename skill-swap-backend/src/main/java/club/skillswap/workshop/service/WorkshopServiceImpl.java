@@ -1,6 +1,7 @@
 package club.skillswap.workshop.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
+import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.notification.service.NotificationService;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
@@ -29,11 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -54,9 +50,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final WorkshopParticipantRepository participantRepository;
     private final HiddenHostingWorkshopRepository hiddenHostingWorkshopRepository;
     private final NotificationService notificationService;
-
-    @Value("${app.upload.base-dir:uploads}")
-    private String uploadBaseDir;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -305,21 +299,10 @@ public class WorkshopServiceImpl implements WorkshopService {
         String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
         String fileName = UUID.randomUUID() + extension;
 
-        Path targetDirectory = Paths.get(uploadBaseDir, "workshops").toAbsolutePath().normalize();
-        Path targetFile = targetDirectory.resolve(fileName).normalize();
+        String objectPath = "workshops/" + workshop.getId() + "/" + fileName;
+        String publicUrl = supabaseStorageService.uploadImage(file, objectPath);
 
-        if (!targetFile.startsWith(targetDirectory)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
-        }
-
-        try {
-            Files.createDirectories(targetDirectory);
-            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
-        }
-
-        workshop.setImageUrl("/uploads/workshops/" + fileName);
+        workshop.setImageUrl(publicUrl);
         Workshop saved = workshopRepository.save(workshop);
         return mapToDtoForViewer(saved, authentication);
     }

@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.common.exception.DomainException;
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.user.dto.UpdateProfileRequestDto;
@@ -20,11 +21,6 @@ import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Locale;
@@ -41,9 +37,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final WorkshopRepository workshopRepository;
     private final WorkshopParticipantRepository participantRepository;
-
-    @Value("${app.upload.base-dir:uploads}")
-    private String uploadBaseDir;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -230,22 +224,10 @@ public class UserService {
 
         String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
         String fileName = UUID.randomUUID() + extension;
+        String objectPath = "avatars/" + user.getId() + "/" + fileName;
+        String publicUrl = supabaseStorageService.uploadImage(file, objectPath);
 
-        Path targetDirectory = Paths.get(uploadBaseDir, "avatars").toAbsolutePath().normalize();
-        Path targetFile = targetDirectory.resolve(fileName).normalize();
-
-        if (!targetFile.startsWith(targetDirectory)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
-        }
-
-        try {
-            Files.createDirectories(targetDirectory);
-            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
-        }
-
-        user.setAvatarUrl("/uploads/avatars/" + fileName);
+        user.setAvatarUrl(publicUrl);
         userRepository.save(user);
 
         return getUserProfileWithStats(userId);

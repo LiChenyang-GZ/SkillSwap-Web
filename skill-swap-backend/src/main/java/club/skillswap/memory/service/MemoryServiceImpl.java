@@ -1,6 +1,7 @@
 package club.skillswap.memory.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
+import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.memory.dto.MemoryEntryRequestDto;
 import club.skillswap.memory.dto.MemoryEntryResponseDto;
 import club.skillswap.memory.entity.MemoryEntry;
@@ -18,11 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,9 +38,7 @@ public class MemoryServiceImpl implements MemoryService {
 
     private final MemoryEntryRepository memoryEntryRepository;
     private final UserService userService;
-
-    @Value("${app.upload.base-dir:uploads}")
-    private String uploadBaseDir;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -145,22 +139,8 @@ public class MemoryServiceImpl implements MemoryService {
 
         String extension = resolveFileExtension(file.getOriginalFilename(), contentType);
         String fileName = UUID.randomUUID() + extension;
-
-        Path targetDirectory = Paths.get(uploadBaseDir, "memory").toAbsolutePath().normalize();
-        Path targetFile = targetDirectory.resolve(fileName).normalize();
-
-        if (!targetFile.startsWith(targetDirectory)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
-        }
-
-        try {
-            Files.createDirectories(targetDirectory);
-            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
-        }
-
-        return "/uploads/memory/" + fileName;
+        String objectPath = "memory/" + fileName;
+        return supabaseStorageService.uploadImage(file, objectPath);
     }
 
     private void applyPayload(MemoryEntry entry, MemoryEntryRequestDto requestDto, boolean createMode) {

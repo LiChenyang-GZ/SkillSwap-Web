@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 
@@ -64,13 +63,10 @@ public class AdminMemoryController {
             @RequestPart("file") MultipartFile file,
             Authentication authentication
     ) {
-        String relativePath = memoryService.uploadMemoryMedia(file, authentication);
-        String absoluteUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path(relativePath)
-                .toUriString();
+        String mediaUrl = memoryService.uploadMemoryMedia(file, authentication);
 
         return new ResponseEntity<>(
-                new MemoryMediaUploadResponseDto(absoluteUrl, relativePath),
+            new MemoryMediaUploadResponseDto(mediaUrl, mediaUrl),
                 HttpStatus.CREATED
         );
     }
