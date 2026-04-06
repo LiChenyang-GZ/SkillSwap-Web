@@ -18,6 +18,7 @@ export interface WorkshopUpsertPayload {
   maxParticipants?: number | null;
   date: string;
   time: string;
+  attendCloseAt?: string | null;
   isOnline: boolean;
   location?: string;
   contactNumber: string;
@@ -110,6 +111,7 @@ function enrichWorkshop(workshop: any): Workshop {
     status: normalizedStatus as Workshop['status'],
     date: workshop.date,
     time: workshop.time,
+    attendCloseAt: workshop.attendCloseAt || workshop.attend_close_at,
     duration: workshop.duration,
     isOnline: workshop.isOnline,
     location: workshop.location || workshop.locations || '',

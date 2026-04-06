@@ -29,6 +29,7 @@ interface WorkshopFormState {
   maxParticipants: string;
   date: string;
   time: string;
+  attendCloseAt: string;
   location: string;
   isOnline: boolean;
   materialsProvided: string;
@@ -54,6 +55,7 @@ const emptyForm: WorkshopFormState = {
   maxParticipants: '',
   date: '',
   time: '',
+  attendCloseAt: '',
   location: '',
   isOnline: false,
   materialsProvided: '',
@@ -101,6 +103,21 @@ export function AdminReview() {
       ? workshop.location[0] || ''
       : workshop.location || '';
 
+    const attendCloseAtValue = (() => {
+      const raw = String(workshop.attendCloseAt || '').trim();
+      if (!raw) {
+        return '';
+      }
+
+      const parsed = new Date(raw);
+      if (Number.isNaN(parsed.getTime())) {
+        return raw.length >= 16 ? raw.slice(0, 16) : '';
+      }
+
+      const offsetMs = parsed.getTimezoneOffset() * 60 * 1000;
+      return new Date(parsed.getTime() - offsetMs).toISOString().slice(0, 16);
+    })();
+
     return {
       image: workshop.image || '',
       hostName: workshop.hostName || '',
@@ -112,6 +129,7 @@ export function AdminReview() {
       maxParticipants: workshop.maxParticipants ? String(workshop.maxParticipants) : '',
       date: workshop.date || '',
       time: workshop.time || '',
+      attendCloseAt: attendCloseAtValue,
       location: workshop.isOnline ? '' : locationValue,
       isOnline: !!workshop.isOnline,
       materialsProvided: workshop.materialsProvided || '',
@@ -138,6 +156,7 @@ export function AdminReview() {
     maxParticipants: state.maxParticipants.trim(),
     date: state.date.trim(),
     time: state.time.trim(),
+    attendCloseAt: state.attendCloseAt.trim(),
     location: state.location.trim(),
     image: state.image.trim(),
     materialsProvided: state.materialsProvided.trim(),
@@ -391,6 +410,19 @@ export function AdminReview() {
 
   const normalizeContactNumber = (value: string) => value.replace(/\D/g, '');
 
+  const normalizeAttendCloseAtForApi = (value: string): string | null => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    if (trimmed.length === 16) {
+      return `${trimmed}:00`;
+    }
+
+    return trimmed;
+  };
+
   const handleImageFileSelection = (file: File | null) => {
     if (!file) {
       return;
@@ -422,6 +454,7 @@ export function AdminReview() {
         maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : null,
         date: formData.date,
         time: formData.time,
+        attendCloseAt: normalizeAttendCloseAtForApi(formData.attendCloseAt),
         isOnline: formData.isOnline,
         location: formData.isOnline ? 'Online' : formData.location,
         materialsProvided: formData.materialsProvided,
@@ -901,6 +934,17 @@ export function AdminReview() {
                         type="time"
                         value={formData.time}
                         onChange={(e) => handleInputChange('time', e.target.value)}
+                        className="mt-1"
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="attendCloseAt">Attend Close Time</Label>
+                      <Input
+                        id="attendCloseAt"
+                        type="datetime-local"
+                        value={formData.attendCloseAt}
+                        onChange={(e) => handleInputChange('attendCloseAt', e.target.value)}
                         className="mt-1"
                         disabled={!canEdit}
                       />

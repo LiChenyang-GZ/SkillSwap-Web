@@ -76,6 +76,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setDuration(createRequestDto.duration());
         workshop.setDate(createRequestDto.date());
         workshop.setTime(createRequestDto.time());
+        workshop.setAttendCloseAt(resolveAttendCloseAt(createRequestDto.date(), createRequestDto.time(), createRequestDto.attendCloseAt()));
         workshop.setIsOnline(createRequestDto.isOnline());
         workshop.setLocation(createRequestDto.location());
         workshop.setMaxParticipants(createRequestDto.maxParticipants());
@@ -258,6 +259,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setDuration(updateRequestDto.duration());
         workshop.setDate(updateRequestDto.date());
         workshop.setTime(updateRequestDto.time());
+        workshop.setAttendCloseAt(resolveAttendCloseAt(updateRequestDto.date(), updateRequestDto.time(), updateRequestDto.attendCloseAt()));
         workshop.setIsOnline(updateRequestDto.isOnline());
         workshop.setLocation(updateRequestDto.location());
         workshop.setMaxParticipants(updateRequestDto.maxParticipants());
@@ -486,6 +488,27 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
 
+        String effectiveStatus = resolveEffectiveStatus(workshop);
+        if (!"upcoming".equals(effectiveStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This workshop is no longer open for new attendees.");
+        }
+
+        Integer maxParticipants = workshop.getMaxParticipants();
+        if (maxParticipants != null && maxParticipants > 0) {
+            long currentParticipants = participantRepository.countByWorkshopId(workshopId);
+            if (currentParticipants >= maxParticipants) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Workshop is full.");
+            }
+        }
+
+        LocalDateTime attendCloseAt = resolveAttendCloseAt(workshop.getDate(), workshop.getTime(), workshop.getAttendCloseAt());
+        if (attendCloseAt != null && !LocalDateTime.now().isBefore(attendCloseAt)) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Attendance has been closed for this workshop."
+            );
+        }
+
         // 2. 鏌ユ壘鐢ㄦ埛
         UserAccount user = userService.findUserByStringId(userId);
 
@@ -599,6 +622,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             resolveStatus ? resolveEffectiveStatus(workshop) : normalizeStatus(workshop.getStatus()),
             workshop.getDate(),
             workshop.getTime(),
+            resolveAttendCloseAt(workshop.getDate(), workshop.getTime(), workshop.getAttendCloseAt()),
             workshop.getDuration(),
             workshop.getIsOnline(),
             summaryLocation,
@@ -696,6 +720,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             resolveStatus ? resolveEffectiveStatus(workshop) : normalizeStatus(workshop.getStatus()),
             workshop.getDate(),
             workshop.getTime(),
+            resolveAttendCloseAt(workshop.getDate(), workshop.getTime(), workshop.getAttendCloseAt()),
             workshop.getDuration(),
             workshop.getIsOnline(),
             workshop.getLocation(),
@@ -834,6 +859,19 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     private String normalizeStatus(String status) {
         return status == null ? "pending" : status.toLowerCase();
+    }
+
+    private LocalDateTime resolveAttendCloseAt(LocalDate workshopDate, LocalTime workshopTime, LocalDateTime requestedAttendCloseAt) {
+        if (requestedAttendCloseAt != null) {
+            return requestedAttendCloseAt;
+        }
+
+        if (workshopDate == null) {
+            return null;
+        }
+
+        LocalTime effectiveTime = workshopTime != null ? workshopTime : LocalTime.MIDNIGHT;
+        return LocalDateTime.of(workshopDate, effectiveTime).minusDays(1);
     }
 
     private boolean isWorkshopStarted(Workshop workshop) {

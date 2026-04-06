@@ -9,7 +9,9 @@ export {
 export {
   getUserWorkshopStatusLabel,
   getUserWorkshopStatusBadgeVariant,
+  getWorkshopAccessLabel,
   isUserWorkshopUpcoming,
   isUserWorkshopUpcomingOrOngoing,
+  isWorkshopOpenForRegistration,
   type WorkshopBadgeVariant,
 } from './workshopStatusLabels';

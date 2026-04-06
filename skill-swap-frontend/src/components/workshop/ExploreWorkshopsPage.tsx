@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { categories } from '../../lib/mock-data';
 import {
+  getWorkshopAccessLabel,
   getUserWorkshopStatusLabel,
   isUserWorkshopUpcomingOrOngoing,
 } from './workshopStatusPublicApi';
@@ -121,7 +122,7 @@ export function ExploreWorkshops() {
                           {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                         </Badge>
                       </div>
-                      <Badge variant="secondary">Open Access</Badge>
+                      <Badge variant="secondary">{getWorkshopAccessLabel(workshop)}</Badge>
                     </div>
 
                     {/* Title & Description */}
