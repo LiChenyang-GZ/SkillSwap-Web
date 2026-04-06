@@ -9,6 +9,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { toast } from 'sonner';
+import { workshopAPI } from '../lib/api';
 import { 
   Calendar, 
   Users, 
@@ -18,7 +19,8 @@ import {
   BookOpen,
   Target,
   Globe,
-  Edit
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import {
   getUserWorkshopStatusBadgeVariant,
@@ -29,15 +31,23 @@ import {
 } from './workshop/workshopStatusPublicApi';
 
 export function Dashboard() {
-  const { user, workshops, setCurrentPage, cancelWorkshopAttendance, updateCurrentUserProfile, uploadCurrentUserAvatar } = useApp();
+  const { user, workshops, sessionToken, setCurrentPage, cancelWorkshopAttendance, updateCurrentUserProfile, uploadCurrentUserAvatar } = useApp();
+  const PAGE_SIZE = 8;
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editUsername, setEditUsername] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] = useState<string | null>(null);
   const [hiddenHostedWorkshopIds, setHiddenHostedWorkshopIds] = useState<string[]>([]);
+  const [hidingWorkshopIds, setHidingWorkshopIds] = useState<string[]>([]);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [attendedPage, setAttendedPage] = useState(1);
+  const [hostingPage, setHostingPage] = useState(1);
   const [profileError, setProfileError] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
+  const statusBadgeClassName = 'h-7 min-w-[108px] justify-center text-xs';
+
+  type HostingDisplayStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed';
 
   // Early return if no user
   if (!user) {
@@ -48,50 +58,266 @@ export function Dashboard() {
     );
   }
 
-  const normalizedUsername = user.username.trim().toLowerCase();
-  const normalizedEmail = user.email.trim().toLowerCase();
+  const parseWorkshopStartTime = (workshop: (typeof workshops)[number]) => {
+    const rawDate = String(workshop.date || '').trim();
+    const rawTime = String(workshop.time || '').trim();
+
+    if (!rawDate) {
+      return null;
+    }
+
+    const datePart = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+    const timePart = rawTime ? (rawTime.length === 5 ? `${rawTime}:00` : rawTime) : '00:00:00';
+    const parsed = new Date(`${datePart}T${timePart}`);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    return parsed;
+  };
+
+  const resolveHostingDisplayStatus = (workshop: (typeof workshops)[number]): HostingDisplayStatus => {
+    const adminStatus = normalizeAdminWorkshopStatus(workshop.status);
+
+    if (adminStatus === 'pending' || adminStatus === 'rejected' || adminStatus === 'cancelled' || adminStatus === 'completed') {
+      return adminStatus;
+    }
+
+    const start = parseWorkshopStartTime(workshop);
+    if (!start) {
+      return 'approved';
+    }
+
+    const durationMinutes = Number(workshop.duration);
+    if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
+      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+      if (new Date() >= end) {
+        return 'completed';
+      }
+    }
+
+    // For hosting list, active approved workshops remain "Approved" until they can be confidently marked completed.
+    const now = new Date();
+    const isSameCalendarDay =
+      now.getFullYear() === start.getFullYear() &&
+      now.getMonth() === start.getMonth() &&
+      now.getDate() === start.getDate();
+
+    if (now > start && !isSameCalendarDay && (!Number.isFinite(durationMinutes) || durationMinutes <= 0)) {
+      return 'completed';
+    }
+
+    return 'approved';
+  };
+
+  const getHostingStatusMeta = (workshop: (typeof workshops)[number]) => {
+    const status = resolveHostingDisplayStatus(workshop);
+
+    if (status === 'pending') {
+      return { label: 'Pending', variant: 'secondary' as const, removable: false };
+    }
+    if (status === 'approved') {
+      return { label: 'Approved', variant: 'default' as const, removable: false };
+    }
+    if (status === 'rejected') {
+      return { label: 'Rejected', variant: 'destructive' as const, removable: true };
+    }
+    if (status === 'cancelled') {
+      return { label: 'Cancelled', variant: 'destructive' as const, removable: true };
+    }
+
+    return { label: 'Completed', variant: 'outline' as const, removable: false };
+  };
+
+  const dedupeWorkshopsById = (list: (typeof workshops)[number][]) => {
+    const byId = new Map<string, (typeof workshops)[number]>();
+    list.forEach((workshop) => byId.set(workshop.id, workshop));
+    return Array.from(byId.values());
+  };
+
+  const getWorkshopStartMillis = (workshop: (typeof workshops)[number]) => {
+    const start = parseWorkshopStartTime(workshop);
+    return start ? start.getTime() : Number.MAX_SAFE_INTEGER;
+  };
+
+  const sortByStartAsc = (list: (typeof workshops)[number][]) => {
+    return [...list].sort((a, b) => getWorkshopStartMillis(a) - getWorkshopStartMillis(b));
+  };
+
+  const sortByStartDesc = (list: (typeof workshops)[number][]) => {
+    return [...list].sort((a, b) => getWorkshopStartMillis(b) - getWorkshopStartMillis(a));
+  };
+
+  const totalPages = (count: number) => Math.max(1, Math.ceil(count / PAGE_SIZE));
+
+  const paginate = (list: (typeof workshops)[number][], page: number) => {
+    const startIndex = (page - 1) * PAGE_SIZE;
+    return list.slice(startIndex, startIndex + PAGE_SIZE);
+  };
+
   const isHostedByCurrentUser = (workshop: (typeof workshops)[number]) => {
-    const facilitatorId = workshop.facilitator?.id ? String(workshop.facilitator.id) : null;
-    if (facilitatorId && facilitatorId === String(user.id)) {
-      return true;
-    }
-
-    const submitterEmail = String(workshop.submitterEmail || '').trim().toLowerCase();
-    if (submitterEmail && normalizedEmail && submitterEmail === normalizedEmail) {
-      return true;
-    }
-
-    const submitterName = String(workshop.submitterUsername || workshop.hostName || workshop.facilitator?.name || '')
-      .trim()
-      .toLowerCase();
-    return Boolean(submitterName && normalizedUsername && submitterName === normalizedUsername);
+    return Boolean(workshop.facilitator?.id && String(workshop.facilitator.id) === String(user.id));
   };
 
   const participantWorkshops = workshops
     .filter((w) => (w.participants ?? []).some((p) => p.id === user.id))
     .filter((w) => isUserWorkshopVisible(w));
 
-  const upcomingWorkshops = participantWorkshops.filter((w) => {
+  const participantUpcomingWorkshops = participantWorkshops.filter((w) => {
     const status = resolveUserWorkshopStatus(w);
     return status === 'upcoming' || status === 'ongoing';
   });
 
-  const attendedWorkshops = participantWorkshops.filter(
+  const participantAttendedWorkshops = participantWorkshops.filter(
     (w) => resolveUserWorkshopStatus(w) === 'completed'
   );
 
   const allHostedWorkshops = workshops.filter(isHostedByCurrentUser);
+  const hostedUpcomingWorkshops = allHostedWorkshops.filter((w) => {
+    const status = resolveHostingDisplayStatus(w);
+    return status === 'approved';
+  });
+  const hostedAttendedWorkshops = allHostedWorkshops.filter(
+    (w) => resolveHostingDisplayStatus(w) === 'completed'
+  );
+
+  const upcomingWorkshops = dedupeWorkshopsById([
+    ...participantUpcomingWorkshops,
+    ...hostedUpcomingWorkshops,
+  ]);
+
+  const attendedWorkshops = dedupeWorkshopsById([
+    ...participantAttendedWorkshops,
+    ...hostedAttendedWorkshops,
+  ]);
+
   const hostingWorkshops = allHostedWorkshops.filter(
     (w) => !hiddenHostedWorkshopIds.includes(w.id)
   );
 
-  const removeHostedWorkshopFromView = (workshopId: string) => {
-    setHiddenHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
+  const sortedUpcomingWorkshops = sortByStartAsc(upcomingWorkshops);
+  const sortedAttendedWorkshops = sortByStartDesc(attendedWorkshops);
+  const sortedHostingWorkshops = sortByStartDesc(hostingWorkshops);
+
+  const upcomingTotalPages = totalPages(sortedUpcomingWorkshops.length);
+  const attendedTotalPages = totalPages(sortedAttendedWorkshops.length);
+  const hostingTotalPages = totalPages(sortedHostingWorkshops.length);
+
+  const pagedUpcomingWorkshops = paginate(sortedUpcomingWorkshops, upcomingPage);
+  const pagedAttendedWorkshops = paginate(sortedAttendedWorkshops, attendedPage);
+  const pagedHostingWorkshops = paginate(sortedHostingWorkshops, hostingPage);
+
+  const hideHostedWorkshopFromView = async (workshopId: string) => {
+    if (!sessionToken) {
+      toast.error('Please sign in again to update your dashboard.');
+      return;
+    }
+
+    setHidingWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
+    try {
+      await workshopAPI.hideHostingWorkshop(workshopId, sessionToken);
+      setHiddenHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
+      toast.success('Removed from hosting list.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove workshop.';
+      toast.error(message);
+    } finally {
+      setHidingWorkshopIds((prev) => prev.filter((id) => id !== workshopId));
+    }
+  };
+
+  const handleWorkshopCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, workshopId: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setCurrentPage(`workshop-${workshopId}`);
+    }
+  };
+
+  const renderPagination = (
+    currentPage: number,
+    pageCount: number,
+    onPageChange: (page: number) => void
+  ) => {
+    if (pageCount <= 1) {
+      return null;
+    }
+
+    return (
+      <div className="flex items-center justify-end gap-2 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={currentPage <= 1}
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {currentPage} / {pageCount}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={currentPage >= pageCount}
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    );
   };
 
   useEffect(() => {
     setEditUsername(user.username);
   }, [user.username]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadHiddenHostingWorkshops = async () => {
+      if (!sessionToken) {
+        if (isActive) {
+          setHiddenHostedWorkshopIds([]);
+        }
+        return;
+      }
+
+      const hiddenIds = await workshopAPI.getHiddenHostingIds(sessionToken);
+      if (isActive) {
+        setHiddenHostedWorkshopIds(hiddenIds);
+      }
+    };
+
+    void loadHiddenHostingWorkshops();
+
+    return () => {
+      isActive = false;
+    };
+  }, [sessionToken, user.id]);
+
+  useEffect(() => {
+    const currentHostingIds = new Set(allHostedWorkshops.map((workshop) => workshop.id));
+    setHiddenHostedWorkshopIds((prev) => {
+      const next = prev.filter((id) => currentHostingIds.has(id));
+      const unchanged = next.length === prev.length && next.every((id, index) => id === prev[index]);
+      return unchanged ? prev : next;
+    });
+  }, [allHostedWorkshops]);
+
+  useEffect(() => {
+    setUpcomingPage((page) => Math.min(page, upcomingTotalPages));
+  }, [upcomingTotalPages]);
+
+  useEffect(() => {
+    setAttendedPage((page) => Math.min(page, attendedTotalPages));
+  }, [attendedTotalPages]);
+
+  useEffect(() => {
+    setHostingPage((page) => Math.min(page, hostingTotalPages));
+  }, [hostingTotalPages]);
 
   useEffect(() => {
     return () => {
@@ -343,8 +569,15 @@ export function Dashboard() {
                   <CardContent>
                     {upcomingWorkshops.length > 0 ? (
                       <div className="space-y-4">
-                        {upcomingWorkshops.map((workshop) => (
-                          <div key={workshop.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        {pagedUpcomingWorkshops.map((workshop) => (
+                          <div
+                            key={workshop.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                            onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
+                            className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                          >
                             <div className="flex-1">
                               <h3 className="font-semibold mb-1">{workshop.title}</h3>
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
@@ -382,16 +615,21 @@ export function Dashboard() {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Badge 
+                              <Badge
                                 variant={getUserWorkshopStatusBadgeVariant(workshop)}
+                                className={statusBadgeClassName}
                               >
                                 {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                               </Badge>
-                              {resolveUserWorkshopStatus(workshop) === 'upcoming' && (
-                                <Button 
-                                  variant="outline" 
+                              {resolveUserWorkshopStatus(workshop) === 'upcoming' && !isHostedByCurrentUser(workshop) && (
+                                <Button
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => cancelWorkshopAttendance(workshop.id)}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    void cancelWorkshopAttendance(workshop.id);
+                                  }}
                                 >
                                   Cancel
                                 </Button>
@@ -399,6 +637,7 @@ export function Dashboard() {
                             </div>
                           </div>
                         ))}
+                        {renderPagination(upcomingPage, upcomingTotalPages, setUpcomingPage)}
                       </div>
                     ) : (
                       <div className="text-center py-8">
@@ -424,8 +663,15 @@ export function Dashboard() {
                   <CardContent>
                     {attendedWorkshops.length > 0 ? (
                       <div className="space-y-4">
-                        {attendedWorkshops.map((workshop) => (
-                          <div key={workshop.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        {pagedAttendedWorkshops.map((workshop) => (
+                          <div
+                            key={workshop.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                            onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
+                            className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                          >
                             <div className="flex-1">
                               <h3 className="font-semibold mb-1">{workshop.title}</h3>
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
@@ -442,9 +688,10 @@ export function Dashboard() {
                                 <Badge variant="secondary">{workshop.category}</Badge>
                               </div>
                             </div>
-                            <Badge variant="outline">Completed</Badge>
+                            <Badge variant="outline" className={statusBadgeClassName}>Completed</Badge>
                           </div>
                         ))}
+                        {renderPagination(attendedPage, attendedTotalPages, setAttendedPage)}
                       </div>
                     ) : (
                       <div className="text-center py-8">
@@ -469,15 +716,8 @@ export function Dashboard() {
                   <CardContent>
                     {hostingWorkshops.length > 0 ? (
                       <div className="space-y-4">
-                        {hostingWorkshops.map((workshop) => {
-                          const adminStatus = normalizeAdminWorkshopStatus(workshop.status);
-                          const removable = adminStatus === 'rejected' || adminStatus === 'cancelled';
-                          const statusLabel =
-                            adminStatus === 'rejected'
-                              ? 'Rejected'
-                              : adminStatus === 'cancelled'
-                              ? 'Cancelled'
-                              : getUserWorkshopStatusLabel(workshop) ?? 'Upcoming';
+                        {pagedHostingWorkshops.map((workshop) => {
+                          const statusMeta = getHostingStatusMeta(workshop);
 
                           return (
                             <div
@@ -485,12 +725,7 @@ export function Dashboard() {
                               role="button"
                               tabIndex={0}
                               onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                  event.preventDefault();
-                                  setCurrentPage(`workshop-${workshop.id}`);
-                                }
-                              }}
+                              onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
                               className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
                             >
                               <div className="flex-1">
@@ -514,34 +749,35 @@ export function Dashboard() {
                                   <Badge variant="outline">Open Access</Badge>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <Badge
-                                  variant={
-                                    removable
-                                      ? 'destructive'
-                                      : getUserWorkshopStatusBadgeVariant(workshop)
-                                  }
-                                >
-                                  {statusLabel}
-                                </Badge>
-                                {removable && (
+                                <div className="flex items-center gap-2 ml-4 shrink-0">
+                                {statusMeta.removable && (
                                   <Button
                                     type="button"
-                                    variant="outline"
-                                    size="sm"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Remove from hosting list"
+                                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                      disabled={hidingWorkshopIds.includes(workshop.id)}
                                     onClick={(event) => {
                                       event.preventDefault();
                                       event.stopPropagation();
-                                      removeHostedWorkshopFromView(workshop.id);
+                                      void hideHostedWorkshopFromView(workshop.id);
                                     }}
                                   >
-                                    Remove
+                                      <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
+                                  <Badge
+                                    variant={statusMeta.variant}
+                                    className={statusBadgeClassName}
+                                  >
+                                    {statusMeta.label}
+                                  </Badge>
                               </div>
                             </div>
                           );
                         })}
+                        {renderPagination(hostingPage, hostingTotalPages, setHostingPage)}
                       </div>
                     ) : (
                       <div className="text-center py-8">

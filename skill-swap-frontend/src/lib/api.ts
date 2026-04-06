@@ -449,6 +449,41 @@ export const workshopAPI = {
     }
   },
 
+  // 获取当前用户参加的工作坊（需要登录）
+  getAttending: async (token?: string | null): Promise<Workshop[]> => {
+    try {
+      const data = await apiCall<any[]>("/api/v1/workshops/attending", {}, token);
+      return data.map(enrichWorkshop);
+    } catch (error) {
+      console.error("❌ Failed to fetch attending workshops:", error);
+      return [];
+    }
+  },
+
+  getHiddenHostingIds: async (token?: string | null): Promise<string[]> => {
+    try {
+      const data = await apiCall<Array<number | string>>("/api/v1/workshops/hosting/hidden", {}, token);
+      return data.map((id) => String(id));
+    } catch (error) {
+      console.error("❌ Failed to fetch hidden hosting workshops:", error);
+      return [];
+    }
+  },
+
+  hideHostingWorkshop: async (workshopId: string, token?: string | null): Promise<void> => {
+    try {
+      const backendId = toBackendWorkshopId(workshopId);
+      await apiCall<void>(
+        `/api/v1/workshops/${backendId}/hosting/hide`,
+        { method: "POST" },
+        token
+      );
+    } catch (error) {
+      console.error('Failed to hide hosting workshop:', error);
+      throw error;
+    }
+  },
+
   // 获取单个工作坊
   getById: async (id: string, token?: string | null): Promise<Workshop | null> => {
     const cacheKey = `${token ?? "anon"}:${toBackendWorkshopId(id)}`;

@@ -57,9 +57,9 @@ function AppContent() {
       return;
     }
 
-    // Dashboard 仅拉 mine，避免 create 跳转后同时请求 public + mine。
+    // Dashboard 拉取“我 host + 我参加”的集合，不请求全量 public。
     if (currentPage === 'dashboard') {
-      void refreshData('full');
+      void refreshData('dashboard');
       return;
     }
 

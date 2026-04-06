@@ -44,7 +44,7 @@ interface AppContextType {
     skills?: string[];
   }) => Promise<User>;
   uploadCurrentUserAvatar: (file: File) => Promise<User>;
-  refreshData: (mode?: "public" | "mine" | "full") => Promise<void>;
+  refreshData: (mode?: "public" | "mine" | "full" | "dashboard") => Promise<void>;
   clearCache: () => void;
   upsertWorkshop: (workshop: Workshop) => void;
 }
@@ -136,7 +136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   // 防止标签页切换时重复初始化
   const initializedRef = useRef(false);
-  const refreshInFlightRef = useRef<{ mode: "public" | "mine" | "full"; task: Promise<void> } | null>(null);
+  const refreshInFlightRef = useRef<{ mode: "public" | "mine" | "full" | "dashboard"; task: Promise<void> } | null>(null);
   const notificationsInFlightRef = useRef<Promise<void> | null>(null);
   const profileInFlightRef = useRef<Promise<User> | null>(null);
   const profileInFlightTokenRef = useRef<string | null>(null);
@@ -249,12 +249,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const fetchVisibleWorkshops = useCallback(async () => {
     if (isAuthenticated && sessionToken) {
-      const [publicWorkshops, myWorkshops] = await Promise.all([
+      const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
         workshopAPI.getPublic(),
         workshopAPI.getMine(sessionToken),
+        workshopAPI.getAttending(sessionToken),
       ]);
       const merged = new Map<string, Workshop>();
-      [...publicWorkshops, ...myWorkshops].forEach((workshop) => {
+      [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
         merged.set(workshop.id, workshop);
       });
       return Array.from(merged.values());
@@ -272,6 +273,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return [];
     }
     return workshopAPI.getMine(sessionToken);
+  }, [isAuthenticated, sessionToken]);
+
+  const fetchDashboardWorkshops = useCallback(async () => {
+    if (!isAuthenticated || !sessionToken) {
+      return [];
+    }
+
+    const [myWorkshops, attendingWorkshops] = await Promise.all([
+      workshopAPI.getMine(sessionToken),
+      workshopAPI.getAttending(sessionToken),
+    ]);
+
+    const merged = new Map<string, Workshop>();
+    [...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
+      merged.set(workshop.id, workshop);
+    });
+    return Array.from(merged.values());
   }, [isAuthenticated, sessionToken]);
 
   // --------------------------
@@ -576,11 +594,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (authTabOption) setAuthTab(authTabOption);
   };
 
-  const resolveRefreshModeByPage = (page: string): "public" | "mine" | "full" => {
+  const resolveRefreshModeByPage = (page: string): "public" | "mine" | "full" | "dashboard" => {
     if (page === "home" || page === "explore") {
       return "public";
     }
-    if (page === "dashboard" || page === "create") {
+    if (page === "dashboard") {
+      return "dashboard";
+    }
+    if (page === "create") {
       return "mine";
     }
     return "full";
@@ -589,7 +610,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   // Data
   // --------------------------
-  const refreshData = useCallback(async (mode: "public" | "mine" | "full" = "full") => {
+  const refreshData = useCallback(async (mode: "public" | "mine" | "full" | "dashboard" = "full") => {
     if (refreshInFlightRef.current && refreshInFlightRef.current.mode === mode) {
       return refreshInFlightRef.current.task;
     }
@@ -601,6 +622,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           backendWorkshops = await fetchPublicWorkshops();
         } else if (mode === "mine") {
           backendWorkshops = await fetchMineWorkshops();
+        } else if (mode === "dashboard") {
+          backendWorkshops = await fetchDashboardWorkshops();
         } else {
           backendWorkshops = await fetchVisibleWorkshops();
         }
@@ -622,7 +645,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshInFlightRef.current = null;
       }
     }
-  }, [fetchMineWorkshops, fetchPublicWorkshops, fetchVisibleWorkshops]);
+  }, [fetchDashboardWorkshops, fetchMineWorkshops, fetchPublicWorkshops, fetchVisibleWorkshops]);
 
   const refreshNotificationsUnreadCount = useCallback(async () => {
     if (!sessionToken) {

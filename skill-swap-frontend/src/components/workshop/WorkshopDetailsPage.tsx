@@ -108,6 +108,42 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const isCancelled = normalizedStatus === 'cancelled';
   const isPending = normalizedStatus === 'pending';
   const isRejected = normalizedStatus === 'rejected';
+  const parseWorkshopStart = () => {
+    const rawDate = String(workshop.date || '').trim();
+    const rawTime = String(workshop.time || '').trim();
+    if (!rawDate) return null;
+
+    const datePart = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+    const timePart = rawTime ? (rawTime.length === 5 ? `${rawTime}:00` : rawTime) : '00:00:00';
+    const parsed = new Date(`${datePart}T${timePart}`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const computeIsOngoingByTime = () => {
+    if (isCancelled || isRejected || isPending || normalizedStatus === 'completed') {
+      return false;
+    }
+
+    const start = parseWorkshopStart();
+    if (!start) {
+      return normalizedStatus === 'ongoing';
+    }
+
+    const now = new Date();
+    if (now < start) {
+      return false;
+    }
+
+    const durationMinutes = Number(workshop.duration);
+    if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
+      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+      return now < end;
+    }
+
+    return true;
+  };
+
+  const isOngoing = computeIsOngoingByTime();
   const isHost = workshop.facilitator?.id === user?.id;
   const canViewRestricted = isAdmin || isHost;
 
@@ -261,9 +297,27 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                     >
                       {isHost ? 'Request Approval' : 'Pending Approval'}
                     </Button>
+                  ) : isHost ? (
+                    <Button
+                      variant="secondary"
+                      disabled
+                      className="w-full bg-orange-500 text-white hover:bg-orange-500/90 disabled:opacity-100"
+                    >
+                      Hosted by Me
+                    </Button>
                   ) : isUserAttending ? (
-                    <Button variant="outline" onClick={handleCancel} className="w-full">
-                      Cancel Attendance
+                    isOngoing ? (
+                      <Button disabled variant="outline" className="w-full">
+                        Workshop In Progress
+                      </Button>
+                    ) : (
+                      <Button variant="outline" onClick={handleCancel} className="w-full">
+                        Cancel Attendance
+                      </Button>
+                    )
+                  ) : isOngoing ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Workshop In Progress
                     </Button>
                   ) : isFull ? (
                     <Button disabled variant="outline" className="w-full">

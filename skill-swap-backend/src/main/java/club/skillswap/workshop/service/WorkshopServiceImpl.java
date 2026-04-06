@@ -9,8 +9,11 @@ import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.dto.FacilitatorDto;
 import club.skillswap.workshop.dto.WorkshopParticipantDto;
+import club.skillswap.workshop.entity.HiddenHostingWorkshop;
+import club.skillswap.workshop.entity.HiddenHostingWorkshopId;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.entity.WorkshopParticipant;
+import club.skillswap.workshop.repository.HiddenHostingWorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final WorkshopRepository workshopRepository;
     private final UserService userService;
     private final WorkshopParticipantRepository participantRepository;
+    private final HiddenHostingWorkshopRepository hiddenHostingWorkshopRepository;
     private final NotificationService notificationService;
 
     @Value("${app.upload.base-dir:uploads}")
@@ -151,6 +155,69 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         List<Workshop> workshops = workshopRepository.findAllByFacilitatorIdWithFacilitator(facilitatorUuid);
         return workshops.stream().map(this::mapToSummaryDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkshopResponseDto> getAttendingWorkshops(String userId) {
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
+        }
+
+        List<Workshop> workshops = workshopRepository.findAllByParticipantUserIdWithFacilitator(userUuid);
+        return mapToDtoList(workshops);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getHiddenHostingWorkshopIds(String userId) {
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
+        }
+
+        return hiddenHostingWorkshopRepository.findHiddenWorkshopIdsByUserId(userUuid);
+    }
+
+    @Override
+    @Transactional
+    public void hideHostingWorkshop(String userId, Long workshopId) {
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
+        }
+
+        Workshop workshop = workshopRepository.findById(workshopId)
+            .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        if (workshop.getFacilitator() == null || workshop.getFacilitator().getId() == null
+            || !workshop.getFacilitator().getId().equals(userUuid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the host can hide this workshop.");
+        }
+
+        String status = normalizeStatus(workshop.getStatus());
+        if (!"cancelled".equals(status) && !"rejected".equals(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only rejected or cancelled workshops can be hidden.");
+        }
+
+        if (hiddenHostingWorkshopRepository.existsByIdUserIdAndIdWorkshopId(userUuid, workshopId)) {
+            return;
+        }
+
+        UserAccount user = userService.findUserByStringId(userId);
+
+        HiddenHostingWorkshop hidden = new HiddenHostingWorkshop();
+        hidden.setId(new HiddenHostingWorkshopId(userUuid, workshopId));
+        hidden.setUser(user);
+        hidden.setWorkshop(workshop);
+        hiddenHostingWorkshopRepository.save(hidden);
     }
 
     @Override
