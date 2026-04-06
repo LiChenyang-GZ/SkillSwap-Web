@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { workshopAPI } from '../lib/api';
 import { Workshop } from '../types';
+import { normalizeAdminWorkshopStatus } from './workshop/workshopStatusPublicApi';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -151,10 +152,50 @@ export function AdminReview() {
     detailsConfirmed: state.detailsConfirmed,
   });
 
+  const resolveAdminDisplayStatus = (workshop: Workshop): Workshop['status'] => {
+    const adminStatus = normalizeAdminWorkshopStatus(workshop.status);
+
+    if (adminStatus === 'pending' || adminStatus === 'rejected' || adminStatus === 'cancelled' || adminStatus === 'completed') {
+      return adminStatus;
+    }
+
+    const dateValue = String(workshop.date || '').trim();
+    const timeValue = String(workshop.time || '').trim();
+    const datePart = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
+    const timePart = timeValue ? (timeValue.length === 5 ? `${timeValue}:00` : timeValue) : '00:00:00';
+
+    if (!datePart) {
+      return 'approved';
+    }
+
+    const start = new Date(`${datePart}T${timePart}`);
+    if (Number.isNaN(start.getTime())) {
+      return 'approved';
+    }
+
+    const durationMinutes = Number(workshop.duration);
+    if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
+      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+      return Date.now() >= end.getTime() ? 'completed' : 'approved';
+    }
+
+    const now = new Date();
+    const isSameCalendarDay =
+      now.getFullYear() === start.getFullYear() &&
+      now.getMonth() === start.getMonth() &&
+      now.getDate() === start.getDate();
+
+    if (now > start && !isSameCalendarDay) {
+      return 'completed';
+    }
+
+    return 'approved';
+  };
+
   const filteredWorkshops =
     statusFilter === 'all'
       ? workshops
-      : workshops.filter((workshop) => (workshop.status || '').toLowerCase() === statusFilter);
+      : workshops.filter((workshop) => resolveAdminDisplayStatus(workshop) === statusFilter);
 
   const sortedWorkshops = [...filteredWorkshops].sort((a, b) => {
     const aTime = new Date(`${a.date || '0000-01-01'}T${a.time || '00:00'}`).getTime();
@@ -623,6 +664,10 @@ export function AdminReview() {
                 <div className="text-sm text-muted-foreground">No workshops match this filter.</div>
               ) : (
                 pagedWorkshops.map((workshop) => (
+                  (() => {
+                    const displayStatus = resolveAdminDisplayStatus(workshop);
+
+                    return (
                   <button
                     key={workshop.id}
                     onClick={() => setSelectedId(workshop.id)}
@@ -637,10 +682,10 @@ export function AdminReview() {
                         <p className="text-xs text-muted-foreground">{workshop.facilitator?.name}</p>
                       </div>
                       <Badge
-                        variant={(workshop.status || '').toLowerCase() === 'rejected' ? 'destructive' : 'secondary'}
+                        variant={displayStatus === 'rejected' || displayStatus === 'cancelled' ? 'destructive' : 'secondary'}
                         className="capitalize"
                       >
-                        {workshop.status || 'pending'}
+                        {displayStatus}
                       </Badge>
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
@@ -648,6 +693,8 @@ export function AdminReview() {
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{workshop.time}</span>
                     </div>
                   </button>
+                    );
+                  })()
                 ))
               )}
               {totalPages > 1 && (

@@ -42,8 +42,8 @@ export function AuthPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         console.log("✅ Found auth session from email link or OAuth:", session.user.email);
-        // 直接跳转到 home，AppContext 的 onAuthStateChange 会处理登录状态
-        setCurrentPage("home");
+        // 直接跳转到 explore，AppContext 的 onAuthStateChange 会处理登录状态
+        setCurrentPage("explore");
       }
     };
 
@@ -64,7 +64,7 @@ export function AuthPage() {
       setLoading(false);
     } else {
       // 登录成功，重新跳转触发 AppContext 的 onAuthStateChange 监听
-      setCurrentPage("home");
+      setCurrentPage("explore");
     }
   };
 
@@ -81,7 +81,7 @@ export function AuthPage() {
       email: signUpData.email,
       password: signUpData.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/home`,
+        emailRedirectTo: `${window.location.origin}/explore`,
       },
     });
     if (error) {
@@ -107,7 +107,7 @@ export function AuthPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: signInData.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/home`,
+        emailRedirectTo: `${window.location.origin}/explore`,
       },
     });
     if (error) {
@@ -122,7 +122,7 @@ export function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin + '/home' },
+        options: { redirectTo: window.location.origin + '/explore' },
       });
       if (error) alert(error.message);
     } catch (err) {

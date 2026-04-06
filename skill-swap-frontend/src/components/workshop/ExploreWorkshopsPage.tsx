@@ -17,6 +17,7 @@ import {
   getUserWorkshopStatusBadgeVariant,
   getUserWorkshopStatusLabel,
   isUserWorkshopUpcomingOrOngoing,
+  resolveUserWorkshopStatus,
 } from './workshopStatusPublicApi';
 
 export function ExploreWorkshops() {
@@ -177,10 +178,11 @@ export function ExploreWorkshops() {
                       ) : (
                         <Button
                           size="sm"
+                          disabled={resolveUserWorkshopStatus(workshop) === 'ongoing'}
                           onClick={() => attendWorkshop(workshop.id)}
                           className="shrink-0"
                         >
-                          Attend
+                          {resolveUserWorkshopStatus(workshop) === 'ongoing' ? 'In Progress' : 'Attend'}
                         </Button>
                       )}
                     </div>

@@ -21,7 +21,7 @@ public class UserAccount {
     @Id
     private UUID id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String username;
 
     @Column(unique = true)

@@ -32,7 +32,7 @@ const stats = {
     // This would integrate with Supabase auth
     console.log(isSignUp ? "Sign up" : "Sign in");
     setIsAuthModalOpen(false);
-    setCurrentPage("home");
+    setCurrentPage("explore");
   };
 
   // Handle Google OAuth sign-in
@@ -40,7 +40,7 @@ const stats = {
     try {
       await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: window.location.origin + "/home" }
+        options: { redirectTo: window.location.origin + "/explore" }
       });
     } catch (error) {
       console.error("Google sign-in error:", error);

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Workshop } from '../../types';
 import { toast } from 'sonner';
+import { resolveUserWorkshopStatus } from './workshopStatusPublicApi';
 
 interface WorkshopDetailsProps {
   workshopId: string;
@@ -108,6 +109,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
   const isCancelled = normalizedStatus === 'cancelled';
   const isPending = normalizedStatus === 'pending';
   const isRejected = normalizedStatus === 'rejected';
+  const resolvedUserStatus = resolveUserWorkshopStatus(workshop);
+  const isUpcoming = resolvedUserStatus === 'upcoming';
+  const isOngoing = resolvedUserStatus === 'ongoing';
+  const isCompleted = resolvedUserStatus === 'completed' || normalizedStatus === 'completed';
   const isHost = workshop.facilitator?.id === user?.id;
   const canViewRestricted = isAdmin || isHost;
 
@@ -203,10 +208,10 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
             {isAdmin && (
               <div>
-                <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Participants</h2>
+                <h2 className="text-sm font-semibold text-foreground mb-4 uppercase">Participants</h2>
                 <div className="space-y-4">
                   <div className="flex items-center text-base">
-                    <Users className="w-5 h-5 mr-2 text-muted-foreground" />
+                    <Users className="w-5 h-5 mr-2 text-foreground" />
                     <span>
                       {workshop.currentParticipants ?? 0}
                       {typeof workshop.maxParticipants === 'number' ? ` of ${workshop.maxParticipants}` : ''}
@@ -216,7 +221,7 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
                   {(workshop.participants?.length ?? 0) > 0 && (
                     <div>
-                      <p className="text-sm text-muted-foreground mb-3">Going:</p>
+                      <p className="text-sm text-foreground mb-3">Going:</p>
                       <div className="flex flex-wrap gap-3">
                         {workshop.participants?.slice(0, 6).map((participant) => (
                           <div key={participant.id} className="flex items-center space-x-2">
@@ -261,16 +266,42 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
                     >
                       {isHost ? 'Request Approval' : 'Pending Approval'}
                     </Button>
+                  ) : isCompleted ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Workshop Completed
+                    </Button>
+                  ) : isHost ? (
+                    <Button
+                      variant="secondary"
+                      disabled
+                      className="w-full bg-orange-500 text-white hover:bg-orange-500/90 disabled:opacity-100"
+                    >
+                      Hosted by Me
+                    </Button>
                   ) : isUserAttending ? (
-                    <Button variant="outline" onClick={handleCancel} className="w-full">
-                      Cancel Attendance
+                    isUpcoming ? (
+                      <Button variant="outline" onClick={handleCancel} className="w-full">
+                        Cancel Attendance
+                      </Button>
+                    ) : isOngoing ? (
+                      <Button disabled variant="outline" className="w-full">
+                        Workshop In Progress
+                      </Button>
+                    ) : (
+                      <Button disabled variant="outline" className="w-full">
+                        Workshop Completed
+                      </Button>
+                    )
+                  ) : isOngoing ? (
+                    <Button disabled variant="outline" className="w-full">
+                      Workshop In Progress
                     </Button>
                   ) : isFull ? (
                     <Button disabled variant="outline" className="w-full">
                       Workshop Full
                     </Button>
                   ) : (
-                    <Button onClick={handleAttend} className="w-full" size="lg">
+                    <Button onClick={handleAttend} className="w-full" size="lg" disabled={!isUpcoming}>
                       Attend Workshop
                     </Button>
                   )}

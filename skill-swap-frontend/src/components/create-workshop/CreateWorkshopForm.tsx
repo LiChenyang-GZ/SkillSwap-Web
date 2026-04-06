@@ -9,7 +9,7 @@ import { Textarea } from '../ui/textarea';
 import { Switch } from '../ui/switch';
 import { Checkbox } from '../ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { AlertCircle, Globe, Info } from 'lucide-react';
+import { AlertCircle, Globe } from 'lucide-react';
 import {
   createWorkshopFormSchema,
   defaultCreateWorkshopFormValues,
@@ -70,7 +70,7 @@ function validateCreateWorkshopValues(values: CreateWorkshopFormValues): {
 }
 
 export function CreateWorkshopForm() {
-  const { user, setCurrentPage } = useApp();
+  const { setCurrentPage } = useApp();
   const [values, setValues] = useState<CreateWorkshopFormValues>(defaultCreateWorkshopFormValues);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);

@@ -9,8 +9,11 @@ import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.dto.FacilitatorDto;
 import club.skillswap.workshop.dto.WorkshopParticipantDto;
+import club.skillswap.workshop.entity.HiddenHostingWorkshop;
+import club.skillswap.workshop.entity.HiddenHostingWorkshopId;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.entity.WorkshopParticipant;
+import club.skillswap.workshop.repository.HiddenHostingWorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final WorkshopRepository workshopRepository;
     private final UserService userService;
     private final WorkshopParticipantRepository participantRepository;
+    private final HiddenHostingWorkshopRepository hiddenHostingWorkshopRepository;
     private final NotificationService notificationService;
 
     @Value("${app.upload.base-dir:uploads}")
@@ -155,10 +159,73 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<WorkshopResponseDto> getAttendingWorkshops(String userId) {
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
+        }
+
+        List<Workshop> workshops = workshopRepository.findAllByParticipantUserIdWithFacilitator(userUuid);
+        return mapToDtoList(workshops);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getHiddenHostingWorkshopIds(String userId) {
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
+        }
+
+        return hiddenHostingWorkshopRepository.findHiddenWorkshopIdsByUserId(userUuid);
+    }
+
+    @Override
+    @Transactional
+    public void hideHostingWorkshop(String userId, Long workshopId) {
+        UUID userUuid;
+        try {
+            userUuid = UUID.fromString(userId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
+        }
+
+        Workshop workshop = workshopRepository.findById(workshopId)
+            .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+
+        if (workshop.getFacilitator() == null || workshop.getFacilitator().getId() == null
+            || !workshop.getFacilitator().getId().equals(userUuid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the host can hide this workshop.");
+        }
+
+        String status = normalizeStatus(workshop.getStatus());
+        if (!"cancelled".equals(status) && !"rejected".equals(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only rejected or cancelled workshops can be hidden.");
+        }
+
+        if (hiddenHostingWorkshopRepository.existsByIdUserIdAndIdWorkshopId(userUuid, workshopId)) {
+            return;
+        }
+
+        UserAccount user = userService.findUserByStringId(userId);
+
+        HiddenHostingWorkshop hidden = new HiddenHostingWorkshop();
+        hidden.setId(new HiddenHostingWorkshopId(userUuid, workshopId));
+        hidden.setUser(user);
+        hidden.setWorkshop(workshop);
+        hiddenHostingWorkshopRepository.save(hidden);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<WorkshopResponseDto> getAllWorkshopsForAdmin(Authentication authentication) {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
-        return workshops.stream().map(this::mapToSummaryDto).toList();
+        return workshops.stream().map(workshop -> mapToSummaryDto(workshop, false)).toList();
     }
 
     @Override
@@ -166,7 +233,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     public List<WorkshopResponseDto> getPendingWorkshops(Authentication authentication) {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllPendingWithFacilitator();
-        return workshops.stream().map(this::mapToSummaryDto).toList();
+        return workshops.stream().map(workshop -> mapToSummaryDto(workshop, false)).toList();
     }
 
     @Override
@@ -209,7 +276,7 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         Workshop saved = workshopRepository.save(workshop);
         notifyWorkshopAdminUpdate(saved);
-        return mapToDto(saved);
+        return mapToDtoForViewer(saved, authentication);
     }
 
     @Override
@@ -252,7 +319,7 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         workshop.setImageUrl("/uploads/workshops/" + fileName);
         Workshop saved = workshopRepository.save(workshop);
-        return mapToDto(saved);
+        return mapToDtoForViewer(saved, authentication);
     }
 
     @Override
@@ -504,6 +571,12 @@ public class WorkshopServiceImpl implements WorkshopService {
     }
 
     private WorkshopResponseDto mapToSummaryDto(Workshop workshop) {
+        return mapToSummaryDto(workshop, true);
+    }
+
+    private WorkshopResponseDto mapToSummaryDto(Workshop workshop, boolean resolveStatus) {
+        Integer participantCount = Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()));
+
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
             facilitatorDto = new FacilitatorDto(
@@ -523,14 +596,14 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getTitle(),
             workshop.getDescription(),
             workshop.getCategory(),
-            resolveEffectiveStatus(workshop),
+            resolveStatus ? resolveEffectiveStatus(workshop) : normalizeStatus(workshop.getStatus()),
             workshop.getDate(),
             workshop.getTime(),
             workshop.getDuration(),
             workshop.getIsOnline(),
             summaryLocation,
             workshop.getMaxParticipants(),
-            null,
+            participantCount,
             workshop.getCreditCost(),
             workshop.getCreditReward(),
             null,
@@ -555,14 +628,18 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     // 绉佹湁杈呭姪鏂规硶锛岀敤浜庡皢 Entity 鏄犲皠鍒?DTO
     private WorkshopResponseDto mapToDto(Workshop workshop) {
-        return mapToDto(workshop, false, true);
+        return mapToDto(workshop, false, true, true);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, boolean includeParticipants) {
-        return mapToDto(workshop, includeParticipants, true);
+        return mapToDto(workshop, includeParticipants, true, true);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, boolean includeParticipants, boolean includeSensitive) {
+        return mapToDto(workshop, includeParticipants, includeSensitive, true);
+    }
+
+    private WorkshopResponseDto mapToDto(Workshop workshop, boolean includeParticipants, boolean includeSensitive, boolean resolveStatus) {
         if (includeParticipants) {
             List<WorkshopParticipantDto> participants = participantRepository.findByWorkshopIdWithUser(workshop.getId())
                 .stream()
@@ -573,23 +650,33 @@ public class WorkshopServiceImpl implements WorkshopService {
                     p.getUser().getEmail()
                 ))
                 .toList();
-            return mapToDto(workshop, participants, participants.size(), includeSensitive);
+            return mapToDto(workshop, participants, participants.size(), includeSensitive, resolveStatus);
         }
 
         Integer participantCount = Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()));
-        return mapToDto(workshop, null, participantCount, includeSensitive);
+        return mapToDto(workshop, null, participantCount, includeSensitive, resolveStatus);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants) {
         Integer participantCount = participants == null ? null : participants.size();
-        return mapToDto(workshop, participants, participantCount, true);
+        return mapToDto(workshop, participants, participantCount, true, true);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants, Integer participantCount) {
-        return mapToDto(workshop, participants, participantCount, true);
+        return mapToDto(workshop, participants, participantCount, true, true);
     }
 
     private WorkshopResponseDto mapToDto(Workshop workshop, List<WorkshopParticipantDto> participants, Integer participantCount, boolean includeSensitive) {
+        return mapToDto(workshop, participants, participantCount, includeSensitive, true);
+    }
+
+    private WorkshopResponseDto mapToDto(
+        Workshop workshop,
+        List<WorkshopParticipantDto> participants,
+        Integer participantCount,
+        boolean includeSensitive,
+        boolean resolveStatus
+    ) {
         List<WorkshopParticipantDto> safeParticipants = participants == null ? null : participants;
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
@@ -606,7 +693,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getTitle(),
             workshop.getDescription(),
             workshop.getCategory(),
-            resolveEffectiveStatus(workshop),
+            resolveStatus ? resolveEffectiveStatus(workshop) : normalizeStatus(workshop.getStatus()),
             workshop.getDate(),
             workshop.getTime(),
             workshop.getDuration(),
@@ -639,7 +726,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     private WorkshopResponseDto mapToDtoForViewer(Workshop workshop, Authentication authentication) {
         boolean admin = isAdmin(authentication);
         boolean includeSensitive = canViewSensitiveWorkshopInfo(workshop, authentication);
-        return mapToDto(workshop, admin, includeSensitive);
+        return mapToDto(workshop, admin, includeSensitive, !admin);
     }
 
     private boolean canViewSensitiveWorkshopInfo(Workshop workshop, Authentication authentication) {

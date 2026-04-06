@@ -1,9 +1,15 @@
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { toast } from 'sonner';
+import { workshopAPI } from '../lib/api';
 import { 
   Calendar, 
   Users, 
@@ -13,17 +19,35 @@ import {
   BookOpen,
   Target,
   Globe,
-  Edit
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import {
   getUserWorkshopStatusBadgeVariant,
   getUserWorkshopStatusLabel,
-  isUserWorkshopUpcoming,
   isUserWorkshopVisible,
+  normalizeAdminWorkshopStatus,
+  resolveUserWorkshopStatus,
 } from './workshop/workshopStatusPublicApi';
 
 export function Dashboard() {
-  const { user, workshops, setCurrentPage, cancelWorkshopAttendance } = useApp();
+  const { user, workshops, sessionToken, setCurrentPage, cancelWorkshopAttendance, updateCurrentUserProfile, uploadCurrentUserAvatar } = useApp();
+  const PAGE_SIZE = 8;
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editUsername, setEditUsername] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] = useState<string | null>(null);
+  const [hiddenHostedWorkshopIds, setHiddenHostedWorkshopIds] = useState<string[]>([]);
+  const [hidingWorkshopIds, setHidingWorkshopIds] = useState<string[]>([]);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [attendedPage, setAttendedPage] = useState(1);
+  const [hostingPage, setHostingPage] = useState(1);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
+  const statusBadgeClassName = 'h-7 min-w-[108px] justify-center text-xs';
+
+  type HostingDisplayStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed';
 
   // Early return if no user
   if (!user) {
@@ -34,17 +58,364 @@ export function Dashboard() {
     );
   }
 
-  // Get user's attended workshops
-  const attendedWorkshops = workshops.filter(w => 
-    (w.participants ?? []).some(p => p.id === user.id)
-  ).filter((w) => isUserWorkshopVisible(w));
+  const parseWorkshopStartTime = (workshop: (typeof workshops)[number]) => {
+    const rawDate = String(workshop.date || '').trim();
+    const rawTime = String(workshop.time || '').trim();
 
-  // Get user's hosted workshops
-  const hostedWorkshops = workshops.filter(w => w.facilitator?.id === user.id).filter((w) => isUserWorkshopVisible(w));
+    if (!rawDate) {
+      return null;
+    }
 
-  // Calculate stats  ?? better to store numbers in database and fetch 
-  const upcomingAttended = attendedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
-  const upcomingHosted = hostedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
+    const datePart = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+    const timePart = rawTime ? (rawTime.length === 5 ? `${rawTime}:00` : rawTime) : '00:00:00';
+    const parsed = new Date(`${datePart}T${timePart}`);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+
+    return parsed;
+  };
+
+  const resolveHostingDisplayStatus = (workshop: (typeof workshops)[number]): HostingDisplayStatus => {
+    const adminStatus = normalizeAdminWorkshopStatus(workshop.status);
+
+    if (adminStatus === 'pending' || adminStatus === 'rejected' || adminStatus === 'cancelled' || adminStatus === 'completed') {
+      return adminStatus;
+    }
+
+    const start = parseWorkshopStartTime(workshop);
+    if (!start) {
+      return 'approved';
+    }
+
+    const durationMinutes = Number(workshop.duration);
+    if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
+      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+      if (new Date() >= end) {
+        return 'completed';
+      }
+    }
+
+    // For hosting list, active approved workshops remain "Approved" until they can be confidently marked completed.
+    const now = new Date();
+    const isSameCalendarDay =
+      now.getFullYear() === start.getFullYear() &&
+      now.getMonth() === start.getMonth() &&
+      now.getDate() === start.getDate();
+
+    if (now > start && !isSameCalendarDay && (!Number.isFinite(durationMinutes) || durationMinutes <= 0)) {
+      return 'completed';
+    }
+
+    return 'approved';
+  };
+
+  const getHostingStatusMeta = (workshop: (typeof workshops)[number]) => {
+    const status = resolveHostingDisplayStatus(workshop);
+
+    if (status === 'pending') {
+      return { label: 'Pending', variant: 'secondary' as const, removable: false };
+    }
+    if (status === 'approved') {
+      return { label: 'Approved', variant: 'default' as const, removable: false };
+    }
+    if (status === 'rejected') {
+      return { label: 'Rejected', variant: 'destructive' as const, removable: true };
+    }
+    if (status === 'cancelled') {
+      return { label: 'Cancelled', variant: 'destructive' as const, removable: true };
+    }
+
+    return { label: 'Completed', variant: 'outline' as const, removable: false };
+  };
+
+  const dedupeWorkshopsById = (list: (typeof workshops)[number][]) => {
+    const byId = new Map<string, (typeof workshops)[number]>();
+    list.forEach((workshop) => byId.set(workshop.id, workshop));
+    return Array.from(byId.values());
+  };
+
+  const getWorkshopStartMillis = (workshop: (typeof workshops)[number]) => {
+    const start = parseWorkshopStartTime(workshop);
+    return start ? start.getTime() : Number.MAX_SAFE_INTEGER;
+  };
+
+  const sortByStartAsc = (list: (typeof workshops)[number][]) => {
+    return [...list].sort((a, b) => getWorkshopStartMillis(a) - getWorkshopStartMillis(b));
+  };
+
+  const sortByStartDesc = (list: (typeof workshops)[number][]) => {
+    return [...list].sort((a, b) => getWorkshopStartMillis(b) - getWorkshopStartMillis(a));
+  };
+
+  const totalPages = (count: number) => Math.max(1, Math.ceil(count / PAGE_SIZE));
+
+  const paginate = (list: (typeof workshops)[number][], page: number) => {
+    const startIndex = (page - 1) * PAGE_SIZE;
+    return list.slice(startIndex, startIndex + PAGE_SIZE);
+  };
+
+  const isHostedByCurrentUser = (workshop: (typeof workshops)[number]) => {
+    return Boolean(workshop.facilitator?.id && String(workshop.facilitator.id) === String(user.id));
+  };
+
+  const participantWorkshops = workshops
+    .filter((w) => (w.participants ?? []).some((p) => p.id === user.id))
+    .filter((w) => isUserWorkshopVisible(w));
+
+  const participantUpcomingWorkshops = participantWorkshops.filter((w) => {
+    const status = resolveUserWorkshopStatus(w);
+    return status === 'upcoming' || status === 'ongoing';
+  });
+
+  const participantAttendedWorkshops = participantWorkshops.filter(
+    (w) => resolveUserWorkshopStatus(w) === 'completed'
+  );
+
+  const allHostedWorkshops = workshops.filter(isHostedByCurrentUser);
+  const hostedUpcomingWorkshops = allHostedWorkshops.filter((w) => {
+    const status = resolveHostingDisplayStatus(w);
+    return status === 'approved';
+  });
+  const hostedAttendedWorkshops = allHostedWorkshops.filter(
+    (w) => resolveHostingDisplayStatus(w) === 'completed'
+  );
+
+  const upcomingWorkshops = dedupeWorkshopsById([
+    ...participantUpcomingWorkshops,
+    ...hostedUpcomingWorkshops,
+  ]);
+
+  const attendedWorkshops = dedupeWorkshopsById([
+    ...participantAttendedWorkshops,
+    ...hostedAttendedWorkshops,
+  ]);
+
+  const hostingWorkshops = allHostedWorkshops.filter(
+    (w) => !hiddenHostedWorkshopIds.includes(w.id)
+  );
+
+  const sortedUpcomingWorkshops = sortByStartAsc(upcomingWorkshops);
+  const sortedAttendedWorkshops = sortByStartDesc(attendedWorkshops);
+  const sortedHostingWorkshops = sortByStartDesc(hostingWorkshops);
+
+  const upcomingTotalPages = totalPages(sortedUpcomingWorkshops.length);
+  const attendedTotalPages = totalPages(sortedAttendedWorkshops.length);
+  const hostingTotalPages = totalPages(sortedHostingWorkshops.length);
+
+  const pagedUpcomingWorkshops = paginate(sortedUpcomingWorkshops, upcomingPage);
+  const pagedAttendedWorkshops = paginate(sortedAttendedWorkshops, attendedPage);
+  const pagedHostingWorkshops = paginate(sortedHostingWorkshops, hostingPage);
+
+  const hideHostedWorkshopFromView = async (workshopId: string) => {
+    if (!sessionToken) {
+      toast.error('Please sign in again to update your dashboard.');
+      return;
+    }
+
+    setHidingWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
+    try {
+      await workshopAPI.hideHostingWorkshop(workshopId, sessionToken);
+      setHiddenHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
+      toast.success('Removed from hosting list.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to remove workshop.';
+      toast.error(message);
+    } finally {
+      setHidingWorkshopIds((prev) => prev.filter((id) => id !== workshopId));
+    }
+  };
+
+  const handleWorkshopCardKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, workshopId: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setCurrentPage(`workshop-${workshopId}`);
+    }
+  };
+
+  const renderPagination = (
+    currentPage: number,
+    pageCount: number,
+    onPageChange: (page: number) => void
+  ) => {
+    if (pageCount <= 1) {
+      return null;
+    }
+
+    return (
+      <div className="flex items-center justify-end gap-2 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={currentPage <= 1}
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          Page {currentPage} / {pageCount}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={currentPage >= pageCount}
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    setEditUsername(user.username);
+  }, [user.username]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadHiddenHostingWorkshops = async () => {
+      if (!sessionToken) {
+        if (isActive) {
+          setHiddenHostedWorkshopIds([]);
+        }
+        return;
+      }
+
+      const hiddenIds = await workshopAPI.getHiddenHostingIds(sessionToken);
+      if (isActive) {
+        setHiddenHostedWorkshopIds(hiddenIds);
+      }
+    };
+
+    void loadHiddenHostingWorkshops();
+
+    return () => {
+      isActive = false;
+    };
+  }, [sessionToken, user.id]);
+
+  useEffect(() => {
+    const currentHostingIds = new Set(allHostedWorkshops.map((workshop) => workshop.id));
+    setHiddenHostedWorkshopIds((prev) => {
+      const next = prev.filter((id) => currentHostingIds.has(id));
+      const unchanged = next.length === prev.length && next.every((id, index) => id === prev[index]);
+      return unchanged ? prev : next;
+    });
+  }, [allHostedWorkshops]);
+
+  useEffect(() => {
+    setUpcomingPage((page) => Math.min(page, upcomingTotalPages));
+  }, [upcomingTotalPages]);
+
+  useEffect(() => {
+    setAttendedPage((page) => Math.min(page, attendedTotalPages));
+  }, [attendedTotalPages]);
+
+  useEffect(() => {
+    setHostingPage((page) => Math.min(page, hostingTotalPages));
+  }, [hostingTotalPages]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingAvatarPreviewUrl) {
+        URL.revokeObjectURL(pendingAvatarPreviewUrl);
+      }
+    };
+  }, [pendingAvatarPreviewUrl]);
+
+  const resetEditProfileDraft = () => {
+    setProfileError(null);
+    setEditUsername(user.username);
+    setPendingAvatarFile(null);
+    setPendingAvatarPreviewUrl((previousUrl) => {
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      return null;
+    });
+  };
+
+  const handleEditProfileOpenChange = (open: boolean) => {
+    if (!open) {
+      resetEditProfileDraft();
+    }
+    setIsEditProfileOpen(open);
+  };
+
+  const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextUsername = editUsername.trim();
+
+    if (!nextUsername) {
+      setProfileError('Name cannot be empty.');
+      return;
+    }
+
+    const hasNameChange = nextUsername !== user.username.trim();
+    const hasAvatarChange = pendingAvatarFile !== null;
+
+    if (!hasNameChange && !hasAvatarChange) {
+      setIsEditProfileOpen(false);
+      return;
+    }
+
+    setIsSavingProfile(true);
+    setProfileError(null);
+    try {
+      if (hasNameChange) {
+        await updateCurrentUserProfile({ username: nextUsername });
+      }
+      if (pendingAvatarFile) {
+        await uploadCurrentUserAvatar(pendingAvatarFile);
+      }
+      toast.success('Profile updated successfully.');
+      resetEditProfileDraft();
+      setIsEditProfileOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update profile.';
+      setProfileError(message);
+      toast.error(message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleAvatarFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      const message = 'Only image files are supported.';
+      setProfileError(message);
+      toast.error(message);
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const message = 'Image size must be 10MB or smaller.';
+      setProfileError(message);
+      toast.error(message);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setProfileError(null);
+    setPendingAvatarFile(file);
+    setPendingAvatarPreviewUrl((previousUrl) => {
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      return previewUrl;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
@@ -54,7 +425,7 @@ export function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold mb-2">My Dashboard</h1>
             <p className="text-muted-foreground">
-              Track your learning journey and workshop activities
+              👋 Welcome back, {user.username.split(' ')[0] || 'Member'}! Track your learning journey and workshop activities.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0">
@@ -77,8 +448,7 @@ export function Dashboard() {
                       {user.username.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
-                  <h2 className="text-xl font-semibold mb-1">{user.username}</h2>
-                  <p className="text-muted-foreground text-sm mb-4">{user.email}</p>
+                  <h2 className="text-xl font-semibold mb-4 break-words">{user.username}</h2>
                   
                   <div className="flex items-center justify-center space-x-1 mb-4">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -86,7 +456,15 @@ export function Dashboard() {
                     <span className="text-muted-foreground text-sm">/5.0</span>
                   </div>
 
-                  <Button variant="outline" size="sm" className="w-full mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mb-4"
+                    onClick={() => {
+                      resetEditProfileDraft();
+                      setIsEditProfileOpen(true);
+                    }}
+                  >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit Profile
                   </Button>
@@ -96,7 +474,7 @@ export function Dashboard() {
                   )}
 
                   {/* Skills */}
-                  <div className="text-left">
+                  {/* <div className="text-left">
                     <h3 className="font-medium mb-2">Skills</h3>
                     <div className="flex flex-wrap gap-1">
                       {user.skills.map((skill) => (
@@ -105,7 +483,7 @@ export function Dashboard() {
                         </Badge>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>
@@ -126,8 +504,8 @@ export function Dashboard() {
                         <Calendar className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Upcoming</p>
-                        <p className="text-xl font-bold">{upcomingAttended + upcomingHosted}</p>
+                        <p className="text-sm text-muted-foreground">My Upcoming Workshops</p>
+                        <p className="text-xl font-bold">{upcomingWorkshops.length}</p>
                       </div>
                     </div>
                   </div>
@@ -143,7 +521,7 @@ export function Dashboard() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Attended</p>
-                        <p className="text-xl font-bold">{user.totalWorkshopsAttended}</p>
+                        <p className="text-xl font-bold">{attendedWorkshops.length}</p>
                       </div>
                     </div>
                   </div>
@@ -158,8 +536,8 @@ export function Dashboard() {
                         <Target className="w-5 h-5 text-accent" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Hosted</p>
-                        <p className="text-xl font-bold">{user.totalWorkshopsHosted}</p>
+                        <p className="text-sm text-muted-foreground">Hosting Workshops</p>
+                        <p className="text-xl font-bold">{hostingWorkshops.length}</p>
                       </div>
                     </div>
                   </div>
@@ -170,26 +548,36 @@ export function Dashboard() {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <Tabs defaultValue="attending" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="attending">
-                  Attending ({upcomingAttended})
+            <Tabs defaultValue="upcoming" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="upcoming">
+                  My Upcoming ({upcomingWorkshops.length})
+                </TabsTrigger>
+                <TabsTrigger value="attended">
+                  Attended ({attendedWorkshops.length})
                 </TabsTrigger>
                 <TabsTrigger value="hosting">
-                  Hosting ({upcomingHosted})
+                  Hosting ({hostingWorkshops.length})
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="attending" className="space-y-4">
+              <TabsContent value="upcoming" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Workshops You're Attending</CardTitle>
+                    <CardTitle>My Upcoming Workshops</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {attendedWorkshops.length > 0 ? (
+                    {upcomingWorkshops.length > 0 ? (
                       <div className="space-y-4">
-                        {attendedWorkshops.map((workshop) => (
-                          <div key={workshop.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                        {pagedUpcomingWorkshops.map((workshop) => (
+                          <div
+                            key={workshop.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                            onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
+                            className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                          >
                             <div className="flex-1">
                               <h3 className="font-semibold mb-1">{workshop.title}</h3>
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
@@ -227,16 +615,21 @@ export function Dashboard() {
                               </div>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Badge 
+                              <Badge
                                 variant={getUserWorkshopStatusBadgeVariant(workshop)}
+                                className={statusBadgeClassName}
                               >
                                 {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                               </Badge>
-                              {isUserWorkshopUpcoming(workshop) && (
-                                <Button 
-                                  variant="outline" 
+                              {resolveUserWorkshopStatus(workshop) === 'upcoming' && !isHostedByCurrentUser(workshop) && (
+                                <Button
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => cancelWorkshopAttendance(workshop.id)}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    void cancelWorkshopAttendance(workshop.id);
+                                  }}
                                 >
                                   Cancel
                                 </Button>
@@ -244,13 +637,14 @@ export function Dashboard() {
                             </div>
                           </div>
                         ))}
+                        {renderPagination(upcomingPage, upcomingTotalPages, setUpcomingPage)}
                       </div>
                     ) : (
                       <div className="text-center py-8">
                         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="font-semibold mb-2">No workshops yet</h3>
+                        <h3 className="font-semibold mb-2">No upcoming workshops</h3>
                         <p className="text-muted-foreground mb-4">
-                          Start attending workshops to build your skills
+                          Explore workshops and join sessions you want to attend.
                         </p>
                         <Button onClick={() => setCurrentPage('explore')}>
                           Explore Workshops
@@ -261,28 +655,21 @@ export function Dashboard() {
                 </Card>
               </TabsContent>
 
-
-                    {/* Edit */}
-              <TabsContent value="hosting" className="space-y-4">
+              <TabsContent value="attended" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Workshops You're Hosting</CardTitle>
+                    <CardTitle>Attended Workshops</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {hostedWorkshops.length > 0 ? (
+                    {attendedWorkshops.length > 0 ? (
                       <div className="space-y-4">
-                        {hostedWorkshops.map((workshop) => (
+                        {pagedAttendedWorkshops.map((workshop) => (
                           <div
                             key={workshop.id}
                             role="button"
                             tabIndex={0}
                             onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                setCurrentPage(`workshop-${workshop.id}`);
-                              }
-                            }}
+                            onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
                             className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
                           >
                             <div className="flex-1">
@@ -296,40 +683,108 @@ export function Dashboard() {
                                   <Clock className="w-4 h-4" />
                                   <span>{workshop.time}</span>
                                 </div>
-                                <div className="flex items-center space-x-1">
-                                  <Users className="w-4 h-4" />
-                                  <span>{workshop.currentParticipants}/{workshop.maxParticipants}</span>
-                                </div>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3">
                                 <Badge variant="secondary">{workshop.category}</Badge>
-                                {/* 积分系统已停用：隐藏 host 奖励展示。 */}
-                                {/*
-                                <Badge variant="outline" className="text-primary">
-                                  <Award className="w-3 h-3 mr-1" />
-                                  +{workshop.creditReward} credits
-                                </Badge>
-                                */}
-                                <Badge variant="outline">Open Access</Badge>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge 
-                                variant={getUserWorkshopStatusBadgeVariant(workshop)}
-                              >
-                                {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
-                              </Badge>
-
-                            </div>
+                            <Badge variant="outline" className={statusBadgeClassName}>Completed</Badge>
                           </div>
                         ))}
+                        {renderPagination(attendedPage, attendedTotalPages, setAttendedPage)}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="font-semibold mb-2">No attended workshops yet</h3>
+                        <p className="text-muted-foreground mb-4">
+                          Workshops you have completed will appear here.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+
+                    {/* Edit */}
+              <TabsContent value="hosting" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hosting Workshops</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {hostingWorkshops.length > 0 ? (
+                      <div className="space-y-4">
+                        {pagedHostingWorkshops.map((workshop) => {
+                          const statusMeta = getHostingStatusMeta(workshop);
+
+                          return (
+                            <div
+                              key={workshop.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                              onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
+                              className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                            >
+                              <div className="flex-1">
+                                <h3 className="font-semibold mb-1">{workshop.title}</h3>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
+                                  <div className="flex items-center space-x-1">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>{new Date(workshop.date).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Clock className="w-4 h-4" />
+                                    <span>{workshop.time}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Users className="w-4 h-4" />
+                                    <span>{workshop.currentParticipants}/{workshop.maxParticipants}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="secondary">{workshop.category}</Badge>
+                                  <Badge variant="outline">Open Access</Badge>
+                                </div>
+                              </div>
+                                <div className="flex items-center gap-2 ml-4 shrink-0">
+                                {statusMeta.removable && (
+                                  <Button
+                                    type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      aria-label="Remove from hosting list"
+                                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                      disabled={hidingWorkshopIds.includes(workshop.id)}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      void hideHostedWorkshopFromView(workshop.id);
+                                    }}
+                                  >
+                                      <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                  <Badge
+                                    variant={statusMeta.variant}
+                                    className={statusBadgeClassName}
+                                  >
+                                    {statusMeta.label}
+                                  </Badge>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {renderPagination(hostingPage, hostingTotalPages, setHostingPage)}
                       </div>
                     ) : (
                       <div className="text-center py-8">
                         <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="font-semibold mb-2">No workshops hosted yet</h3>
+                        <h3 className="font-semibold mb-2">No hosting workshops to show</h3>
                         <p className="text-muted-foreground mb-4">
-                          Share your expertise by hosting workshops
+                          Host a workshop, or remove rejected/cancelled items from this list.
                         </p>
                         <Button onClick={() => setCurrentPage('create')}>
                           Host a Workshop
@@ -344,6 +799,88 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      <Dialog open={isEditProfileOpen} onOpenChange={handleEditProfileOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveProfile} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Avatar</Label>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-14 w-14">
+                  <AvatarImage src={pendingAvatarPreviewUrl ?? user.avatarUrl} alt={user.username} />
+                  <AvatarFallback>
+                    {user.username.split(' ').map((n) => n[0]).join('') || '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <input
+                    ref={avatarFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarFileChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSavingProfile}
+                    onClick={() => avatarFileInputRef.current?.click()}
+                  >
+                    Choose Avatar
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP, up to 10MB.</p>
+                  {pendingAvatarFile && (
+                    <p className="text-xs text-foreground mt-1">Selected: {pendingAvatarFile.name}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-profile-name">Name</Label>
+              <Input
+                id="dashboard-profile-name"
+                value={editUsername}
+                onChange={(event) => setEditUsername(event.target.value)}
+                maxLength={80}
+                placeholder="Enter your display name"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dashboard-profile-email">Email</Label>
+              <Input
+                id="dashboard-profile-email"
+                value={user.email}
+                readOnly
+                disabled
+              />
+            </div>
+
+            {profileError && (
+              <p className="text-sm text-destructive">{profileError}</p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleEditProfileOpenChange(false)}
+                disabled={isSavingProfile}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSavingProfile}>
+                {isSavingProfile ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

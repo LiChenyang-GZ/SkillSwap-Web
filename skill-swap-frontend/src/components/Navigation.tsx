@@ -2,7 +2,6 @@ import { useApp } from '../contexts/AppContext';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
-  Home,
   Search,
   LayoutDashboard,
   History,
@@ -28,7 +27,7 @@ import {
 } from './ui/dropdown-menu';
 
 const navItems = [
-  { id: 'home', label: 'Home', icon: Home },
+  // { id: 'home', label: 'Home', icon: Home },
   { id: 'explore', label: 'Explore', icon: Search },
   { id: 'memory', label: 'Memory', icon: History },
   { id: 'feedback', label: 'Feedback', icon: MessageSquare },

@@ -18,7 +18,7 @@ const Notifications = React.lazy(() => import('./components/Notifications').then
 
 function AppContent() {
   const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData } = useApp();
-  const lastAutoRefreshPageRef = React.useRef<string | null>(null);
+  const lastAutoRefreshKeyRef = React.useRef<string | null>(null);
 
   // Apply theme class to html element
   React.useEffect(() => {
@@ -32,13 +32,19 @@ function AppContent() {
   }, [isDarkMode]);
 
   React.useEffect(() => {
-    const previousPage = lastAutoRefreshPageRef.current;
-    if (previousPage === currentPage) {
+    const refreshKey = `${currentPage}:${isAuthenticated ? 'auth' : 'anon'}`;
+    const previousKey = lastAutoRefreshKeyRef.current;
+    if (previousKey === refreshKey) {
       return;
     }
-    lastAutoRefreshPageRef.current = currentPage;
+    lastAutoRefreshKeyRef.current = refreshKey;
+
+    if (!isAuthenticated && currentPage !== 'home' && currentPage !== 'explore') {
+      return;
+    }
 
     const isPublicPage = currentPage === 'home' || currentPage === 'explore';
+    const previousPage = previousKey?.split(':')[0] ?? null;
     const wasPublicPage = previousPage === 'home' || previousPage === 'explore';
 
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
@@ -51,14 +57,14 @@ function AppContent() {
       return;
     }
 
-    // Dashboard 仅拉 mine，避免 create 跳转后同时请求 public + mine。
+    // Dashboard 拉取“我 host + 我参加”的集合，不请求全量 public。
     if (currentPage === 'dashboard') {
-      void refreshData('mine');
+      void refreshData('dashboard');
       return;
     }
 
     // Memory 页面使用独立的 memory API，不依赖 workshop 列表。
-  }, [currentPage, refreshData]);
+  }, [currentPage, isAuthenticated, refreshData]);
 
   if (isLoading) {
     return (
@@ -119,8 +125,8 @@ function AppContent() {
           </div>
         </div>;
       default:
-        // Show Hero page for non-authenticated users, Home page for authenticated users
-        return isAuthenticated ? <HomePage /> : <HeroPage />;
+        // Show Hero page for non-authenticated users, Explore page for authenticated users
+        return isAuthenticated ? <ExploreWorkshops /> : <HeroPage />;
     }
   };
 

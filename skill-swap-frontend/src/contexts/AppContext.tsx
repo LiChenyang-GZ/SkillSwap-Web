@@ -12,7 +12,7 @@ import {
   // mockWorkshops,
   // mockTransactions,
 } from "../lib/mock-data";
-import { authAPI, notificationAPI, workshopAPI } from "../lib/api";
+import { authAPI, notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
 import { supabase } from "../utils/supabase/supabase";
 import { toast } from "sonner";
 
@@ -37,7 +37,14 @@ interface AppContextType {
   deleteWorkshop: (workshopId: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshData: (mode?: "public" | "mine" | "full") => Promise<void>;
+  updateCurrentUserProfile: (updates: {
+    username?: string;
+    avatarUrl?: string;
+    bio?: string;
+    skills?: string[];
+  }) => Promise<User>;
+  uploadCurrentUserAvatar: (file: File) => Promise<User>;
+  refreshData: (mode?: "public" | "mine" | "full" | "dashboard") => Promise<void>;
   clearCache: () => void;
   upsertWorkshop: (workshop: Workshop) => void;
 }
@@ -85,13 +92,13 @@ const pageFromPath = (pathname: string) => {
   const normalizedPath = normalizePath(pathname);
   if (normalizedPath.startsWith("/workshops/")) {
     const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
-    return workshopId ? `workshop-${workshopId}` : "home";
+    return workshopId ? `workshop-${workshopId}` : "explore";
   }
   if (normalizedPath.startsWith("/memory/")) {
     const slug = decodeURIComponent(normalizedPath.slice("/memory/".length));
     return slug ? `memory-entry-${slug}` : "memory";
   }
-  return PATH_TO_PAGE[normalizedPath] || "home";
+  return PATH_TO_PAGE[normalizedPath] || "explore";
 };
 
 const pathFromPage = (page: string) => {
@@ -103,13 +110,13 @@ const pathFromPage = (page: string) => {
     const slug = page.slice("memory-entry-".length);
     return `/memory/${encodeURIComponent(slug)}`;
   }
-  return PAGE_TO_PATH[page] || "/home";
+  return PAGE_TO_PATH[page] || "/explore";
 };
 
 const resolvePostLoginPage = () => {
   const requestedPage = pageFromPath(window.location.pathname);
   if (requestedPage === "hero" || requestedPage === "auth") {
-    return "home";
+    return "explore";
   }
   return requestedPage;
 };
@@ -129,7 +136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   // 防止标签页切换时重复初始化
   const initializedRef = useRef(false);
-  const refreshInFlightRef = useRef<{ mode: "public" | "mine" | "full"; task: Promise<void> } | null>(null);
+  const refreshInFlightRef = useRef<{ mode: "public" | "mine" | "full" | "dashboard"; task: Promise<void> } | null>(null);
   const notificationsInFlightRef = useRef<Promise<void> | null>(null);
   const profileInFlightRef = useRef<Promise<User> | null>(null);
   const profileInFlightTokenRef = useRef<string | null>(null);
@@ -242,12 +249,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const fetchVisibleWorkshops = useCallback(async () => {
     if (isAuthenticated && sessionToken) {
-      const [publicWorkshops, myWorkshops] = await Promise.all([
+      const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
         workshopAPI.getPublic(),
         workshopAPI.getMine(sessionToken),
+        workshopAPI.getAttending(sessionToken),
       ]);
       const merged = new Map<string, Workshop>();
-      [...publicWorkshops, ...myWorkshops].forEach((workshop) => {
+      [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
         merged.set(workshop.id, workshop);
       });
       return Array.from(merged.values());
@@ -265,6 +273,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return [];
     }
     return workshopAPI.getMine(sessionToken);
+  }, [isAuthenticated, sessionToken]);
+
+  const fetchDashboardWorkshops = useCallback(async () => {
+    if (!isAuthenticated || !sessionToken) {
+      return [];
+    }
+
+    const [myWorkshops, attendingWorkshops] = await Promise.all([
+      workshopAPI.getMine(sessionToken),
+      workshopAPI.getAttending(sessionToken),
+    ]);
+
+    const merged = new Map<string, Workshop>();
+    [...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
+      merged.set(workshop.id, workshop);
+    });
+    return Array.from(merged.values());
   }, [isAuthenticated, sessionToken]);
 
   // --------------------------
@@ -335,7 +360,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
 
           if (event === "SIGNED_IN") {
-            setCurrentPage("home");
+            setCurrentPage("explore");
             toast.success(`Welcome, ${mapped.username}!`);
           }
         } catch (e) {
@@ -420,7 +445,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: userProfile.id,
       email: userProfile.email,
       username: userProfile.username,
-      avatarUrl: userProfile.avatarUrl || "",
+      avatarUrl: resolveAssetUrl(userProfile.avatarUrl || ""),
       bio: userProfile.bio || "",
       // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
       // creditBalance: userProfile.creditBalance ?? 100,
@@ -445,7 +470,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: sbUser?.id || "",
       email,
       username,
-      avatarUrl: metadata.avatar_url || "",
+      avatarUrl: resolveAssetUrl(metadata.avatar_url || ""),
       bio: "",
       creditBalance: 0,
       skills: [],
@@ -569,11 +594,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (authTabOption) setAuthTab(authTabOption);
   };
 
-  const resolveRefreshModeByPage = (page: string): "public" | "mine" | "full" => {
+  const resolveRefreshModeByPage = (page: string): "public" | "mine" | "full" | "dashboard" => {
     if (page === "home" || page === "explore") {
       return "public";
     }
-    if (page === "dashboard" || page === "create") {
+    if (page === "dashboard") {
+      return "dashboard";
+    }
+    if (page === "create") {
       return "mine";
     }
     return "full";
@@ -582,7 +610,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   // Data
   // --------------------------
-  const refreshData = useCallback(async (mode: "public" | "mine" | "full" = "full") => {
+  const refreshData = useCallback(async (mode: "public" | "mine" | "full" | "dashboard" = "full") => {
     if (refreshInFlightRef.current && refreshInFlightRef.current.mode === mode) {
       return refreshInFlightRef.current.task;
     }
@@ -594,6 +622,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           backendWorkshops = await fetchPublicWorkshops();
         } else if (mode === "mine") {
           backendWorkshops = await fetchMineWorkshops();
+        } else if (mode === "dashboard") {
+          backendWorkshops = await fetchDashboardWorkshops();
         } else {
           backendWorkshops = await fetchVisibleWorkshops();
         }
@@ -615,7 +645,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshInFlightRef.current = null;
       }
     }
-  }, [fetchMineWorkshops, fetchPublicWorkshops, fetchVisibleWorkshops]);
+  }, [fetchDashboardWorkshops, fetchMineWorkshops, fetchPublicWorkshops, fetchVisibleWorkshops]);
 
   const refreshNotificationsUnreadCount = useCallback(async () => {
     if (!sessionToken) {
@@ -721,7 +751,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("skill-swap-auth", "true");
         localStorage.setItem("skill-swap-user", JSON.stringify(userData));
         localStorage.setItem("skill-swap-sessionToken", loginResult.access_token);
-        setCurrentPage("home");
+        setCurrentPage("explore");
         toast.success(`Welcome, ${userData.username}!`);
       } catch (error) {
         console.error("❌ Dev login failed:", error);
@@ -750,6 +780,116 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("skill-swap-sessionToken");
     setCurrentPage("hero");
     toast.success("Signed out successfully");
+  };
+
+  const parseApiErrorMessage = async (response: Response, fallbackMessage: string): Promise<string> => {
+    const raw = await response.text();
+    let message = raw;
+
+    try {
+      const parsed = JSON.parse(raw);
+      message = parsed?.message || parsed?.error || raw;
+    } catch {
+      // Keep raw response text when not JSON.
+    }
+
+    const normalized = typeof message === "string" ? message.trim() : "";
+    const lower = normalized.toLowerCase();
+
+    if (
+      response.status === 413 ||
+      lower.includes("maximum upload size") ||
+      lower.includes("size exceeds") ||
+      lower.includes("payload too large")
+    ) {
+      return "Image is too large. Please upload an image up to 10MB.";
+    }
+
+    const cleaned = normalized
+      .replace(/^an unexpected error occurred:\s*/i, "")
+      .replace(/\s+caused by:.*/i, "")
+      .trim();
+
+    return cleaned || fallbackMessage;
+  };
+
+  const updateCurrentUserProfile = async (updates: {
+    username?: string;
+    avatarUrl?: string;
+    bio?: string;
+    skills?: string[];
+  }): Promise<User> => {
+    if (!sessionToken) {
+      throw new Error("Please sign in again before updating your profile.");
+    }
+
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    const response = await fetch(`${base}/api/v1/users/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const message = await parseApiErrorMessage(response, `Failed to update profile (${response.status}).`);
+      throw new Error(message || `Failed to update profile (${response.status}).`);
+    }
+
+    const profile = await response.json();
+    const mapped = mapBackendUser(profile);
+
+    setUser(mapped);
+    localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
+
+    const payload = decodeJwtPayload(sessionToken) as { sub?: string } | null;
+    recentProfileCacheRef.current = {
+      subject: payload?.sub ?? null,
+      user: mapped,
+      at: Date.now(),
+    };
+
+    return mapped;
+  };
+
+  const uploadCurrentUserAvatar = async (file: File): Promise<User> => {
+    if (!sessionToken) {
+      throw new Error("Please sign in again before updating your avatar.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    const response = await fetch(`${base}/api/v1/users/me/avatar`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const message = await parseApiErrorMessage(response, `Failed to upload avatar (${response.status}).`);
+      throw new Error(message || `Failed to upload avatar (${response.status}).`);
+    }
+
+    const profile = await response.json();
+    const mapped = mapBackendUser(profile);
+
+    setUser(mapped);
+    localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
+
+    const payload = decodeJwtPayload(sessionToken) as { sub?: string } | null;
+    recentProfileCacheRef.current = {
+      subject: payload?.sub ?? null,
+      user: mapped,
+      at: Date.now(),
+    };
+
+    return mapped;
   };
 
   // --------------------------
@@ -919,6 +1059,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteWorkshop,
         signIn,
         signOut,
+        updateCurrentUserProfile,
+        uploadCurrentUserAvatar,
         refreshData,
         clearCache,
         upsertWorkshop,

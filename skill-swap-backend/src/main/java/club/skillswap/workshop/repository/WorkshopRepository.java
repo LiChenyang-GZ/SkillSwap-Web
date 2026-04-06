@@ -40,6 +40,14 @@ public interface WorkshopRepository extends JpaRepository<Workshop, Long> {
         List<Workshop> findAllByFacilitatorIdWithFacilitator(@Param("facilitatorId") UUID facilitatorId);
 
         @Query("""
+            select distinct w from WorkshopParticipant wp
+            join wp.workshop w
+            left join fetch w.facilitator
+            where wp.user.id = :userId
+            """)
+        List<Workshop> findAllByParticipantUserIdWithFacilitator(@Param("userId") UUID userId);
+
+        @Query("""
             select distinct w from Workshop w
             left join fetch w.facilitator
             where lower(coalesce(w.status, 'pending')) = 'pending'

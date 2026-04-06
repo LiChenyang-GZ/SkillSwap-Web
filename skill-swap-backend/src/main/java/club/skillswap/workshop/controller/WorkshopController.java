@@ -48,7 +48,7 @@ public class WorkshopController {
         return new ResponseEntity<>(new ApiMessageDto("Workshop created successfully."), HttpStatus.CREATED);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<WorkshopResponseDto> getWorkshopById(
             @PathVariable Long id,
             Authentication authentication) {
@@ -79,6 +79,40 @@ public class WorkshopController {
         String facilitatorId = jwtAuth.getToken().getSubject();
         List<WorkshopResponseDto> workshops = workshopService.getMyWorkshops(facilitatorId);
         return ResponseEntity.ok(workshops);
+    }
+
+    @GetMapping("/attending")
+    public ResponseEntity<List<WorkshopResponseDto>> getAttendingWorkshops(Authentication authentication) {
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
+
+        String userId = jwtAuth.getToken().getSubject();
+        List<WorkshopResponseDto> workshops = workshopService.getAttendingWorkshops(userId);
+        return ResponseEntity.ok(workshops);
+    }
+
+    @GetMapping("/hosting/hidden")
+    public ResponseEntity<List<Long>> getHiddenHostingWorkshops(Authentication authentication) {
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
+
+        String userId = jwtAuth.getToken().getSubject();
+        return ResponseEntity.ok(workshopService.getHiddenHostingWorkshopIds(userId));
+    }
+
+    @PostMapping("/{id}/hosting/hide")
+    public ResponseEntity<ApiMessageDto> hideHostingWorkshop(
+            @PathVariable Long id,
+            Authentication authentication) {
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
+
+        String userId = jwtAuth.getToken().getSubject();
+        workshopService.hideHostingWorkshop(userId, id);
+        return ResponseEntity.ok(new ApiMessageDto("Workshop hidden from hosting list."));
     }
 
     @PostMapping("/{id}/request-approval")
@@ -121,7 +155,7 @@ public class WorkshopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
         
-        String userId = authentication.getName();
+        String userId = extractAuthenticatedUserId(authentication);
         workshopService.joinWorkshop(id, userId);
         return ResponseEntity.ok(new ApiMessageDto("Successfully joined workshop"));
     }
@@ -135,8 +169,15 @@ public class WorkshopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
         
-        String userId = authentication.getName();
+        String userId = extractAuthenticatedUserId(authentication);
         workshopService.leaveWorkshop(id, userId);
         return ResponseEntity.ok(new ApiMessageDto("Successfully left workshop"));
+    }
+
+    private String extractAuthenticatedUserId(Authentication authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            return jwtAuth.getToken().getSubject();
+        }
+        return authentication.getName();
     }
 }
