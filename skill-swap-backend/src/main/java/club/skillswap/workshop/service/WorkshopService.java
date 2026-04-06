@@ -23,8 +23,6 @@ public interface WorkshopService {
 
     List<WorkshopResponseDto> getAttendingWorkshops(String userId);
 
-    List<Long> getHiddenHostingWorkshopIds(String userId);
-
     void hideHostingWorkshop(String userId, Long workshopId);
 
     List<WorkshopResponseDto> getAllWorkshopsForAdmin(Authentication authentication);

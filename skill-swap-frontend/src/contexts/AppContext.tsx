@@ -441,11 +441,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   function mapBackendUser(userProfile: any): User {
+    const rawAvatar =
+      userProfile.avatarUrl ||
+      userProfile.avatar_url ||
+      userProfile.avatar ||
+      "";
+    const resolvedAvatar = resolveAssetUrl(rawAvatar);
+    const avatarVersion =
+      userProfile.updatedAt ||
+      userProfile.updated_at ||
+      userProfile.avatarUpdatedAt ||
+      userProfile.avatar_updated_at ||
+      "";
+
+    const avatarUrl = resolvedAvatar
+      ? (avatarVersion
+          ? `${resolvedAvatar}${resolvedAvatar.includes("?") ? "&" : "?"}v=${encodeURIComponent(String(avatarVersion))}`
+          : resolvedAvatar)
+      : "";
+
     return {
       id: userProfile.id,
       email: userProfile.email,
       username: userProfile.username,
-      avatarUrl: resolveAssetUrl(userProfile.avatarUrl || ""),
+      avatarUrl,
       bio: userProfile.bio || "",
       // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
       // creditBalance: userProfile.creditBalance ?? 100,

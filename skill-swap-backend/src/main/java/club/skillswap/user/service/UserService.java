@@ -27,12 +27,21 @@ import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
+    private static final Set<String> SUPPORTED_IMAGE_CONTENT_TYPES = Set.of(
+            "image/png",
+            "image/jpeg",
+            "image/jpg",
+            "image/webp",
+            "image/gif",
+            "image/svg+xml"
+    );
 
     private final UserRepository userRepository;
     private final WorkshopRepository workshopRepository;
@@ -215,15 +224,16 @@ public class UserService {
         }
 
         String contentType = trimToNull(file.getContentType());
-        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image uploads are supported.");
+        String normalizedContentType = contentType == null ? null : contentType.toLowerCase(Locale.ROOT);
+        if (normalizedContentType == null || !SUPPORTED_IMAGE_CONTENT_TYPES.contains(normalizedContentType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported image format. Please use PNG/JPG/WEBP/GIF/SVG.");
         }
 
         if (file.getSize() > maxImageBytes) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
         }
 
-        String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
+        String extension = resolveImageFileExtension(file.getOriginalFilename(), normalizedContentType);
         String fileName = UUID.randomUUID() + extension;
         String objectPath = "avatars/" + user.getId() + "/" + fileName;
         String publicUrl = supabaseStorageService.uploadImage(file, objectPath);
@@ -314,9 +324,11 @@ public class UserService {
 
         return switch (contentType.toLowerCase(Locale.ROOT)) {
             case "image/png" -> ".png";
+            case "image/jpeg", "image/jpg" -> ".jpg";
             case "image/gif" -> ".gif";
             case "image/webp" -> ".webp";
-            default -> ".jpg";
+            case "image/svg+xml" -> ".svg";
+            default -> ".bin";
         };
     }
 

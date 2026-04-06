@@ -52,6 +52,7 @@ export interface Workshop {
   membersPresent?: string;
   eventSubmitted?: boolean;
   usuApprovalStatus?: 'pending' | 'approved';
+  hiddenByHost?: boolean;
   rejectionNote?: string;
   facilitator: Facilitator | null;
   tags?: string[];

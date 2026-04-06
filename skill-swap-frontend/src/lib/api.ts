@@ -180,6 +180,7 @@ function enrichWorkshop(workshop: any): Workshop {
     membersPresent: workshop.membersPresent ?? workshop.members_present,
     eventSubmitted: Boolean(workshop.eventSubmitted ?? workshop.event_submitted),
     usuApprovalStatus: usuApprovalStatusRaw === 'approved' ? 'approved' : 'pending',
+    hiddenByHost: Boolean(workshop.hiddenByHost ?? workshop.hidden_by_host),
     rejectionNote:
       workshop.rejectionNote ||
       workshop.rejection_note ||
@@ -508,16 +509,6 @@ export const workshopAPI = {
       return data.map(enrichWorkshop);
     } catch (error) {
       console.error("❌ Failed to fetch attending workshops:", error);
-      return [];
-    }
-  },
-
-  getHiddenHostingIds: async (token?: string | null): Promise<string[]> => {
-    try {
-      const data = await apiCall<Array<number | string>>("/api/v1/workshops/hosting/hidden", {}, token);
-      return data.map((id) => String(id));
-    } catch (error) {
-      console.error("❌ Failed to fetch hidden hosting workshops:", error);
       return [];
     }
   },
