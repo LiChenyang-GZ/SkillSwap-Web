@@ -5,7 +5,6 @@ import java.util.List;
 
 public record MemoryEntryResponseDto(
         String id,
-        Long version,
         String title,
         String slug,
         String coverUrl,
@@ -16,6 +15,9 @@ public record MemoryEntryResponseDto(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         String createdBy,
-        String updatedBy
+        String updatedBy,
+        String editLockOwnerId,
+        String editLockOwnerName,
+        LocalDateTime editLockExpiresAt
 ) {
 }

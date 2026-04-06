@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.common.exception.DomainException;
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.user.dto.UpdateProfileRequestDto;
@@ -20,30 +21,32 @@ import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
+    private static final Set<String> SUPPORTED_IMAGE_CONTENT_TYPES = Set.of(
+            "image/png",
+            "image/jpeg",
+            "image/jpg",
+            "image/webp",
+            "image/gif",
+            "image/svg+xml"
+    );
 
     private final UserRepository userRepository;
     private final WorkshopRepository workshopRepository;
     private final WorkshopParticipantRepository participantRepository;
-
-    @Value("${app.upload.base-dir:uploads}")
-    private String uploadBaseDir;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -214,39 +217,32 @@ public class UserService {
         UUID userId = UUID.fromString(jwt.getSubject());
         UserAccount user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
+        String previousAvatarUrl = trimToNull(user.getAvatarUrl());
 
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required.");
         }
 
         String contentType = trimToNull(file.getContentType());
-        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image uploads are supported.");
+        String normalizedContentType = contentType == null ? null : contentType.toLowerCase(Locale.ROOT);
+        if (normalizedContentType == null || !SUPPORTED_IMAGE_CONTENT_TYPES.contains(normalizedContentType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported image format. Please use PNG/JPG/WEBP/GIF/SVG.");
         }
 
         if (file.getSize() > maxImageBytes) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
         }
 
-        String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
+        String extension = resolveImageFileExtension(file.getOriginalFilename(), normalizedContentType);
         String fileName = UUID.randomUUID() + extension;
+        String objectPath = "avatars/" + user.getId() + "/" + fileName;
+        String publicUrl = supabaseStorageService.uploadImage(file, objectPath);
 
-        Path targetDirectory = Paths.get(uploadBaseDir, "avatars").toAbsolutePath().normalize();
-        Path targetFile = targetDirectory.resolve(fileName).normalize();
-
-        if (!targetFile.startsWith(targetDirectory)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
-        }
-
-        try {
-            Files.createDirectories(targetDirectory);
-            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
-        }
-
-        user.setAvatarUrl("/uploads/avatars/" + fileName);
+        user.setAvatarUrl(publicUrl);
         userRepository.save(user);
+        if (previousAvatarUrl != null && !previousAvatarUrl.equals(publicUrl)) {
+            supabaseStorageService.deleteByPublicUrlQuietly(previousAvatarUrl);
+        }
 
         return getUserProfileWithStats(userId);
     }
@@ -328,9 +324,11 @@ public class UserService {
 
         return switch (contentType.toLowerCase(Locale.ROOT)) {
             case "image/png" -> ".png";
+            case "image/jpeg", "image/jpg" -> ".jpg";
             case "image/gif" -> ".gif";
             case "image/webp" -> ".webp";
-            default -> ".jpg";
+            case "image/svg+xml" -> ".svg";
+            default -> ".bin";
         };
     }
 

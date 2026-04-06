@@ -2,6 +2,7 @@
 
 import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
+import { getAuthRedirectUrl } from './authRedirect';
 // Legacy in-memory fallback data used by development-only helper APIs.
 import {
   mockUser as legacyMockUser,
@@ -36,12 +37,60 @@ export interface WorkshopUpsertPayload {
 
 // Backend API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'skillswap-media';
+
+function encodePath(path: string): string {
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+function rewriteLegacyUploadUrl(url: string): string {
+  if (!SUPABASE_URL) {
+    return url;
+  }
+
+  let legacyPath = '';
+  let query = '';
+
+  if (url.startsWith('/uploads/')) {
+    const suffix = url.slice('/uploads/'.length);
+    const idx = suffix.indexOf('?');
+    legacyPath = idx >= 0 ? suffix.slice(0, idx) : suffix;
+    query = idx >= 0 ? suffix.slice(idx) : '';
+  } else {
+    try {
+      const parsed = new URL(url);
+      if (!parsed.pathname.startsWith('/uploads/')) {
+        return url;
+      }
+      legacyPath = parsed.pathname.slice('/uploads/'.length);
+      query = parsed.search || '';
+    } catch {
+      return url;
+    }
+  }
+
+  if (!legacyPath) {
+    return url;
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_STORAGE_BUCKET)}/${encodePath(legacyPath)}${query}`;
+}
 
 export function resolveAssetUrl(url?: string): string {
   if (!url) return '';
 
   const trimmed = String(url).trim();
   if (!trimmed) return '';
+
+  const migratedLegacy = rewriteLegacyUploadUrl(trimmed);
+  if (migratedLegacy !== trimmed) {
+    return migratedLegacy;
+  }
 
   if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
@@ -132,6 +181,7 @@ function enrichWorkshop(workshop: any): Workshop {
     membersPresent: workshop.membersPresent ?? workshop.members_present,
     eventSubmitted: Boolean(workshop.eventSubmitted ?? workshop.event_submitted),
     usuApprovalStatus: usuApprovalStatusRaw === 'approved' ? 'approved' : 'pending',
+    hiddenByHost: Boolean(workshop.hiddenByHost ?? workshop.hidden_by_host),
     rejectionNote:
       workshop.rejectionNote ||
       workshop.rejection_note ||
@@ -164,7 +214,6 @@ function enrichMemory(entry: any): MemoryEntry {
   const rawMediaUrls = Array.isArray(entry.mediaUrls) ? entry.mediaUrls : [];
   return {
     id: String(entry.id),
-    version: typeof entry.version === 'number' ? entry.version : Number(entry.version ?? 0),
     title: entry.title || '',
     slug: entry.slug || '',
     coverUrl: normalizeMemoryUrl(entry.coverUrl || ''),
@@ -176,6 +225,9 @@ function enrichMemory(entry: any): MemoryEntry {
     updatedAt: entry.updatedAt,
     createdBy: entry.createdBy,
     updatedBy: entry.updatedBy,
+    editLockOwnerId: entry.editLockOwnerId || entry.editLockOwner || entry.edit_lock_owner,
+    editLockOwnerName: entry.editLockOwnerName || entry.edit_lock_owner_name,
+    editLockExpiresAt: entry.editLockExpiresAt || entry.edit_lock_expires_at,
   };
 }
 
@@ -243,7 +295,7 @@ export const authAPI = {
   signInWithGoogle: async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/explore` },
+      options: { redirectTo: getAuthRedirectUrl() },
     });
     if (error) throw error;
     return data;
@@ -254,7 +306,7 @@ export const authAPI = {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/explore`,
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     });
     if (error) throw error;
@@ -458,16 +510,6 @@ export const workshopAPI = {
       return data.map(enrichWorkshop);
     } catch (error) {
       console.error("❌ Failed to fetch attending workshops:", error);
-      return [];
-    }
-  },
-
-  getHiddenHostingIds: async (token?: string | null): Promise<string[]> => {
-    try {
-      const data = await apiCall<Array<number | string>>("/api/v1/workshops/hosting/hidden", {}, token);
-      return data.map((id) => String(id));
-    } catch (error) {
-      console.error("❌ Failed to fetch hidden hosting workshops:", error);
       return [];
     }
   },
@@ -777,6 +819,27 @@ export const memoryAPI = {
   deleteByAdmin: async (id: string, token?: string | null): Promise<void> => {
     await apiCall<void>(
       `/api/v1/admin/memories/${id}`,
+      {
+        method: 'DELETE',
+      },
+      token
+    );
+  },
+
+  acquireLockByAdmin: async (id: string, token?: string | null): Promise<MemoryEntry> => {
+    const data = await apiCall<any>(
+      `/api/v1/admin/memories/${id}/lock`,
+      {
+        method: 'POST',
+      },
+      token
+    );
+    return enrichMemory(data);
+  },
+
+  releaseLockByAdmin: async (id: string, token?: string | null): Promise<void> => {
+    await apiCall<void>(
+      `/api/v1/admin/memories/${id}/lock`,
       {
         method: 'DELETE',
       },

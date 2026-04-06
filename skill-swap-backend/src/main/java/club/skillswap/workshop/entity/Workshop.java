@@ -124,4 +124,7 @@ public class Workshop {
     @Column(name = "usu_approval_status")
     private String usuApprovalStatus;
 
+    @Column(name = "hidden_by_host", nullable = false, columnDefinition = "boolean not null default false")
+    private Boolean hiddenByHost = false;
+
 }

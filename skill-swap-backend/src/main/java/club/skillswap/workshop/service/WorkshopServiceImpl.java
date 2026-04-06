@@ -1,6 +1,7 @@
 package club.skillswap.workshop.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
+import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.notification.service.NotificationService;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
@@ -9,11 +10,8 @@ import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.dto.FacilitatorDto;
 import club.skillswap.workshop.dto.WorkshopParticipantDto;
-import club.skillswap.workshop.entity.HiddenHostingWorkshop;
-import club.skillswap.workshop.entity.HiddenHostingWorkshopId;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.entity.WorkshopParticipant;
-import club.skillswap.workshop.repository.HiddenHostingWorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,14 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Locale;
@@ -52,11 +47,8 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final WorkshopRepository workshopRepository;
     private final UserService userService;
     private final WorkshopParticipantRepository participantRepository;
-    private final HiddenHostingWorkshopRepository hiddenHostingWorkshopRepository;
     private final NotificationService notificationService;
-
-    @Value("${app.upload.base-dir:uploads}")
-    private String uploadBaseDir;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -104,6 +96,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedAt(null);
         workshop.setReviewComment(null);
         workshop.setApprovedAt(null);
+        workshop.setHiddenByHost(false);
 
         // ... 璋冪敤绉垎鏈嶅姟 ...
 
@@ -141,7 +134,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     @Transactional(readOnly = true)
     public List<WorkshopResponseDto> getPublicWorkshops() {
         List<Workshop> workshops = workshopRepository.findAllPublicApprovedWithFacilitator();
-        return workshops.stream().map(this::mapToSummaryDto).toList();
+        return mapToSummaryDtoList(workshops, true);
     }
 
     @Override
@@ -155,7 +148,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         List<Workshop> workshops = workshopRepository.findAllByFacilitatorIdWithFacilitator(facilitatorUuid);
-        return workshops.stream().map(this::mapToSummaryDto).toList();
+        return mapToSummaryDtoList(workshops, true);
     }
 
     @Override
@@ -169,20 +162,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         List<Workshop> workshops = workshopRepository.findAllByParticipantUserIdWithFacilitator(userUuid);
-        return mapToDtoList(workshops);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Long> getHiddenHostingWorkshopIds(String userId) {
-        UUID userUuid;
-        try {
-            userUuid = UUID.fromString(userId);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id.");
-        }
-
-        return hiddenHostingWorkshopRepository.findHiddenWorkshopIdsByUserId(userUuid);
+        return mapToSummaryDtoList(workshops, true);
     }
 
     @Override
@@ -208,17 +188,12 @@ public class WorkshopServiceImpl implements WorkshopService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only rejected or cancelled workshops can be hidden.");
         }
 
-        if (hiddenHostingWorkshopRepository.existsByIdUserIdAndIdWorkshopId(userUuid, workshopId)) {
+        if (Boolean.TRUE.equals(workshop.getHiddenByHost())) {
             return;
         }
 
-        UserAccount user = userService.findUserByStringId(userId);
-
-        HiddenHostingWorkshop hidden = new HiddenHostingWorkshop();
-        hidden.setId(new HiddenHostingWorkshopId(userUuid, workshopId));
-        hidden.setUser(user);
-        hidden.setWorkshop(workshop);
-        hiddenHostingWorkshopRepository.save(hidden);
+        workshop.setHiddenByHost(true);
+        workshopRepository.save(workshop);
     }
 
     @Override
@@ -226,7 +201,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     public List<WorkshopResponseDto> getAllWorkshopsForAdmin(Authentication authentication) {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllWithFacilitator();
-        return workshops.stream().map(workshop -> mapToSummaryDto(workshop, false)).toList();
+        return mapToSummaryDtoList(workshops, false);
     }
 
     @Override
@@ -234,7 +209,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     public List<WorkshopResponseDto> getPendingWorkshops(Authentication authentication) {
         requireAdmin(authentication);
         List<Workshop> workshops = workshopRepository.findAllPendingWithFacilitator();
-        return workshops.stream().map(workshop -> mapToSummaryDto(workshop, false)).toList();
+        return mapToSummaryDtoList(workshops, false);
     }
 
     @Override
@@ -305,21 +280,10 @@ public class WorkshopServiceImpl implements WorkshopService {
         String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
         String fileName = UUID.randomUUID() + extension;
 
-        Path targetDirectory = Paths.get(uploadBaseDir, "workshops").toAbsolutePath().normalize();
-        Path targetFile = targetDirectory.resolve(fileName).normalize();
+        String objectPath = "workshops/" + workshop.getId() + "/" + fileName;
+        String publicUrl = supabaseStorageService.uploadImage(file, objectPath);
 
-        if (!targetFile.startsWith(targetDirectory)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
-        }
-
-        try {
-            Files.createDirectories(targetDirectory);
-            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
-        }
-
-        workshop.setImageUrl("/uploads/workshops/" + fileName);
+        workshop.setImageUrl(publicUrl);
         Workshop saved = workshopRepository.save(workshop);
         return mapToDtoForViewer(saved, authentication);
     }
@@ -342,6 +306,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedAt(LocalDateTime.now());
         workshop.setReviewComment(null);
         workshop.setReviewedBy(extractUserUuid(authentication));
+        workshop.setHiddenByHost(false);
 
         Workshop saved = workshopRepository.save(workshop);
         notifyWorkshopReview(saved, "workshop_approved", "Workshop approved: " + saved.getTitle(),
@@ -594,11 +559,23 @@ public class WorkshopServiceImpl implements WorkshopService {
     }
 
     private WorkshopResponseDto mapToSummaryDto(Workshop workshop) {
-        return mapToSummaryDto(workshop, true);
+        return mapToSummaryDto(
+            workshop,
+            true,
+            Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()))
+        );
     }
 
     private WorkshopResponseDto mapToSummaryDto(Workshop workshop, boolean resolveStatus) {
-        Integer participantCount = Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()));
+        return mapToSummaryDto(
+            workshop,
+            resolveStatus,
+            Math.toIntExact(participantRepository.countByWorkshopId(workshop.getId()))
+        );
+    }
+
+    private WorkshopResponseDto mapToSummaryDto(Workshop workshop, boolean resolveStatus, Integer participantCount) {
+        int safeParticipantCount = participantCount == null ? 0 : participantCount;
 
         FacilitatorDto facilitatorDto = null;
         if (workshop.getFacilitator() != null) {
@@ -627,7 +604,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getIsOnline(),
             summaryLocation,
             workshop.getMaxParticipants(),
-            participantCount,
+            safeParticipantCount,
             workshop.getCreditCost(),
             workshop.getCreditReward(),
             null,
@@ -644,10 +621,52 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getMembersPresent(),
             workshop.getEventSubmitted(),
             workshop.getUsuApprovalStatus(),
+            Boolean.TRUE.equals(workshop.getHiddenByHost()),
             facilitatorDto,
             null,
             workshop.getCreatedAt()
         );
+    }
+
+    private List<WorkshopResponseDto> mapToSummaryDtoList(List<Workshop> workshops, boolean resolveStatus) {
+        if (workshops == null || workshops.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Integer> countsByWorkshopId = loadParticipantCounts(workshops);
+        return workshops.stream()
+            .map(workshop -> mapToSummaryDto(
+                workshop,
+                resolveStatus,
+                countsByWorkshopId.getOrDefault(workshop.getId(), 0)
+            ))
+            .toList();
+    }
+
+    private Map<Long, Integer> loadParticipantCounts(List<Workshop> workshops) {
+        if (workshops == null || workshops.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> workshopIds = workshops.stream()
+            .map(Workshop::getId)
+            .toList();
+        if (workshopIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, Integer> counts = new HashMap<>();
+        List<Object[]> rows = participantRepository.countParticipantsByWorkshopIds(workshopIds);
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2 || row[0] == null || row[1] == null) {
+                continue;
+            }
+            Long workshopId = (Long) row[0];
+            int count = ((Number) row[1]).intValue();
+            counts.put(workshopId, count);
+        }
+
+        return counts;
     }
 
     // 绉佹湁杈呭姪鏂规硶锛岀敤浜庡皢 Entity 鏄犲皠鍒?DTO
@@ -742,6 +761,7 @@ public class WorkshopServiceImpl implements WorkshopService {
             workshop.getMembersPresent(),
             workshop.getEventSubmitted(),
             workshop.getUsuApprovalStatus(),
+            Boolean.TRUE.equals(workshop.getHiddenByHost()),
             facilitatorDto,
             safeParticipants,
             workshop.getCreatedAt()

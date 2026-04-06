@@ -52,6 +52,7 @@ export interface Workshop {
   membersPresent?: string;
   eventSubmitted?: boolean;
   usuApprovalStatus?: 'pending' | 'approved';
+  hiddenByHost?: boolean;
   rejectionNote?: string;
   facilitator: Facilitator | null;
   tags?: string[];
@@ -65,7 +66,6 @@ export interface Workshop {
 
 export interface MemoryEntry {
   id: string;
-  version?: number;
   title: string;
   slug: string;
   coverUrl?: string;
@@ -77,6 +77,9 @@ export interface MemoryEntry {
   updatedAt?: string;
   createdBy?: string;
   updatedBy?: string;
+  editLockOwnerId?: string;
+  editLockOwnerName?: string;
+  editLockExpiresAt?: string;
 }
 
 export interface CreditTransaction {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase/supabase';
+import { getAuthRedirectUrl } from '../lib/authRedirect';
 import { useApp } from '../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -80,7 +81,7 @@ export function AuthPage() {
       email: signUpData.email,
       password: signUpData.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/explore`,
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     });
     if (error) {
@@ -106,7 +107,7 @@ export function AuthPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: signInData.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/explore`,
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     });
     if (error) {

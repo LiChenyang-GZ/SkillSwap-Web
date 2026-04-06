@@ -92,16 +92,6 @@ public class WorkshopController {
         return ResponseEntity.ok(workshops);
     }
 
-    @GetMapping("/hosting/hidden")
-    public ResponseEntity<List<Long>> getHiddenHostingWorkshops(Authentication authentication) {
-        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
-
-        String userId = jwtAuth.getToken().getSubject();
-        return ResponseEntity.ok(workshopService.getHiddenHostingWorkshopIds(userId));
-    }
-
     @PostMapping("/{id}/hosting/hide")
     public ResponseEntity<ApiMessageDto> hideHostingWorkshop(
             @PathVariable Long id,

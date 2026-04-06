@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record MemoryEntryRequestDto(
-        Long version,
         String title,
         String slug,
         String coverUrl,

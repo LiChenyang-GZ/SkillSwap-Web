@@ -21,5 +21,9 @@ public interface MemoryService {
 
     void deleteMemory(Long id, Authentication authentication);
 
+    MemoryEntryResponseDto acquireEditLock(Long id, Authentication authentication);
+
+    void releaseEditLock(Long id, Authentication authentication);
+
     String uploadMemoryMedia(MultipartFile file, Authentication authentication);
 }

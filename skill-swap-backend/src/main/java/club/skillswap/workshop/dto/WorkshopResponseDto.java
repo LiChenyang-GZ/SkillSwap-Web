@@ -39,6 +39,7 @@ public record WorkshopResponseDto(
     String membersPresent,
     Boolean eventSubmitted,
     String usuApprovalStatus,
+    Boolean hiddenByHost,
     FacilitatorDto facilitator,
     List<WorkshopParticipantDto> participants,
     LocalDateTime createdAt

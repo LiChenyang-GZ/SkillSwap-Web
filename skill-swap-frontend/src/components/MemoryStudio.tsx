@@ -41,24 +41,24 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { toast } from 'sonner';
 
 type EditorMode = 'write' | 'preview' | 'split';
-type ConflictAction = 'save' | 'status';
+
+const LOCK_HEARTBEAT_MS = 60_000;
+
+const markdownSanitizeSchema = {
+  ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), 'u'],
+};
 
 interface ParsedMemoryDocument {
   body: string;
   title: string;
   coverUrl: string;
   mediaUrls: string[];
-}
-
-interface ConflictDialogState {
-  action: ConflictAction;
-  entryId: string | null;
-  myDocument: string;
-  serverEntry: MemoryEntry | null;
-  serverEntries: MemoryEntry[];
 }
 
 const EMPTY_DOC = `---
@@ -174,9 +174,28 @@ function getErrorStatus(error: unknown): number | null {
   return null;
 }
 
+function getErrorMessage(error: unknown): string | null {
+  if (!(error instanceof Error) || !error.message) {
+    return null;
+  }
+
+  const raw = error.message.trim();
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { message?: string; error?: string };
+    return parsed.message || parsed.error || raw;
+  } catch {
+    return raw;
+  }
+}
+
 export function MemoryStudio() {
-  const { sessionToken, isAdmin, setCurrentPage } = useApp();
+  const { sessionToken, isAdmin, setCurrentPage, user } = useApp();
   const hasSession = Boolean(sessionToken);
+  const currentUserId = user?.id ? String(user.id) : null;
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [documentText, setDocumentText] = useState<string>(EMPTY_DOC);
@@ -185,13 +204,15 @@ export function MemoryStudio() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [conflictDialog, setConflictDialog] = useState<ConflictDialogState | null>(null);
+  const [lockMessage, setLockMessage] = useState<string | null>(null);
   const [deleteDialogEntry, setDeleteDialogEntry] = useState<MemoryEntry | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [entryPage, setEntryPage] = useState(1);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const skipNextSelectionSyncRef = useRef(false);
+  const lockHeartbeatRef = useRef<number | null>(null);
+  const heldLockEntryIdRef = useRef<string | null>(null);
 
   const selectedEntry = useMemo(
     () => entries.find((entry) => entry.id === selectedId) || null,
@@ -200,8 +221,12 @@ export function MemoryStudio() {
 
   const parsedDoc = useMemo(() => parseMemoryDocument(documentText), [documentText]);
   const activeStatus: MemoryEntry['status'] = selectedEntry?.status || 'draft';
+  const isDraftEntry = Boolean(selectedEntry && activeStatus === 'draft');
+  const lockedByUserId = selectedEntry?.editLockOwnerId ? String(selectedEntry.editLockOwnerId) : null;
+  const isLockedByMe = Boolean(isDraftEntry && lockedByUserId && currentUserId && lockedByUserId === currentUserId);
+  const isLockedByOther = Boolean(isDraftEntry && lockedByUserId && currentUserId && lockedByUserId !== currentUserId);
   const isReadOnlyEntry = Boolean(selectedEntry && activeStatus !== 'draft');
-  const editorActionsDisabled = isSaving || isUploadingImage || isReadOnlyEntry;
+  const editorActionsDisabled = isSaving || isUploadingImage || isReadOnlyEntry || (isDraftEntry && !isLockedByMe);
   const baseDocumentText = useMemo(
     () => (selectedEntry ? buildDocumentFromEntry(selectedEntry) : EMPTY_DOC),
     [selectedEntry]
@@ -214,91 +239,70 @@ export function MemoryStudio() {
     [entries.length]
   );
 
+  const isEntryDraftLockedByOther = (entry: MemoryEntry): boolean => {
+    if (!currentUserId) return false;
+    if (entry.status !== 'draft') return false;
+    const ownerId = entry.editLockOwnerId ? String(entry.editLockOwnerId) : null;
+    return Boolean(ownerId && ownerId !== currentUserId);
+  };
+
   const pagedEntries = useMemo(() => {
     const start = (entryPage - 1) * ENTRY_PAGE_SIZE;
     return entries.slice(start, start + ENTRY_PAGE_SIZE);
   }, [entries, entryPage]);
 
-  const openConflictDialog = async (params: {
-    action: ConflictAction;
-    entryId: string | null;
-    myDocument: string;
-  }): Promise<boolean> => {
-    if (!sessionToken || !params.entryId) {
-      toast.error('Conflict detected. Please refresh and retry.');
-      return false;
+  const applyEntryPatch = (nextEntry: MemoryEntry) => {
+    setEntries((prev) => prev.map((item) => (item.id === nextEntry.id ? nextEntry : item)));
+    if (selectedId === nextEntry.id) {
+      setSelectedStatus(nextEntry.status || 'draft');
+    }
+  };
+
+  const releaseHeldLock = async (entryId: string, silent = true) => {
+    if (!sessionToken) return;
+    try {
+      await memoryAPI.releaseLockByAdmin(entryId, sessionToken);
+    } catch (error) {
+      if (!silent) {
+        const msg = getErrorMessage(error) || 'Failed to release edit lock.';
+        toast.error(msg);
+      }
+    }
+  };
+
+  const acquireLockForEntry = async (entryId: string, silent = false): Promise<MemoryEntry | null> => {
+    if (!sessionToken || !currentUserId) {
+      return null;
     }
 
     try {
-      const latestEntries = await memoryAPI.getAllForAdmin(sessionToken);
-      const latestEntry = latestEntries.find((item) => item.id === params.entryId) || null;
+      const lockedEntry = await memoryAPI.acquireLockByAdmin(entryId, sessionToken);
+      applyEntryPatch(lockedEntry);
 
-      setConflictDialog({
-        action: params.action,
-        entryId: params.entryId,
-        myDocument: params.myDocument,
-        serverEntry: latestEntry,
-        serverEntries: latestEntries,
-      });
-      return true;
-    } catch (error) {
-      console.error(error);
-      toast.error('Conflict detected, but failed to load the latest server version.');
-      return false;
-    }
-  };
-
-  const handleKeepMyChangesAfterConflict = () => {
-    if (!conflictDialog) return;
-
-    const { entryId, myDocument, serverEntries, serverEntry } = conflictDialog;
-
-    if (serverEntries.length > 0) {
-      skipNextSelectionSyncRef.current = true;
-      setIsCreatingNew(false);
-      setEntries(serverEntries);
-
-      if (entryId && serverEntries.some((item) => item.id === entryId)) {
-        setSelectedId(entryId);
-        setSelectedStatus(serverEntry?.status || 'draft');
-      } else {
-        setSelectedId(serverEntries[0].id);
-        setSelectedStatus(serverEntries[0].status || 'draft');
+      if (lockedEntry.editLockOwnerId && String(lockedEntry.editLockOwnerId) === currentUserId) {
+        heldLockEntryIdRef.current = entryId;
+        setLockMessage(null);
+      } else if (lockedEntry.editLockOwnerId) {
+        const owner = lockedEntry.editLockOwnerName || 'another admin';
+        setLockMessage(`This entry is currently locked by ${owner}.`);
       }
+
+      return lockedEntry;
+    } catch (error) {
+      const status = getErrorStatus(error);
+      const message = getErrorMessage(error) || 'Failed to acquire edit lock.';
+
+      if (status === 423) {
+        setLockMessage(message);
+        if (!silent) {
+          toast.info(message);
+        }
+      } else if (!silent) {
+        toast.error(message);
+      }
+
+      return null;
     }
-
-    setDocumentText(myDocument);
-    setConflictDialog(null);
-    toast.info('Kept your local edits. Server metadata has been refreshed.');
-  };
-
-  const handleReloadServerVersionAfterConflict = () => {
-    if (!conflictDialog) return;
-
-    const { entryId, serverEntry, serverEntries } = conflictDialog;
-    setIsCreatingNew(false);
-    setEntries(serverEntries);
-
-    if (serverEntry) {
-      setSelectedId(serverEntry.id);
-      setSelectedStatus(serverEntry.status || 'draft');
-      setDocumentText(buildDocumentFromEntry(serverEntry));
-    } else if (serverEntries.length > 0) {
-      const fallback = entryId
-        ? serverEntries.find((item) => item.id === entryId) || serverEntries[0]
-        : serverEntries[0];
-
-      setSelectedId(fallback.id);
-      setSelectedStatus(fallback.status || 'draft');
-      setDocumentText(buildDocumentFromEntry(fallback));
-    } else {
-      setSelectedId(null);
-      setSelectedStatus('draft');
-      setDocumentText(EMPTY_DOC);
-    }
-
-    setConflictDialog(null);
-    toast.success('Reloaded latest server version.');
   };
 
   const loadEntries = async () => {
@@ -308,6 +312,7 @@ export function MemoryStudio() {
       const data = await memoryAPI.getAllForAdmin(sessionToken);
       setEntries(data);
       setEntryPage(1);
+      setLockMessage(null);
 
       if (!selectedId && data.length > 0 && !isCreatingNew) {
         setSelectedId(data[0].id);
@@ -322,11 +327,17 @@ export function MemoryStudio() {
 
   useEffect(() => {
     if (!hasSession) {
+      if (lockHeartbeatRef.current !== null) {
+        window.clearInterval(lockHeartbeatRef.current);
+        lockHeartbeatRef.current = null;
+      }
+      heldLockEntryIdRef.current = null;
       setEntries([]);
       setSelectedId(null);
       setIsCreatingNew(false);
       setDocumentText(EMPTY_DOC);
       setSelectedStatus('draft');
+      setLockMessage(null);
       return;
     }
     void loadEntries();
@@ -343,6 +354,59 @@ export function MemoryStudio() {
     setDocumentText(buildDocumentFromEntry(selectedEntry));
     setSelectedStatus(selectedEntry.status || 'draft');
   }, [selectedEntry]);
+
+  useEffect(() => {
+    const selectedEntryId = selectedEntry?.id;
+    const shouldManageLock = Boolean(
+      sessionToken &&
+      currentUserId &&
+      selectedEntryId &&
+      !isCreatingNew &&
+      selectedEntry?.status === 'draft'
+    );
+
+    if (!shouldManageLock || !selectedEntryId) {
+      if (lockHeartbeatRef.current !== null) {
+        window.clearInterval(lockHeartbeatRef.current);
+        lockHeartbeatRef.current = null;
+      }
+      return;
+    }
+
+    let disposed = false;
+
+    const syncLock = async (silent: boolean) => {
+      const locked = await acquireLockForEntry(selectedEntryId, silent);
+      if (disposed || !locked) {
+        return;
+      }
+      if (locked.editLockOwnerId && String(locked.editLockOwnerId) !== currentUserId) {
+        const owner = locked.editLockOwnerName || 'another admin';
+        setLockMessage(`This entry is currently locked by ${owner}.`);
+      } else {
+        setLockMessage(null);
+      }
+    };
+
+    void syncLock(false);
+    lockHeartbeatRef.current = window.setInterval(() => {
+      void syncLock(true);
+    }, LOCK_HEARTBEAT_MS);
+
+    return () => {
+      disposed = true;
+
+      if (lockHeartbeatRef.current !== null) {
+        window.clearInterval(lockHeartbeatRef.current);
+        lockHeartbeatRef.current = null;
+      }
+
+      if (heldLockEntryIdRef.current === selectedEntryId) {
+        heldLockEntryIdRef.current = null;
+        void releaseHeldLock(selectedEntryId, true);
+      }
+    };
+  }, [sessionToken, currentUserId, selectedEntry?.id, selectedEntry?.status, isCreatingNew]);
 
   useEffect(() => {
     if (entryPage > totalEntryPages) {
@@ -497,11 +561,15 @@ export function MemoryStudio() {
       return;
     }
 
+    if (selectedEntry && selectedEntry.status === 'draft' && !isLockedByMe) {
+      toast.info(lockMessage || 'This draft is locked by another admin.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const statusToPersist = forcedStatus || selectedStatus;
       const payload: Partial<MemoryEntry> = {
-        version: selectedEntry?.version,
         title: parsedDoc.title,
         slug: undefined,
         coverUrl: parsedDoc.coverUrl || undefined,
@@ -515,6 +583,12 @@ export function MemoryStudio() {
         setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
         setIsCreatingNew(false);
         setSelectedStatus(updated.status || statusToPersist);
+
+        if ((updated.status || statusToPersist) !== 'draft' && heldLockEntryIdRef.current === selectedId) {
+          heldLockEntryIdRef.current = null;
+          void releaseHeldLock(selectedId, true);
+        }
+
         toast.success('Saved.');
       } else {
         const created = await memoryAPI.createByAdmin(payload, sessionToken);
@@ -526,12 +600,11 @@ export function MemoryStudio() {
       }
     } catch (error) {
       console.error(error);
-      if (getErrorStatus(error) === 409) {
-        await openConflictDialog({
-          action: 'save',
-          entryId: selectedId,
-          myDocument: documentText,
-        });
+      const status = getErrorStatus(error);
+      if (status === 423) {
+        const msg = getErrorMessage(error) || 'This draft is currently locked by another admin.';
+        setLockMessage(msg);
+        toast.info(msg);
         return;
       }
       toast.error('Failed to save memory.');
@@ -548,9 +621,18 @@ export function MemoryStudio() {
       return;
     }
 
+    if (deleteDialogEntry.status === 'draft' && isEntryDraftLockedByOther(deleteDialogEntry)) {
+      const owner = deleteDialogEntry.editLockOwnerName || 'another admin';
+      toast.info(`Cannot delete: this draft is currently locked by ${owner}.`);
+      return;
+    }
+
     setIsSaving(true);
     try {
       await memoryAPI.deleteByAdmin(deleteDialogEntry.id, sessionToken);
+      if (heldLockEntryIdRef.current === deleteDialogEntry.id) {
+        heldLockEntryIdRef.current = null;
+      }
       setEntries((prev) => prev.filter((item) => item.id !== deleteDialogEntry.id));
       setDeleteDialogEntry(null);
       toast.success('Deleted.');
@@ -568,9 +650,15 @@ export function MemoryStudio() {
       return;
     }
 
+    if (entry.status === 'draft' && isEntryDraftLockedByOther(entry)) {
+      const owner = entry.editLockOwnerName || 'another admin';
+      toast.info(`Cannot change status while ${owner} is editing this draft.`);
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const updated = await memoryAPI.updateByAdmin(entry.id, { status: nextStatus, version: entry.version }, sessionToken);
+      const updated = await memoryAPI.updateByAdmin(entry.id, { status: nextStatus }, sessionToken);
       setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       if (selectedId === entry.id) {
         setSelectedStatus(updated.status || nextStatus);
@@ -578,12 +666,11 @@ export function MemoryStudio() {
       toast.success(`Memory ${toStatusLabel(updated.status || nextStatus)}.`);
     } catch (error) {
       console.error(error);
-      if (getErrorStatus(error) === 409) {
-        await openConflictDialog({
-          action: 'status',
-          entryId: entry.id,
-          myDocument: documentText,
-        });
+      const status = getErrorStatus(error);
+      if (status === 423) {
+        const msg = getErrorMessage(error) || 'This draft is currently locked by another admin.';
+        setLockMessage(msg);
+        toast.info(msg);
         return;
       }
       toast.error('Failed to update memory status.');
@@ -658,6 +745,11 @@ export function MemoryStudio() {
                         }}
                       >
                         <div className="font-medium line-clamp-1">{entry.title}</div>
+                        {isEntryDraftLockedByOther(entry) && (
+                          <div className="text-xs text-amber-600 mt-1 line-clamp-1">
+                            Locked by {entry.editLockOwnerName || 'another admin'}
+                          </div>
+                        )}
                       </button>
 
                       <div className="flex items-center gap-2 shrink-0">
@@ -682,7 +774,7 @@ export function MemoryStudio() {
                                 onSelect={() => {
                                   void handleStatusForEntry(entry, 'published');
                                 }}
-                                disabled={isSaving || isUploadingImage}
+                                disabled={isSaving || isUploadingImage || isEntryDraftLockedByOther(entry)}
                               >
                                 <Send className="w-4 h-4" />
                                 Publish
@@ -693,7 +785,7 @@ export function MemoryStudio() {
                                 onSelect={() => {
                                   void handleStatusForEntry(entry, 'archived');
                                 }}
-                                disabled={isSaving || isUploadingImage}
+                                disabled={isSaving || isUploadingImage || isEntryDraftLockedByOther(entry)}
                               >
                                 <EyeOff className="w-4 h-4" />
                                 Hide (Archive)
@@ -704,7 +796,7 @@ export function MemoryStudio() {
                                 onSelect={() => {
                                   void handleStatusForEntry(entry, 'draft');
                                 }}
-                                disabled={isSaving || isUploadingImage}
+                                disabled={isSaving || isUploadingImage || isEntryDraftLockedByOther(entry)}
                               >
                                 <ArchiveRestore className="w-4 h-4" />
                                 Move to Draft
@@ -715,7 +807,7 @@ export function MemoryStudio() {
                                 onSelect={() => {
                                   void handleStatusForEntry(entry, 'draft');
                                 }}
-                                disabled={isSaving || isUploadingImage}
+                                disabled={isSaving || isUploadingImage || isEntryDraftLockedByOther(entry)}
                               >
                                 <ArchiveRestore className="w-4 h-4" />
                                 Move to Draft
@@ -727,7 +819,7 @@ export function MemoryStudio() {
                               onSelect={() => {
                                 setDeleteDialogEntry(entry);
                               }}
-                              disabled={isSaving || isUploadingImage}
+                              disabled={isSaving || isUploadingImage || isEntryDraftLockedByOther(entry)}
                             >
                               <Trash2 className="w-4 h-4" />
                               Delete
@@ -779,7 +871,7 @@ export function MemoryStudio() {
                         setSelectedStatus('draft');
                         void handleSave('draft');
                       }}
-                      disabled={isSaving || isUploadingImage || !hasUnsavedDraftChanges}
+                      disabled={isSaving || isUploadingImage || !hasUnsavedDraftChanges || (isDraftEntry && !isLockedByMe)}
                       className={hasUnsavedDraftChanges ? '' : 'bg-transparent'}
                     >
                       <Save className="w-4 h-4 mr-1" />
@@ -817,6 +909,22 @@ export function MemoryStudio() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isDraftEntry && isLockedByOther && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p>
+                    {lockMessage || `This draft is currently locked by ${selectedEntry?.editLockOwnerName || 'another admin'}.`}
+                  </p>
+                </div>
+              )}
+
+              {isDraftEntry && isLockedByMe && (
+                <div className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
+                  <p>
+                    You hold the edit lock for this draft. Other admins can view but cannot edit until you leave this entry.
+                  </p>
+                </div>
+              )}
+
               {isReadOnlyEntry && (
                 <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
                   <p>
@@ -876,9 +984,10 @@ export function MemoryStudio() {
                 {(mode === 'preview' || mode === 'split') && (
                   <div className="space-y-2">
                     <div className="text-sm font-medium">Preview</div>
-                    <div className="min-h-[520px] rounded-md border border-border bg-card px-4 py-4 overflow-auto prose prose-sm dark:prose-invert max-w-none">
+                    <div className="markdown-preview min-h-[520px] rounded-md border border-border bg-card px-4 py-4 overflow-auto max-w-none">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
+                        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
                         components={{
                           img: ({ src, alt }) => (
                             <img
@@ -901,54 +1010,6 @@ export function MemoryStudio() {
           </Card>
         </div>
       </div>
-
-      <Dialog
-        open={Boolean(conflictDialog)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setConflictDialog(null);
-          }
-        }}
-      >
-        <DialogContent className="max-w-6xl">
-          <DialogHeader>
-            <DialogTitle>Conflict Detected</DialogTitle>
-            <DialogDescription>
-              Another admin changed this memory on the server. Compare both versions and choose how to proceed.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">My Local Edits</p>
-              <pre className="max-h-[420px] overflow-auto rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 whitespace-pre-wrap break-words">
-                {conflictDialog?.myDocument || '*Empty*'}
-              </pre>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-sm font-medium">
-                Server Version
-                {conflictDialog?.action === 'status' ? ' (updated status by another admin)' : ''}
-              </p>
-              <pre className="max-h-[420px] overflow-auto rounded-md border border-border bg-muted/20 p-3 text-xs leading-5 whitespace-pre-wrap break-words">
-                {conflictDialog?.serverEntry
-                  ? buildDocumentFromEntry(conflictDialog.serverEntry)
-                  : 'This entry no longer exists on the server.'}
-              </pre>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={handleKeepMyChangesAfterConflict}>
-              Keep My Changes
-            </Button>
-            <Button onClick={handleReloadServerVersionAfterConflict}>
-              Reload Server Version
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={Boolean(deleteDialogEntry)}

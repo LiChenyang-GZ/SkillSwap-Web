@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 
@@ -59,18 +58,32 @@ public class AdminMemoryController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/lock")
+    public ResponseEntity<MemoryEntryResponseDto> acquireEditLock(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(memoryService.acquireEditLock(id, authentication));
+    }
+
+    @DeleteMapping("/{id}/lock")
+    public ResponseEntity<Void> releaseEditLock(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        memoryService.releaseEditLock(id, authentication);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping(value = "/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MemoryMediaUploadResponseDto> uploadMedia(
             @RequestPart("file") MultipartFile file,
             Authentication authentication
     ) {
-        String relativePath = memoryService.uploadMemoryMedia(file, authentication);
-        String absoluteUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path(relativePath)
-                .toUriString();
+        String mediaUrl = memoryService.uploadMemoryMedia(file, authentication);
 
         return new ResponseEntity<>(
-                new MemoryMediaUploadResponseDto(absoluteUrl, relativePath),
+            new MemoryMediaUploadResponseDto(mediaUrl, mediaUrl),
                 HttpStatus.CREATED
         );
     }

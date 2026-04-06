@@ -37,5 +37,13 @@ public interface WorkshopParticipantRepository extends JpaRepository<WorkshopPar
         where wp.workshop.id in :workshopIds
         """)
     List<WorkshopParticipant> findByWorkshopIdInWithUser(@Param("workshopIds") List<Long> workshopIds);
+
+    @Query("""
+        select wp.workshop.id, count(wp.id)
+        from WorkshopParticipant wp
+        where wp.workshop.id in :workshopIds
+        group by wp.workshop.id
+        """)
+    List<Object[]> countParticipantsByWorkshopIds(@Param("workshopIds") List<Long> workshopIds);
 }
 

@@ -162,7 +162,7 @@ export function Dashboard() {
   };
 
   const participantWorkshops = workshops
-    .filter((w) => (w.participants ?? []).some((p) => p.id === user.id))
+    .filter((w) => !isHostedByCurrentUser(w))
     .filter((w) => isUserWorkshopVisible(w));
 
   const participantUpcomingWorkshops = participantWorkshops.filter((w) => {
@@ -194,7 +194,7 @@ export function Dashboard() {
   ]);
 
   const hostingWorkshops = allHostedWorkshops.filter(
-    (w) => !hiddenHostedWorkshopIds.includes(w.id)
+    (w) => !Boolean(w.hiddenByHost) && !hiddenHostedWorkshopIds.includes(w.id)
   );
 
   const sortedUpcomingWorkshops = sortByStartAsc(upcomingWorkshops);
@@ -274,30 +274,6 @@ export function Dashboard() {
   useEffect(() => {
     setEditUsername(user.username);
   }, [user.username]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const loadHiddenHostingWorkshops = async () => {
-      if (!sessionToken) {
-        if (isActive) {
-          setHiddenHostedWorkshopIds([]);
-        }
-        return;
-      }
-
-      const hiddenIds = await workshopAPI.getHiddenHostingIds(sessionToken);
-      if (isActive) {
-        setHiddenHostedWorkshopIds(hiddenIds);
-      }
-    };
-
-    void loadHiddenHostingWorkshops();
-
-    return () => {
-      isActive = false;
-    };
-  }, [sessionToken, user.id]);
 
   useEffect(() => {
     const currentHostingIds = new Set(allHostedWorkshops.map((workshop) => workshop.id));
@@ -392,8 +368,17 @@ export function Dashboard() {
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      const message = 'Only image files are supported.';
+    const supportedImageTypes = new Set([
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml',
+    ]);
+    const contentType = String(file.type || '').toLowerCase();
+    if (!supportedImageTypes.has(contentType)) {
+      const message = 'Unsupported image format. Please use PNG/JPG/WEBP/GIF/SVG.';
       setProfileError(message);
       toast.error(message);
       return;
@@ -444,7 +429,7 @@ export function Dashboard() {
               <CardContent className="p-6">
                 <div className="text-center">
                   <Avatar className="w-20 h-20 mx-auto mb-4">
-                    <AvatarImage src={user.avatarUrl} alt={user.username} />
+                    <AvatarImage key={user.avatarUrl || 'empty-avatar'} src={user.avatarUrl} alt={user.username} />
                     <AvatarFallback className="text-lg">
                       {user.username.split(' ').map(n => n[0]).join('')}
                     </AvatarFallback>
@@ -811,7 +796,11 @@ export function Dashboard() {
               <Label>Avatar</Label>
               <div className="flex items-center gap-3">
                 <Avatar className="h-14 w-14">
-                  <AvatarImage src={pendingAvatarPreviewUrl ?? user.avatarUrl} alt={user.username} />
+                  <AvatarImage
+                    key={(pendingAvatarPreviewUrl ?? user.avatarUrl) || 'empty-avatar-edit'}
+                    src={pendingAvatarPreviewUrl ?? user.avatarUrl}
+                    alt={user.username}
+                  />
                   <AvatarFallback>
                     {user.username.split(' ').map((n) => n[0]).join('') || '?'}
                   </AvatarFallback>
@@ -820,7 +809,7 @@ export function Dashboard() {
                   <input
                     ref={avatarFileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml"
                     className="hidden"
                     onChange={handleAvatarFileChange}
                   />

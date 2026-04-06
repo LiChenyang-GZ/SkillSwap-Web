@@ -1,6 +1,7 @@
 package club.skillswap.memory.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
+import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.memory.dto.MemoryEntryRequestDto;
 import club.skillswap.memory.dto.MemoryEntryResponseDto;
 import club.skillswap.memory.entity.MemoryEntry;
@@ -18,17 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -39,15 +39,20 @@ public class MemoryServiceImpl implements MemoryService {
     private static final String STATUS_ARCHIVED = "archived";
     private static final int MAX_SLUG_LENGTH = 220;
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
+    private static final long DEFAULT_EDIT_LOCK_SECONDS = 180L;
+    private static final Pattern MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^\\]]*\\]\\(([^)]+)\\)");
+    private static final Pattern RAW_URL_PATTERN = Pattern.compile("https?://[^\\s)]+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern MEDIA_FILE_PATTERN = Pattern.compile(".*\\.(png|jpg|jpeg|gif|webp|svg|mp4|mov|webm)(\\?.*)?$", Pattern.CASE_INSENSITIVE);
 
     private final MemoryEntryRepository memoryEntryRepository;
     private final UserService userService;
-
-    @Value("${app.upload.base-dir:uploads}")
-    private String uploadBaseDir;
+    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
+
+    @Value("${app.memory.edit-lock-seconds:" + DEFAULT_EDIT_LOCK_SECONDS + "}")
+    private long editLockSeconds;
 
     @Override
     @Transactional(readOnly = true)
@@ -96,20 +101,19 @@ public class MemoryServiceImpl implements MemoryService {
     public MemoryEntryResponseDto updateMemory(Long id, MemoryEntryRequestDto requestDto, Authentication authentication) {
         UserAccount actor = requireAdminAndResolveActor(authentication);
 
-        MemoryEntry entry = memoryEntryRepository.findById(id)
+        MemoryEntry entry = memoryEntryRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Memory not found with ID: " + id));
 
-        Long requestVersion = requestDto.version();
-        Long currentVersion = entry.getVersion();
-        if (requestVersion == null || currentVersion == null || !currentVersion.equals(requestVersion)) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "This memory was updated by another admin. Please refresh and try again."
-            );
+        if (STATUS_DRAFT.equals(entry.getStatus())) {
+            requireActiveEditLockOwner(entry, actor, true);
         }
 
         applyPayload(entry, requestDto, false);
         entry.setUpdatedBy(actor);
+
+        if (!STATUS_DRAFT.equals(entry.getStatus())) {
+            clearEditLock(entry);
+        }
 
         MemoryEntry saved = memoryEntryRepository.save(entry);
         return toResponse(saved);
@@ -118,12 +122,69 @@ public class MemoryServiceImpl implements MemoryService {
     @Override
     @Transactional
     public void deleteMemory(Long id, Authentication authentication) {
-        requireAdmin(authentication);
+        UserAccount actor = requireAdminAndResolveActor(authentication);
 
-        MemoryEntry entry = memoryEntryRepository.findById(id)
+        MemoryEntry entry = memoryEntryRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Memory not found with ID: " + id));
 
+        if (STATUS_DRAFT.equals(entry.getStatus())) {
+            requireActiveEditLockOwner(entry, actor, false);
+        }
+
+        Set<String> mediaUrlsToDelete = collectMediaUrlsForCleanup(entry);
         memoryEntryRepository.delete(entry);
+        deleteStorageObjects(mediaUrlsToDelete);
+    }
+
+    @Override
+    @Transactional
+    public MemoryEntryResponseDto acquireEditLock(Long id, Authentication authentication) {
+        UserAccount actor = requireAdminAndResolveActor(authentication);
+        MemoryEntry entry = memoryEntryRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Memory not found with ID: " + id));
+
+        if (!STATUS_DRAFT.equals(entry.getStatus())) {
+            return toResponse(entry);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (isLockActive(entry, now) && !isLockOwnedBy(entry, actor)) {
+            String owner = resolveLockOwnerLabel(entry);
+            throw new ResponseStatusException(
+                    HttpStatus.LOCKED,
+                    "This memory is currently being edited by " + owner + "."
+            );
+        }
+
+        setLock(entry, actor, now);
+        MemoryEntry saved = memoryEntryRepository.save(entry);
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public void releaseEditLock(Long id, Authentication authentication) {
+        UserAccount actor = requireAdminAndResolveActor(authentication);
+        MemoryEntry entry = memoryEntryRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Memory not found with ID: " + id));
+
+        LocalDateTime now = LocalDateTime.now();
+        if (!isLockActive(entry, now)) {
+            clearEditLock(entry);
+            memoryEntryRepository.save(entry);
+            return;
+        }
+
+        if (!isLockOwnedBy(entry, actor)) {
+            String owner = resolveLockOwnerLabel(entry);
+            throw new ResponseStatusException(
+                    HttpStatus.LOCKED,
+                    "This memory lock is owned by " + owner + "."
+            );
+        }
+
+        clearEditLock(entry);
+        memoryEntryRepository.save(entry);
     }
 
     @Override
@@ -145,22 +206,8 @@ public class MemoryServiceImpl implements MemoryService {
 
         String extension = resolveFileExtension(file.getOriginalFilename(), contentType);
         String fileName = UUID.randomUUID() + extension;
-
-        Path targetDirectory = Paths.get(uploadBaseDir, "memory").toAbsolutePath().normalize();
-        Path targetFile = targetDirectory.resolve(fileName).normalize();
-
-        if (!targetFile.startsWith(targetDirectory)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file path.");
-        }
-
-        try {
-            Files.createDirectories(targetDirectory);
-            Files.copy(file.getInputStream(), targetFile, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to store image.");
-        }
-
-        return "/uploads/memory/" + fileName;
+        String objectPath = "memory/" + fileName;
+        return supabaseStorageService.uploadImage(file, objectPath);
     }
 
     private void applyPayload(MemoryEntry entry, MemoryEntryRequestDto requestDto, boolean createMode) {
@@ -329,9 +376,20 @@ public class MemoryServiceImpl implements MemoryService {
                 ? entry.getUpdatedBy().getId().toString()
                 : null;
 
+        LocalDateTime now = LocalDateTime.now();
+        UserAccount activeLockOwner = isLockActive(entry, now) ? entry.getEditLockOwner() : null;
+        String editLockOwnerId = activeLockOwner != null && activeLockOwner.getId() != null
+            ? activeLockOwner.getId().toString()
+            : null;
+        String editLockOwnerName = activeLockOwner != null
+            ? trimToNull(activeLockOwner.getUsername())
+            : null;
+        LocalDateTime editLockExpiresAt = isLockActive(entry, now)
+            ? entry.getEditLockExpiresAt()
+            : null;
+
         return new MemoryEntryResponseDto(
                 entry.getId() != null ? entry.getId().toString() : null,
-            entry.getVersion(),
                 entry.getTitle(),
                 entry.getSlug(),
                 entry.getCoverUrl(),
@@ -342,8 +400,132 @@ public class MemoryServiceImpl implements MemoryService {
                 entry.getCreatedAt(),
                 entry.getUpdatedAt(),
                 createdBy,
-                updatedBy
+                updatedBy,
+                editLockOwnerId,
+                editLockOwnerName,
+                editLockExpiresAt
         );
+    }
+
+    private Set<String> collectMediaUrlsForCleanup(MemoryEntry entry) {
+        Set<String> urls = new LinkedHashSet<>();
+        String coverUrl = trimToNull(entry.getCoverUrl());
+        if (coverUrl != null) {
+            urls.add(coverUrl);
+        }
+
+        if (entry.getMedia() != null) {
+            for (MemoryMedia media : entry.getMedia()) {
+                if (media == null) {
+                    continue;
+                }
+                String mediaUrl = trimToNull(media.getMediaUrl());
+                if (mediaUrl != null) {
+                    urls.add(mediaUrl);
+                }
+            }
+        }
+
+        collectImageUrlsFromContent(entry.getContent(), urls);
+        return urls;
+    }
+
+    private void collectImageUrlsFromContent(String content, Set<String> urls) {
+        String normalizedContent = trimToNull(content);
+        if (normalizedContent == null) {
+            return;
+        }
+
+        Matcher markdownMatcher = MARKDOWN_IMAGE_PATTERN.matcher(normalizedContent);
+        while (markdownMatcher.find()) {
+            String url = trimToNull(markdownMatcher.group(1));
+            if (url != null) {
+                urls.add(url);
+            }
+        }
+
+        Matcher rawUrlMatcher = RAW_URL_PATTERN.matcher(normalizedContent);
+        while (rawUrlMatcher.find()) {
+            String url = trimToNull(rawUrlMatcher.group());
+            if (url != null && MEDIA_FILE_PATTERN.matcher(url).matches()) {
+                urls.add(url);
+            }
+        }
+    }
+
+    private void deleteStorageObjects(Set<String> urls) {
+        if (urls == null || urls.isEmpty()) {
+            return;
+        }
+
+        for (String url : urls) {
+            supabaseStorageService.deleteByPublicUrlQuietly(url);
+        }
+    }
+
+    private void requireActiveEditLockOwner(MemoryEntry entry, UserAccount actor, boolean touchExpiry) {
+        LocalDateTime now = LocalDateTime.now();
+        if (!isLockActive(entry, now)) {
+            clearEditLock(entry);
+            throw new ResponseStatusException(
+                    HttpStatus.LOCKED,
+                    "This memory is not locked for your session. Re-open it to acquire the edit lock."
+            );
+        }
+
+        if (!isLockOwnedBy(entry, actor)) {
+            String owner = resolveLockOwnerLabel(entry);
+            throw new ResponseStatusException(
+                    HttpStatus.LOCKED,
+                    "This memory is currently being edited by " + owner + "."
+            );
+        }
+
+        if (touchExpiry) {
+            setLock(entry, actor, now);
+        }
+    }
+
+    private boolean isLockActive(MemoryEntry entry, LocalDateTime now) {
+        if (entry.getEditLockOwner() == null) {
+            return false;
+        }
+        LocalDateTime expiresAt = entry.getEditLockExpiresAt();
+        return expiresAt != null && expiresAt.isAfter(now);
+    }
+
+    private boolean isLockOwnedBy(MemoryEntry entry, UserAccount actor) {
+        if (entry.getEditLockOwner() == null || entry.getEditLockOwner().getId() == null || actor == null || actor.getId() == null) {
+            return false;
+        }
+        return entry.getEditLockOwner().getId().equals(actor.getId());
+    }
+
+    private String resolveLockOwnerLabel(MemoryEntry entry) {
+        if (entry.getEditLockOwner() == null) {
+            return "another admin";
+        }
+        String username = trimToNull(entry.getEditLockOwner().getUsername());
+        if (username != null) {
+            return username;
+        }
+        if (entry.getEditLockOwner().getId() != null) {
+            return entry.getEditLockOwner().getId().toString();
+        }
+        return "another admin";
+    }
+
+    private void setLock(MemoryEntry entry, UserAccount actor, LocalDateTime now) {
+        long seconds = editLockSeconds > 0 ? editLockSeconds : DEFAULT_EDIT_LOCK_SECONDS;
+        entry.setEditLockOwner(actor);
+        entry.setEditLockAcquiredAt(now);
+        entry.setEditLockExpiresAt(now.plusSeconds(seconds));
+    }
+
+    private void clearEditLock(MemoryEntry entry) {
+        entry.setEditLockOwner(null);
+        entry.setEditLockAcquiredAt(null);
+        entry.setEditLockExpiresAt(null);
     }
 
     private UserAccount requireAdminAndResolveActor(Authentication authentication) {
