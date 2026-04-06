@@ -23,8 +23,9 @@ import {
 import {
   getUserWorkshopStatusBadgeVariant,
   getUserWorkshopStatusLabel,
-  isUserWorkshopUpcoming,
   isUserWorkshopVisible,
+  normalizeAdminWorkshopStatus,
+  resolveUserWorkshopStatus,
 } from './workshop/workshopStatusPublicApi';
 
 export function Dashboard() {
@@ -34,6 +35,7 @@ export function Dashboard() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] = useState<string | null>(null);
+  const [hiddenHostedWorkshopIds, setHiddenHostedWorkshopIds] = useState<string[]>([]);
   const [profileError, setProfileError] = useState<string | null>(null);
   const avatarFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -46,17 +48,46 @@ export function Dashboard() {
     );
   }
 
-  // Get user's attended workshops
-  const attendedWorkshops = workshops.filter(w => 
-    (w.participants ?? []).some(p => p.id === user.id)
-  ).filter((w) => isUserWorkshopVisible(w));
+  const normalizedUsername = user.username.trim().toLowerCase();
+  const normalizedEmail = user.email.trim().toLowerCase();
+  const isHostedByCurrentUser = (workshop: (typeof workshops)[number]) => {
+    const facilitatorId = workshop.facilitator?.id ? String(workshop.facilitator.id) : null;
+    if (facilitatorId && facilitatorId === String(user.id)) {
+      return true;
+    }
 
-  // Get user's hosted workshops
-  const hostedWorkshops = workshops.filter(w => w.facilitator?.id === user.id).filter((w) => isUserWorkshopVisible(w));
+    const submitterEmail = String(workshop.submitterEmail || '').trim().toLowerCase();
+    if (submitterEmail && normalizedEmail && submitterEmail === normalizedEmail) {
+      return true;
+    }
 
-  // Calculate stats  ?? better to store numbers in database and fetch 
-  const upcomingAttended = attendedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
-  const upcomingHosted = hostedWorkshops.filter((w) => isUserWorkshopUpcoming(w)).length;
+    const submitterName = String(workshop.submitterUsername || workshop.hostName || workshop.facilitator?.name || '')
+      .trim()
+      .toLowerCase();
+    return Boolean(submitterName && normalizedUsername && submitterName === normalizedUsername);
+  };
+
+  const participantWorkshops = workshops
+    .filter((w) => (w.participants ?? []).some((p) => p.id === user.id))
+    .filter((w) => isUserWorkshopVisible(w));
+
+  const upcomingWorkshops = participantWorkshops.filter((w) => {
+    const status = resolveUserWorkshopStatus(w);
+    return status === 'upcoming' || status === 'ongoing';
+  });
+
+  const attendedWorkshops = participantWorkshops.filter(
+    (w) => resolveUserWorkshopStatus(w) === 'completed'
+  );
+
+  const allHostedWorkshops = workshops.filter(isHostedByCurrentUser);
+  const hostingWorkshops = allHostedWorkshops.filter(
+    (w) => !hiddenHostedWorkshopIds.includes(w.id)
+  );
+
+  const removeHostedWorkshopFromView = (workshopId: string) => {
+    setHiddenHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
+  };
 
   useEffect(() => {
     setEditUsername(user.username);
@@ -247,8 +278,8 @@ export function Dashboard() {
                         <Calendar className="w-5 h-5 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Upcoming</p>
-                        <p className="text-xl font-bold">{upcomingAttended + upcomingHosted}</p>
+                        <p className="text-sm text-muted-foreground">My Upcoming Workshops</p>
+                        <p className="text-xl font-bold">{upcomingWorkshops.length}</p>
                       </div>
                     </div>
                   </div>
@@ -264,7 +295,7 @@ export function Dashboard() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Attended</p>
-                        <p className="text-xl font-bold">{user.totalWorkshopsAttended}</p>
+                        <p className="text-xl font-bold">{attendedWorkshops.length}</p>
                       </div>
                     </div>
                   </div>
@@ -279,8 +310,8 @@ export function Dashboard() {
                         <Target className="w-5 h-5 text-accent" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Hosted</p>
-                        <p className="text-xl font-bold">{user.totalWorkshopsHosted}</p>
+                        <p className="text-sm text-muted-foreground">Hosting Workshops</p>
+                        <p className="text-xl font-bold">{hostingWorkshops.length}</p>
                       </div>
                     </div>
                   </div>
@@ -291,25 +322,28 @@ export function Dashboard() {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <Tabs defaultValue="attending" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="attending">
-                  Attending ({upcomingAttended})
+            <Tabs defaultValue="upcoming" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="upcoming">
+                  My Upcoming ({upcomingWorkshops.length})
+                </TabsTrigger>
+                <TabsTrigger value="attended">
+                  Attended ({attendedWorkshops.length})
                 </TabsTrigger>
                 <TabsTrigger value="hosting">
-                  Hosting ({upcomingHosted})
+                  Hosting ({hostingWorkshops.length})
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="attending" className="space-y-4">
+              <TabsContent value="upcoming" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Workshops You're Attending</CardTitle>
+                    <CardTitle>My Upcoming Workshops</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {attendedWorkshops.length > 0 ? (
+                    {upcomingWorkshops.length > 0 ? (
                       <div className="space-y-4">
-                        {attendedWorkshops.map((workshop) => (
+                        {upcomingWorkshops.map((workshop) => (
                           <div key={workshop.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
                             <div className="flex-1">
                               <h3 className="font-semibold mb-1">{workshop.title}</h3>
@@ -353,7 +387,7 @@ export function Dashboard() {
                               >
                                 {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
                               </Badge>
-                              {isUserWorkshopUpcoming(workshop) && (
+                              {resolveUserWorkshopStatus(workshop) === 'upcoming' && (
                                 <Button 
                                   variant="outline" 
                                   size="sm"
@@ -369,9 +403,9 @@ export function Dashboard() {
                     ) : (
                       <div className="text-center py-8">
                         <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="font-semibold mb-2">No workshops yet</h3>
+                        <h3 className="font-semibold mb-2">No upcoming workshops</h3>
                         <p className="text-muted-foreground mb-4">
-                          Start attending workshops to build your skills
+                          Explore workshops and join sessions you want to attend.
                         </p>
                         <Button onClick={() => setCurrentPage('explore')}>
                           Explore Workshops
@@ -382,30 +416,16 @@ export function Dashboard() {
                 </Card>
               </TabsContent>
 
-
-                    {/* Edit */}
-              <TabsContent value="hosting" className="space-y-4">
+              <TabsContent value="attended" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Workshops You're Hosting</CardTitle>
+                    <CardTitle>Attended Workshops</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {hostedWorkshops.length > 0 ? (
+                    {attendedWorkshops.length > 0 ? (
                       <div className="space-y-4">
-                        {hostedWorkshops.map((workshop) => (
-                          <div
-                            key={workshop.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                setCurrentPage(`workshop-${workshop.id}`);
-                              }
-                            }}
-                            className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
-                          >
+                        {attendedWorkshops.map((workshop) => (
+                          <div key={workshop.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
                             <div className="flex-1">
                               <h3 className="font-semibold mb-1">{workshop.title}</h3>
                               <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
@@ -417,40 +437,118 @@ export function Dashboard() {
                                   <Clock className="w-4 h-4" />
                                   <span>{workshop.time}</span>
                                 </div>
-                                <div className="flex items-center space-x-1">
-                                  <Users className="w-4 h-4" />
-                                  <span>{workshop.currentParticipants}/{workshop.maxParticipants}</span>
-                                </div>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-3">
                                 <Badge variant="secondary">{workshop.category}</Badge>
-                                {/* 积分系统已停用：隐藏 host 奖励展示。 */}
-                                {/*
-                                <Badge variant="outline" className="text-primary">
-                                  <Award className="w-3 h-3 mr-1" />
-                                  +{workshop.creditReward} credits
-                                </Badge>
-                                */}
-                                <Badge variant="outline">Open Access</Badge>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge 
-                                variant={getUserWorkshopStatusBadgeVariant(workshop)}
-                              >
-                                {getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}
-                              </Badge>
-
-                            </div>
+                            <Badge variant="outline">Completed</Badge>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="font-semibold mb-2">No workshops hosted yet</h3>
+                        <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="font-semibold mb-2">No attended workshops yet</h3>
                         <p className="text-muted-foreground mb-4">
-                          Share your expertise by hosting workshops
+                          Workshops you have completed will appear here.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+
+                    {/* Edit */}
+              <TabsContent value="hosting" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hosting Workshops</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {hostingWorkshops.length > 0 ? (
+                      <div className="space-y-4">
+                        {hostingWorkshops.map((workshop) => {
+                          const adminStatus = normalizeAdminWorkshopStatus(workshop.status);
+                          const removable = adminStatus === 'rejected' || adminStatus === 'cancelled';
+                          const statusLabel =
+                            adminStatus === 'rejected'
+                              ? 'Rejected'
+                              : adminStatus === 'cancelled'
+                              ? 'Cancelled'
+                              : getUserWorkshopStatusLabel(workshop) ?? 'Upcoming';
+
+                          return (
+                            <div
+                              key={workshop.id}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setCurrentPage(`workshop-${workshop.id}`)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  setCurrentPage(`workshop-${workshop.id}`);
+                                }
+                              }}
+                              className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                            >
+                              <div className="flex-1">
+                                <h3 className="font-semibold mb-1">{workshop.title}</h3>
+                                <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
+                                  <div className="flex items-center space-x-1">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>{new Date(workshop.date).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Clock className="w-4 h-4" />
+                                    <span>{workshop.time}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Users className="w-4 h-4" />
+                                    <span>{workshop.currentParticipants}/{workshop.maxParticipants}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="secondary">{workshop.category}</Badge>
+                                  <Badge variant="outline">Open Access</Badge>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Badge
+                                  variant={
+                                    removable
+                                      ? 'destructive'
+                                      : getUserWorkshopStatusBadgeVariant(workshop)
+                                  }
+                                >
+                                  {statusLabel}
+                                </Badge>
+                                {removable && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      removeHostedWorkshopFromView(workshop.id);
+                                    }}
+                                  >
+                                    Remove
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="font-semibold mb-2">No hosting workshops to show</h3>
+                        <p className="text-muted-foreground mb-4">
+                          Host a workshop, or remove rejected/cancelled items from this list.
                         </p>
                         <Button onClick={() => setCurrentPage('create')}>
                           Host a Workshop
