@@ -61,6 +61,16 @@ public class MemoryEntry {
     @JoinColumn(name = "updated_by")
     private UserAccount updatedBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "edit_lock_owner")
+    private UserAccount editLockOwner;
+
+    @Column(name = "edit_lock_acquired_at")
+    private LocalDateTime editLockAcquiredAt;
+
+    @Column(name = "edit_lock_expires_at")
+    private LocalDateTime editLockExpiresAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

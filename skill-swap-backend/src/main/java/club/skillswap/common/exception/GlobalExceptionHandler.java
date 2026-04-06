@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import club.skillswap.common.dto.ErrorResponseDto;
 
@@ -165,6 +166,28 @@ public class GlobalExceptionHandler {
         );
         log.warn("Data integrity violation: {}", ex.getMessage());
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleNoResourceFoundException(
+            NoResourceFoundException ex,
+            HttpServletRequest request
+    ) {
+        String path = request.getRequestURI();
+        if (path != null && path.startsWith("/uploads/")) {
+            log.debug("Legacy local upload asset not found: {}", path);
+        } else {
+            log.debug("Static resource not found: {}", path);
+        }
+
+        ErrorResponseDto body = new ErrorResponseDto(
+                Instant.now(),
+                HttpStatus.NOT_FOUND.value(),
+                "Not Found",
+                "Resource not found.",
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
 

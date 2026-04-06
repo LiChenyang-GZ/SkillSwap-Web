@@ -58,6 +58,23 @@ public class AdminMemoryController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/lock")
+    public ResponseEntity<MemoryEntryResponseDto> acquireEditLock(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(memoryService.acquireEditLock(id, authentication));
+    }
+
+    @DeleteMapping("/{id}/lock")
+    public ResponseEntity<Void> releaseEditLock(
+            @PathVariable Long id,
+            Authentication authentication
+    ) {
+        memoryService.releaseEditLock(id, authentication);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping(value = "/media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MemoryMediaUploadResponseDto> uploadMedia(
             @RequestPart("file") MultipartFile file,

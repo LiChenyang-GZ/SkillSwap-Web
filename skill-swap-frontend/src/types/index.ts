@@ -77,6 +77,9 @@ export interface MemoryEntry {
   updatedAt?: string;
   createdBy?: string;
   updatedBy?: string;
+  editLockOwnerId?: string;
+  editLockOwnerName?: string;
+  editLockExpiresAt?: string;
 }
 
 export interface CreditTransaction {
