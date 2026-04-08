@@ -146,6 +146,14 @@
   }
 }
 
+/* Tabs fallback */
+.tabs-trigger[data-state="active"] {
+  background-color: var(--color-card) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-foreground) !important;
+}
+
 @layer base {
   *, :after, :before, ::backdrop {
     box-sizing: border-box;
