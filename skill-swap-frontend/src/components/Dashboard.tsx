@@ -415,7 +415,7 @@ export function Dashboard() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0">
-            <Button onClick={() => setCurrentPage('create')}>
+            <Button onClick={() => setCurrentPage('create')} className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
               <Target className="w-4 h-4 mr-2" />
               Host a Workshop
             </Button>
@@ -772,7 +772,7 @@ export function Dashboard() {
                         <p className="text-muted-foreground mb-4">
                           Host a workshop, or remove rejected/cancelled items from this list.
                         </p>
-                        <Button onClick={() => setCurrentPage('create')}>
+                        <Button onClick={() => setCurrentPage('create')} className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
                           Host a Workshop
                         </Button>
                       </div>

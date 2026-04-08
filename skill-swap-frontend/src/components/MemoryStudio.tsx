@@ -975,7 +975,7 @@ export function MemoryStudio() {
                       onChange={(e) => setDocumentText(e.target.value)}
                       onPaste={handleEditorPaste}
                       readOnly={isReadOnlyEntry}
-                      className="w-full min-h-[520px] rounded-md border border-input bg-input-background px-3 py-2 text-sm font-mono leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      className="w-full min-h-[520px] rounded-md border border-border bg-input px-3 py-2 text-sm font-mono leading-6 shadow-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                       placeholder={isReadOnlyEntry ? 'This entry is read-only. Move it to draft to edit.' : 'Write markdown with front matter...'}
                     />
                   </div>

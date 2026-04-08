@@ -125,25 +125,33 @@
     --default-mono-font-variation-settings: var(--font-mono--font-variation-settings);
     --radius: .5rem;
     --color-background: #f7f3e9;
-    --color-foreground: #2d3748;
+    --color-foreground: #1a2530;
     --color-card: #fefcf7;
-    --color-card-foreground: #2d3748;
+    --color-card-foreground: #1a2530;
     --color-popover: #fefcf7;
-    --color-popover-foreground: #2d3748;
-    --color-primary: #2d3748;
-    --color-primary-foreground: #f7f3e9;
-    --color-secondary: #e67e22;
-    --color-secondary-foreground: #fff;
-    --color-muted: #f0ebe1;
-    --color-muted-foreground: #718096;
-    --color-accent: #c53030;
-    --color-accent-foreground: #fff;
-    --color-destructive: #e53e3e;
-    --color-border: #2d37481a;
-    --color-input: #f0ebe1;
-    --color-ring: #e67e22;
+    --color-popover-foreground: #1a2530;
+    --color-primary: #b8332b; /* Logo dark red puzzle piece */
+    --color-primary-foreground: #ffffff;
+    --color-secondary: #e5982e; /* Logo mustard yellow puzzle piece */
+    --color-secondary-foreground: #ffffff;
+    --color-muted: #e4e0d4;
+    --color-muted-foreground: #6b7280;
+    --color-accent: #1a2530; /* Logo dark slate blue text color */
+    --color-accent-foreground: #ffffff;
+    --color-destructive: #ef4444;
+    --color-border: #1a25301a;
+    --color-input: #fdfbf7; /* Lighter input background so texts are clear */
+    --color-ring: #e5982e;
     --color-charcoal-600: #4a5568;
   }
+}
+
+/* Tabs fallback */
+.tabs-trigger[data-state="active"] {
+  background-color: var(--color-card) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-foreground) !important;
 }
 
 @layer base {
@@ -169,6 +177,11 @@
     font-feature-settings: var(--default-font-feature-settings, normal);
     font-variation-settings: var(--default-font-variation-settings, normal);
     -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
   }
 
   body {

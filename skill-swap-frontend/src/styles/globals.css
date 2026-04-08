@@ -2,24 +2,24 @@
 
 @theme {
   --color-background: #F7F3E9;
-  --color-foreground: #2D3748;
+  --color-foreground: #1A2530;
   --color-card: #FEFCF7;
-  --color-card-foreground: #2D3748;
+  --color-card-foreground: #1A2530;
   --color-popover: #FEFCF7;
-  --color-popover-foreground: #2D3748;
-  --color-primary: #2D3748;
-  --color-primary-foreground: #F7F3E9;
-  --color-secondary: #B45309;
+  --color-popover-foreground: #1A2530;
+  --color-primary: #B8332B;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #E5982E;
   --color-secondary-foreground: #FFFFFF;
-  --color-muted: #F0EBE1;
-  --color-muted-foreground: #4A5568;
-  --color-accent: #C53030;
+  --color-muted: #E4E0D4;
+  --color-muted-foreground: #6B7280;
+  --color-accent: #1A2530;
   --color-accent-foreground: #FFFFFF;
-  --color-destructive: #E53E3E;
+  --color-destructive: #EF4444;
   --color-destructive-foreground: #FFFFFF;
-  --color-border: color-mix(in srgb, #2D3748 18%, transparent);
-  --color-input: #F0EBE1;
-  --color-ring: #E67E22;
+  --color-border: color-mix(in srgb, #1A2530 18%, transparent);
+  --color-input: #FDFBF7;
+  --color-ring: #E5982E;
   
   /* Custom color palette */
   --color-cream-50: #FEFCF7;
@@ -118,24 +118,24 @@
 /* Force light mode */
 .light {
   --color-background: #F7F3E9;
-  --color-foreground: #2D3748;
+  --color-foreground: #1A2530;
   --color-card: #FEFCF7;
-  --color-card-foreground: #2D3748;
+  --color-card-foreground: #1A2530;
   --color-popover: #FEFCF7;
-  --color-popover-foreground: #2D3748;
-  --color-primary: #2D3748;
-  --color-primary-foreground: #F7F3E9;
-  --color-secondary: #B45309;
+  --color-popover-foreground: #1A2530;
+  --color-primary: #B8332B;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #E5982E;
   --color-secondary-foreground: #FFFFFF;
-  --color-muted: #F0EBE1;
-  --color-muted-foreground: #4A5568;
-  --color-accent: #C53030;
+  --color-muted: #E4E0D4;
+  --color-muted-foreground: #6B7280;
+  --color-accent: #1A2530;
   --color-accent-foreground: #FFFFFF;
-  --color-destructive: #B42318;
+  --color-destructive: #EF4444;
   --color-destructive-foreground: #FFFFFF;
-  --color-border: color-mix(in srgb, #2D3748 18%, transparent);
-  --color-input: #F0EBE1;
-  --color-ring: #E67E22;
+  --color-border: color-mix(in srgb, #1A2530 18%, transparent);
+  --color-input: #FDFBF7;
+  --color-ring: #E5982E;
 }
 
 /* Custom utility classes */
@@ -182,6 +182,11 @@
 }
 
   @layer base {
+    ::selection {
+      background-color: var(--color-secondary);
+      color: var(--color-secondary-foreground);
+    }
+    
     input:-webkit-autofill,
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus,
