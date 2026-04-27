@@ -49,12 +49,4 @@ public class UserAccount {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<UserSkill> skills = new ArrayList<>();
-
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    @PrimaryKeyJoinColumn
-    private RatingSummary ratingSummary;
-
-    // 娉ㄦ剰锛歊eview 涓湁涓や釜 UserAccount 鐨勫閿紝杩欓噷鍙槧灏勭敤鎴蜂綔涓鸿瘎璁鸿€呯殑鍏崇郴
-    @OneToMany(mappedBy = "reviewer")
-    private List<Review> reviewsGiven;
 }

@@ -78,13 +78,9 @@ public class UserService {
         long workshopsHosted = workshopRepository.countByFacilitatorId(userId);
         long workshopsAttended = participantRepository.countByUserId(userId);
         
-        // 鑾峰彇璇勫垎锛堝鏋滄湁 RatingSummary锛?
+        // 当前评分模块未启用，先返回默认值。
         double rating = 0.0;
         int reviewCount = 0;
-        // if (user.getRatingSummary() != null) {
-        //     rating = user.getRatingSummary().getAverageRating();
-        //     reviewCount = user.getRatingSummary().getTotalReviews();
-        // }
 
         // 鑾峰彇鎶€鑳藉垪琛?
         List<String> skillNames = user.getSkills() == null 
