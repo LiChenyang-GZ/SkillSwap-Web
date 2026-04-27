@@ -70,7 +70,7 @@ export function Navigation() {
         <div className="max-w-7xl mx-auto w-full px-6 py-4 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">SS</span>
             </div>
             <h1 className="text-xl font-semibold">Skill Swap Club</h1>
@@ -83,10 +83,10 @@ export function Navigation() {
               return (
                 <Button
                   key={item.id}
-                  variant={currentPage === item.id ? "default" : "ghost"}
+                  variant={currentPage === item.id ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setCurrentPage(item.id)}
-                  className="flex items-center space-x-2"
+                  className={`flex items-center space-x-2 ${currentPage === item.id ? "" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="hidden xl:inline">{item.label}</span>
@@ -199,7 +199,7 @@ export function Navigation() {
         <div className="px-4 py-3 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-secondary rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">SS</span>
             </div>
             <h1 className="text-lg font-semibold">Skill Swap</h1>
@@ -240,13 +240,13 @@ export function Navigation() {
                 return (
                   <Button
                     key={item.id}
-                    variant={currentPage === item.id ? "default" : "ghost"}
+                    variant={currentPage === item.id ? "secondary" : "ghost"}
                     size="sm"
                     onClick={() => {
                       setCurrentPage(item.id);
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full justify-start flex items-center space-x-3"
+                    className={`w-full justify-start flex items-center space-x-3 ${currentPage === item.id ? "" : "text-muted-foreground hover:text-foreground"}`}
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
