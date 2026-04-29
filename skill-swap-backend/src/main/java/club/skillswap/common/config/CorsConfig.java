@@ -24,7 +24,9 @@ public class CorsConfig {
             "http://127.0.0.1:3000",
             "https://skill-swap-web-beta.vercel.app",
             "https://skill-swap-web-git-main-lichenyang-gzs-projects.vercel.app",
-            "https://skill-swap-8svulzvb7-lichenyang-gzs-projects.vercel.app"
+            "https://skill-swap-8svulzvb7-lichenyang-gzs-projects.vercel.app",
+            "https://www.skillswap-club.site",
+            "https://skillswap-club.site"
 
         ));
         

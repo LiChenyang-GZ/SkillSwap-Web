@@ -211,8 +211,11 @@ export function MemoryStudio() {
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const skipNextSelectionSyncRef = useRef(false);
+  const lastSyncedEntryIdRef = useRef<string | null>(null);
   const lockHeartbeatRef = useRef<number | null>(null);
   const heldLockEntryIdRef = useRef<string | null>(null);
+  const uploadQueueRef = useRef<Array<{ file: File; start?: number; end?: number }>>([]);
+  const uploadQueueRunningRef = useRef(false);
 
   const selectedEntry = useMemo(
     () => entries.find((entry) => entry.id === selectedId) || null,
@@ -346,14 +349,29 @@ export function MemoryStudio() {
   useEffect(() => {
     if (!selectedEntry) return;
 
+    const entryId = selectedEntry?.id ? String(selectedEntry.id) : null;
+    const selectionChanged = entryId !== null && lastSyncedEntryIdRef.current !== entryId;
+
+    if (selectionChanged) {
+      lastSyncedEntryIdRef.current = entryId;
+    }
+
     if (skipNextSelectionSyncRef.current) {
       skipNextSelectionSyncRef.current = false;
+      setSelectedStatus(selectedEntry.status || 'draft');
+      return;
+    }
+
+    // Important: acquiring/refreshing edit locks patches `entries`, which changes `selectedEntry`.
+    // If we already have unsaved edits in `documentText`, do NOT overwrite it with the server copy.
+    if (!selectionChanged && hasUnsavedDraftChanges && selectedEntry.status === 'draft') {
+      setSelectedStatus(selectedEntry.status || 'draft');
       return;
     }
 
     setDocumentText(buildDocumentFromEntry(selectedEntry));
     setSelectedStatus(selectedEntry.status || 'draft');
-  }, [selectedEntry]);
+  }, [selectedEntry, hasUnsavedDraftChanges]);
 
   useEffect(() => {
     const selectedEntryId = selectedEntry?.id;
@@ -520,11 +538,32 @@ export function MemoryStudio() {
     }
   };
 
-  const handleEditorPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    if (isUploadingImage) {
+  const runUploadQueue = async () => {
+    if (uploadQueueRunningRef.current) {
       return;
     }
 
+    uploadQueueRunningRef.current = true;
+    try {
+      while (uploadQueueRef.current.length > 0) {
+        const next = uploadQueueRef.current.shift();
+        if (!next) {
+          continue;
+        }
+        // For queued items, default to inserting at the current cursor position.
+        await uploadAndInsertImage(next.file, next.start, next.end);
+      }
+    } finally {
+      uploadQueueRunningRef.current = false;
+    }
+  };
+
+  const enqueueImageUpload = (file: File, start?: number, end?: number) => {
+    uploadQueueRef.current.push({ file, start, end });
+    void runUploadQueue();
+  };
+
+  const handleEditorPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const imageItem = Array.from(event.clipboardData.items).find((item) => item.type.startsWith('image/'));
     if (!imageItem) {
       return;
@@ -540,14 +579,25 @@ export function MemoryStudio() {
     const end = target.selectionEnd;
 
     event.preventDefault();
-    void uploadAndInsertImage(file, start, end);
+    // Allow users to paste multiple images; uploads will be processed sequentially.
+    if (isUploadingImage || uploadQueueRunningRef.current) {
+      enqueueImageUpload(file);
+      toast.info('Image added to upload queue.');
+      return;
+    }
+    enqueueImageUpload(file, start, end);
   };
 
   const handlePickImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.currentTarget.value = '';
     if (!file) return;
-    await uploadAndInsertImage(file);
+    if (isUploadingImage || uploadQueueRunningRef.current) {
+      enqueueImageUpload(file);
+      toast.info('Image added to upload queue.');
+      return;
+    }
+    enqueueImageUpload(file);
   };
 
   const handleSave = async (forcedStatus?: MemoryEntry['status']) => {

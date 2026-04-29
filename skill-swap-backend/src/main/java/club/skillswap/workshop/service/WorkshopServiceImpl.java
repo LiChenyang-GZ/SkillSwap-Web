@@ -1,6 +1,7 @@
 package club.skillswap.workshop.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
+import club.skillswap.common.storage.AzureBlobStorageService;
 import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.notification.service.NotificationService;
 import club.skillswap.user.entity.UserAccount;
@@ -48,6 +49,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final UserService userService;
     private final WorkshopParticipantRepository participantRepository;
     private final NotificationService notificationService;
+    private final AzureBlobStorageService azureBlobStorageService;
     private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
@@ -277,14 +279,21 @@ public class WorkshopServiceImpl implements WorkshopService {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
         }
 
+        String previousImageUrl = trimToNull(workshop.getImageUrl());
+
         String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
         String fileName = UUID.randomUUID() + extension;
 
         String objectPath = "workshops/" + workshop.getId() + "/" + fileName;
-        String publicUrl = supabaseStorageService.uploadImage(file, objectPath);
+        String publicUrl = azureBlobStorageService.uploadImage(file, objectPath);
 
         workshop.setImageUrl(publicUrl);
         Workshop saved = workshopRepository.save(workshop);
+
+        if (previousImageUrl != null && !previousImageUrl.equals(publicUrl)) {
+            azureBlobStorageService.deleteByUrlQuietly(previousImageUrl);
+            supabaseStorageService.deleteByPublicUrlQuietly(previousImageUrl);
+        }
         return mapToDtoForViewer(saved, authentication);
     }
 
