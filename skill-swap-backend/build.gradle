@@ -64,6 +64,10 @@ dependencies {
   implementation 'org.apache.commons:commons-lang3:3.12.0'
 }
 
+bootJar {
+    archiveFileName = 'skill-swap-backend.jar' // ✅ 强制打包后的名字
+}
+
 def loadDotEnv() {
   def map = [:]
   def envFile = file('.env')

@@ -5,7 +5,7 @@ WORKDIR /app
 
 # 把你在本地打好的 JAR 包拷贝到镜像里
 # 注意：确保这个文件名和你 build/libs 文件夹下的一致
-COPY *.jar app.jar
+COPY build/libs/skill-swap-backend.jar app.jar
 
 EXPOSE 8080
 
