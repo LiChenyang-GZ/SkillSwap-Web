@@ -119,6 +119,45 @@ export function MemoryDetail({ slug }: MemoryDetailProps) {
                   loading="lazy"
                 />
               ),
+              a: ({ href, children, ...props }) => {
+                if (!href) return <a {...props}>{children}</a>;
+
+                const ytMatch = href.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+                if (ytMatch && ytMatch[1]) {
+                  const videoId = ytMatch[1];
+                  return (
+                    <div className="my-6 aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border/70 bg-muted">
+                      <iframe
+                        width="100%"
+                        height="100%"
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        title="YouTube video player"
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  );
+                }
+
+                const igMatch = href.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
+                if (igMatch && igMatch[0]) {
+                  return (
+                    <div className="my-6 w-full max-w-[400px] mx-auto overflow-hidden rounded-xl border border-border/70 bg-muted">
+                      <iframe
+                        src={`https://www.${igMatch[0]}/embed`}
+                        width="100%"
+                        height="480"
+                        frameBorder="0"
+                        scrolling="no"
+                        allowTransparency={true}
+                      ></iframe>
+                    </div>
+                  );
+                }
+
+                return <a href={href} className="text-primary hover:underline" target="_blank" rel="noreferrer" {...props}>{children}</a>;
+              }
             }}
           >
             {body || '*No content available.*'}
