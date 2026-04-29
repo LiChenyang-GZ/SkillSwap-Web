@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import club.skillswap.common.storage.AzureBlobStorageService;
 import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.common.exception.DomainException;
 import club.skillswap.common.exception.ResourceNotFoundException;
@@ -46,6 +47,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final WorkshopRepository workshopRepository;
     private final WorkshopParticipantRepository participantRepository;
+    private final AzureBlobStorageService azureBlobStorageService;
     private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
@@ -232,11 +234,12 @@ public class UserService {
         String extension = resolveImageFileExtension(file.getOriginalFilename(), normalizedContentType);
         String fileName = UUID.randomUUID() + extension;
         String objectPath = "avatars/" + user.getId() + "/" + fileName;
-        String publicUrl = supabaseStorageService.uploadImage(file, objectPath);
+        String publicUrl = azureBlobStorageService.uploadImage(file, objectPath);
 
         user.setAvatarUrl(publicUrl);
         userRepository.save(user);
         if (previousAvatarUrl != null && !previousAvatarUrl.equals(publicUrl)) {
+            azureBlobStorageService.deleteByUrlQuietly(previousAvatarUrl);
             supabaseStorageService.deleteByPublicUrlQuietly(previousAvatarUrl);
         }
 

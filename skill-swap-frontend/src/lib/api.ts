@@ -132,7 +132,11 @@ function enrichWorkshop(workshop: any): Workshop {
     ? {
         id: workshop.facilitator.id,
         name: workshop.facilitator.username || workshop.facilitator.name,
-        avatarUrl: workshop.facilitator.avatarUrl || workshop.facilitator.avatar_url || workshop.facilitator.avatar,
+        avatarUrl: resolveAssetUrl(
+          workshop.facilitator.avatarUrl ||
+            workshop.facilitator.avatar_url ||
+            workshop.facilitator.avatar
+        ),
         bio: workshop.facilitator.bio,
       }
     : null;
@@ -142,7 +146,7 @@ function enrichWorkshop(workshop: any): Workshop {
         id: String(p.id),
         username: p.username || p.name || 'Unknown',
         email: p.email || p.userEmail || p.user_email || p.mail || '',
-        avatarUrl: p.avatarUrl || p.avatar_url || p.avatar,
+        avatarUrl: resolveAssetUrl(p.avatarUrl || p.avatar_url || p.avatar),
       }))
     : undefined;
 

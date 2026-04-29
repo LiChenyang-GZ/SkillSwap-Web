@@ -31,7 +31,7 @@ public class AzureBlobStorageService {
     @Value("${app.storage.azure.blob.connection-string:}")
     private String connectionString;
 
-    @Value("${app.storage.azure.blob.container:memories}")
+    @Value("${app.storage.azure.blob.container:media}")
     private String containerName;
 
     /**
