@@ -435,12 +435,6 @@ export function Dashboard() {
                     </AvatarFallback>
                   </Avatar>
                   <h2 className="text-xl font-semibold mb-4 break-words">{user.username}</h2>
-                  
-                  <div className="flex items-center justify-center space-x-1 mb-4">
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    <span className="font-medium">{user.rating}</span>
-                    <span className="text-muted-foreground text-sm">/5.0</span>
-                  </div>
 
                   <Button
                     variant="outline"

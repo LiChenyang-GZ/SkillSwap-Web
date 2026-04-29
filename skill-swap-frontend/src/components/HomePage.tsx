@@ -239,12 +239,6 @@ export function HomePage() {
                         <Calendar className="w-3 h-3" />
                         <span>{new Date(workshop.date).toLocaleDateString()}</span>
                       </div>
-                      {/* 积分系统已停用：隐藏原 workshop 积分展示。 */}
-                      {/*
-                      <Badge variant="secondary" className="text-xs">
-                        {workshop.creditCost} credits
-                      </Badge>
-                      */}
                       <Badge variant="secondary" className="text-xs">
                         {getWorkshopAccessLabel(workshop)}
                       </Badge>
