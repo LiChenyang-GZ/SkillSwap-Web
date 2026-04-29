@@ -39,6 +39,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+  // Azure Blob Storage (memory media)
+  implementation 'com.azure:azure-storage-blob:12.29.0'
   // DB & migration
 	implementation 'org.postgresql:postgresql:42.7.3'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
