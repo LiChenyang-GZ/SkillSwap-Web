@@ -1,5 +1,5 @@
 import { Workshop } from '../../../types';
-import { WorkshopFormState } from '../models/adminReviewModels';
+import { WorkshopFormState } from '../models/adminReviewFormModel';
 
 export const normalizeContactNumber = (value: string) => value.replace(/\D/g, '');
 
@@ -81,3 +81,50 @@ export const normalizeFormState = (state: WorkshopFormState): WorkshopFormState 
   usuApprovalStatus: state.usuApprovalStatus,
   detailsConfirmed: state.detailsConfirmed,
 });
+
+export const buildWorkshopFormState = (workshop: Workshop): WorkshopFormState => {
+  const locationValue = Array.isArray(workshop.location)
+    ? workshop.location[0] || ''
+    : workshop.location || '';
+
+  const attendCloseAtValue = (() => {
+    const raw = String(workshop.attendCloseAt || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return raw.length >= 16 ? raw.slice(0, 16) : '';
+    }
+
+    const offsetMs = parsed.getTimezoneOffset() * 60 * 1000;
+    return new Date(parsed.getTime() - offsetMs).toISOString().slice(0, 16);
+  })();
+
+  return {
+    image: workshop.image || '',
+    hostName: workshop.hostName || '',
+    title: workshop.title || '',
+    description: workshop.description || '',
+    category: workshop.category || '',
+    contactNumber: workshop.contactNumber || '',
+    duration: workshop.duration ? String(workshop.duration) : '',
+    maxParticipants: workshop.maxParticipants ? String(workshop.maxParticipants) : '',
+    date: workshop.date || '',
+    time: workshop.time || '',
+    attendCloseAt: attendCloseAtValue,
+    location: workshop.isOnline ? '' : locationValue,
+    isOnline: !!workshop.isOnline,
+    materialsProvided: workshop.materialsProvided || '',
+    materialsNeededFromClub: workshop.materialsNeededFromClub || '',
+    venueRequirements: workshop.venueRequirements || '',
+    otherImportantInfo: workshop.otherImportantInfo || '',
+    weekNumber: workshop.weekNumber ? String(workshop.weekNumber) : '',
+    memberResponsible: workshop.memberResponsible || '',
+    membersPresent: workshop.membersPresent || '',
+    eventSubmitted: workshop.eventSubmitted ? 'true' : 'false',
+    usuApprovalStatus: workshop.usuApprovalStatus === 'approved' ? 'approved' : 'pending',
+    detailsConfirmed: !!workshop.detailsConfirmed,
+  };
+};

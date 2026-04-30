@@ -250,11 +250,8 @@ export async function apiCall<T>(
     ...options.headers,
   };
 
-  // 如果没有显式传入 token，尝试从 localStorage 读取
-  const tokenToUse = token ?? localStorage.getItem('dev_token');
-  
-  if (tokenToUse) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${tokenToUse}`;
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
   const method = (options.method || "GET").toUpperCase();
@@ -311,80 +308,8 @@ export const authAPI = {
     return data;
   },
 
-  // 开发环境：调用后端 /dev/auth/dev-login，自动创建/获取用户并获取 JWT
-  devRegisterLogin: async (email: string, username?: string): Promise<{ access_token: string; user: any; expiresIn: number }> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/dev/auth/dev-login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          username: username || email.split('@')[0],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to dev login: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // 保存 token 到 localStorage
-      localStorage.setItem('dev_token', data.access_token);
-      localStorage.setItem('dev_token_user_id', data.user.id);
-      localStorage.setItem('dev_token_username', data.user.username);
-
-      return data;
-    } catch (error) {
-      console.error('❌ Dev register-login failed:', error);
-      throw error;
-    }
-  },
-
-  // 开发环境：从后端 /dev/token 获取 JWT token
-  devLogin: async (userId?: string, username?: string): Promise<{ token: string; userId: string; username: string; expiresIn: number }> => {
-    try {
-      const params = new URLSearchParams();
-      if (userId) params.append('userId', userId);
-      if (username) params.append('username', username);
-      
-      const queryString = params.toString();
-      const url = queryString ? `/dev/token?${queryString}` : '/dev/token';
-      
-      const response = await fetch(`${API_BASE_URL}${url}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get dev token: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // 保存 token 到 localStorage
-      localStorage.setItem('dev_token', data.token);
-      localStorage.setItem('dev_token_user_id', data.userId);
-      localStorage.setItem('dev_token_username', data.username);
-      
-      return data;
-    } catch (error) {
-      console.error('❌ Dev login failed:', error);
-      throw error;
-    }
-  },
-
-  // Sign out (real 和 dev 都支持)
+  // Sign out
   signOut: async () => {
-    // 清除 dev token
-    localStorage.removeItem('dev_token');
-    localStorage.removeItem('dev_token_user_id');
-    localStorage.removeItem('dev_token_username');
-    
     // 清除 Supabase 会话
     await supabase.auth.signOut();
   },

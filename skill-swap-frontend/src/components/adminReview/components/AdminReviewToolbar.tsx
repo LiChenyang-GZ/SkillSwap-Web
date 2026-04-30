@@ -1,11 +1,12 @@
 import { RefreshCw } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { AdminReviewStatusFilter } from '../models/adminReviewStatusModel';
 
 interface AdminReviewToolbarProps {
-  statusFilter: string;
+  statusFilter: AdminReviewStatusFilter;
   isLoading: boolean;
-  onStatusFilterChange: (value: string) => void;
+  onStatusFilterChange: (value: AdminReviewStatusFilter) => void;
   onRefresh: () => void;
 }
 
@@ -17,7 +18,11 @@ export function AdminReviewToolbar({
 }: AdminReviewToolbarProps) {
   return (
     <div className="flex items-center gap-3">
-      <Select value={statusFilter} onValueChange={onStatusFilterChange} modal={false}>
+      <Select
+        value={statusFilter}
+        onValueChange={(value) => onStatusFilterChange(value as AdminReviewStatusFilter)}
+        modal={false}
+      >
         <SelectTrigger className="w-44">
           <SelectValue placeholder="Filter status" />
         </SelectTrigger>

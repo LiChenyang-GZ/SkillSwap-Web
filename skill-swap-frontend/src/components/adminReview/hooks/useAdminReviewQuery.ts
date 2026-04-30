@@ -1,0 +1,209 @@
+import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { Workshop } from '../../../types';
+import { adminWorkshopService } from '../../../shared/service/workshop/adminWorkshopService';
+import { AdminReviewStatusFilter } from '../models/adminReviewStatusModel';
+import { resolveAdminDisplayStatus } from '../utils/adminReviewUtils';
+
+interface UseAdminReviewQueryParams {
+  sessionToken: string | null;
+  withAuthRetry: <T>(action: (token: string) => Promise<T>) => Promise<T>;
+}
+
+export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminReviewQueryParams) {
+  const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<AdminReviewStatusFilter>('pending');
+  const [currentPage, setCurrentPageState] = useState(1);
+  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(() => {
+    const storedTarget = sessionStorage.getItem('adminReviewTargetId');
+    if (storedTarget) {
+      sessionStorage.removeItem('adminReviewTargetId');
+      return storedTarget;
+    }
+    return null;
+  });
+
+  const detailInFlightRef = useRef<Set<string>>(new Set());
+  const hasSession = Boolean(sessionToken);
+  const pageSize = 8;
+
+  const filteredWorkshops =
+    statusFilter === 'all'
+      ? workshops
+      : workshops.filter((workshop) => resolveAdminDisplayStatus(workshop) === statusFilter);
+
+  const sortedWorkshops = [...filteredWorkshops].sort((a, b) => {
+    const aTime = new Date(`${a.date || '0000-01-01'}T${a.time || '00:00'}`).getTime();
+    const bTime = new Date(`${b.date || '0000-01-01'}T${b.time || '00:00'}`).getTime();
+    return bTime - aTime;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedWorkshops.length / pageSize));
+  const start = (currentPage - 1) * pageSize;
+  const pagedWorkshops = sortedWorkshops.slice(start, start + pageSize);
+  const selectedWorkshop = sortedWorkshops.find((workshop) => workshop.id === selectedId) || null;
+  const selectedHasDetail = selectedWorkshop ? !!loadedDetailIds[selectedWorkshop.id] : false;
+
+  const loadWorkshopDetail = async (workshopId: string, force = false) => {
+    if (!sessionToken || !workshopId) return;
+    if (!force && loadedDetailIds[workshopId]) return;
+    if (detailInFlightRef.current.has(workshopId)) return;
+
+    detailInFlightRef.current.add(workshopId);
+    setIsDetailLoading(true);
+
+    try {
+      const detail = await withAuthRetry((token) => adminWorkshopService.getById(workshopId, token));
+      setWorkshops((prev) => prev.map((workshop) => (workshop.id === detail.id ? { ...workshop, ...detail } : workshop)));
+      setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
+    } catch (error) {
+      console.error('Failed to load workshop details:', error);
+      toast.error('Failed to load workshop details.');
+    } finally {
+      detailInFlightRef.current.delete(workshopId);
+      setIsDetailLoading(false);
+    }
+  };
+
+  const loadWorkshops = async (mode: 'pending' | 'all') => {
+    if (!sessionToken) {
+      setErrorMessage('Please sign in to review workshops.');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const data =
+        mode === 'pending'
+          ? await withAuthRetry((token) => adminWorkshopService.getPending(token))
+          : await withAuthRetry((token) => adminWorkshopService.getAll(token));
+
+      setLoadedDetailIds((previous) => {
+        const next: Record<string, boolean> = {};
+        data.forEach((workshop) => {
+          if (previous[workshop.id]) {
+            next[workshop.id] = true;
+          }
+        });
+        return next;
+      });
+      setWorkshops(data);
+
+      if (data.length > 0) {
+        const fallbackId = data[0].id;
+        const nextSelectedId =
+          targetWorkshopId && data.some((workshop) => workshop.id === targetWorkshopId)
+            ? targetWorkshopId
+            : selectedId && data.some((workshop) => workshop.id === selectedId)
+              ? selectedId
+              : fallbackId;
+
+        setSelectedId(nextSelectedId);
+        void loadWorkshopDetail(nextSelectedId);
+      } else {
+        setSelectedId(null);
+      }
+    } catch (error) {
+      console.error('Failed to load admin workshops:', error);
+      const status = (error as Error & { status?: number }).status;
+      if (status === 401) {
+        setErrorMessage('Session expired. Please sign in again.');
+      } else if (status === 403) {
+        setErrorMessage('Admin access required.');
+      } else {
+        setErrorMessage('Admin access required or failed to load workshops.');
+      }
+      setWorkshops([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshWorkshops = () => {
+    const mode = statusFilter === 'pending' ? 'pending' : 'all';
+    void loadWorkshops(mode);
+  };
+
+  useEffect(() => {
+    if (!hasSession) {
+      setWorkshops([]);
+      setSelectedId(null);
+      setLoadedDetailIds({});
+      return;
+    }
+    refreshWorkshops();
+  }, [hasSession, statusFilter]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    void loadWorkshopDetail(selectedId);
+  }, [selectedId, hasSession]);
+
+  useEffect(() => {
+    if (sortedWorkshops.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    const stillExists = sortedWorkshops.some((workshop) => workshop.id === selectedId);
+    if (!stillExists) {
+      setSelectedId(sortedWorkshops[0].id);
+    }
+  }, [sortedWorkshops, selectedId]);
+
+  useEffect(() => {
+    setCurrentPageState(1);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    if (!targetWorkshopId || sortedWorkshops.length === 0) return;
+
+    const targetIndex = sortedWorkshops.findIndex((workshop) => workshop.id === targetWorkshopId);
+    if (targetIndex === -1) return;
+
+    setSelectedId(targetWorkshopId);
+    setCurrentPageState(Math.floor(targetIndex / pageSize) + 1);
+    setTargetWorkshopId(null);
+
+    requestAnimationFrame(() => {
+      const targetElement = document.querySelector(`[data-workshop-id="${targetWorkshopId}"]`);
+      if (targetElement instanceof HTMLElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  }, [sortedWorkshops, targetWorkshopId]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPageState(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  return {
+    workshops,
+    setWorkshops,
+    selectedId,
+    setSelectedId,
+    isLoading,
+    isDetailLoading,
+    errorMessage,
+    statusFilter,
+    setStatusFilter,
+    currentPage,
+    totalPages,
+    pagedWorkshops,
+    sortedWorkshops,
+    selectedWorkshop,
+    selectedHasDetail,
+    refreshWorkshops,
+    loadWorkshopDetail,
+    goToPrevPage: () => setCurrentPageState((prev) => Math.max(1, prev - 1)),
+    goToNextPage: () => setCurrentPageState((prev) => Math.min(totalPages, prev + 1)),
+  };
+}
