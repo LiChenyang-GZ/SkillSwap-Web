@@ -1,6 +1,7 @@
 package club.skillswap.workshop.controller;
 
 import club.skillswap.common.dto.ApiMessageDto;
+import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.service.WorkshopService;
@@ -23,6 +24,7 @@ import java.util.List;
 public class WorkshopController {
 
     private final WorkshopService workshopService;
+    private final UserService userService;
     private final Environment env;
 
     @PostMapping
@@ -38,7 +40,7 @@ public class WorkshopController {
         }
         // 2锔忊儯 JWT 鐧诲綍鐢ㄦ埛
         else if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            facilitatorId = jwtAuth.getToken().getSubject(); // 鉁?鐩存帴鍙?sub
+            facilitatorId = userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
         }
         else {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
@@ -76,7 +78,7 @@ public class WorkshopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
 
-        String facilitatorId = jwtAuth.getToken().getSubject();
+        String facilitatorId = userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
         List<WorkshopResponseDto> workshops = workshopService.getMyWorkshops(facilitatorId);
         return ResponseEntity.ok(workshops);
     }
@@ -87,7 +89,7 @@ public class WorkshopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
 
-        String userId = jwtAuth.getToken().getSubject();
+        String userId = userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
         List<WorkshopResponseDto> workshops = workshopService.getAttendingWorkshops(userId);
         return ResponseEntity.ok(workshops);
     }
@@ -100,7 +102,7 @@ public class WorkshopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
         }
 
-        String userId = jwtAuth.getToken().getSubject();
+        String userId = userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
         workshopService.hideHostingWorkshop(userId, id);
         return ResponseEntity.ok(new ApiMessageDto("Workshop hidden from hosting list."));
     }
@@ -166,7 +168,7 @@ public class WorkshopController {
 
     private String extractAuthenticatedUserId(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            return jwtAuth.getToken().getSubject();
+            return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
         }
         return authentication.getName();
     }

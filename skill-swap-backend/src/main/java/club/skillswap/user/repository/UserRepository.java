@@ -12,5 +12,6 @@ import java.util.List;
 @Repository
 public interface UserRepository extends JpaRepository<UserAccount, UUID> {
     Optional<UserAccount> findByEmail(String email);
+    Optional<UserAccount> findByAuthSubject(String authSubject);
     List<UserAccount> findByRoleIgnoreCase(String role);
 }

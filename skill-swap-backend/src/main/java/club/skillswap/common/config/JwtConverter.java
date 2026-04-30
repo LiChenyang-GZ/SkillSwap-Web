@@ -8,45 +8,60 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
+import club.skillswap.user.entity.UserAccount;
+import club.skillswap.user.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
-import java.util.stream.Collectors;
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public class JwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+
+    private final UserRepository userRepository;
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
-        // 浠?JWT 涓彁鍙栬鑹蹭俊鎭?
-        Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
-        
-        // 鍒涘缓涓€涓?JwtAuthenticationToken锛岃繖鏄?Spring Security 鍐呴儴琛ㄧず璁よ瘉鐢ㄦ埛鐨勬柟寮?
+        Collection<GrantedAuthority> authorities = extractAuthoritiesFromDb(jwt);
         return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
     }
 
-    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-        // Supabase 灏嗚鑹蹭俊鎭斁鍦?"app_metadata" claim 涓?
-        Map<String, Object> appMetadata = jwt.getClaimAsMap("app_metadata");
+    private Collection<GrantedAuthority> extractAuthoritiesFromDb(Jwt jwt) {
+        List<GrantedAuthority> authorities = new ArrayList<>();
 
-        if (appMetadata == null) {
-            return List.of();
+        String subject = jwt.getSubject();
+        if (subject == null || subject.isBlank()) {
+            return authorities;
         }
 
-        if (appMetadata.get("roles") instanceof List<?> rawRoles) {
-            return rawRoles.stream()
-                    .filter(String.class::isInstance)
-                    .map(String.class::cast)
-                    .map(role -> role.toUpperCase(Locale.ROOT))
-                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                    .collect(Collectors.toList());
+        Optional<UserAccount> userOpt = userRepository.findByAuthSubject(subject);
+        if (userOpt.isEmpty()) {
+            UUID subjectUuid = tryParseUuid(subject);
+            if (subjectUuid != null) {
+                userOpt = userRepository.findById(subjectUuid);
+            }
         }
 
-        if (appMetadata.get("role") instanceof String singleRole && !singleRole.isBlank()) {
-            return List.of(new SimpleGrantedAuthority("ROLE_" + singleRole.toUpperCase(Locale.ROOT)));
+        if (userOpt.isPresent()) {
+            String role = userOpt.get().getRole();
+            if (role != null && !role.isBlank() && "admin".equalsIgnoreCase(role.trim())) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
         }
 
-        return List.of();
+        return authorities;
+    }
+
+    private UUID tryParseUuid(String value) {
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 }

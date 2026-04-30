@@ -10,9 +10,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfigurationSource;
+
+import java.util.Locale;
 
 /**
  * Spring Security 閰嶇疆 - 浣跨敤 Supabase JWT 璁よ瘉
@@ -24,8 +27,14 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @EnableMethodSecurity
 public class WebSecurityConfiguration {
 
-    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}")
+    private String issuerUri;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}")
     private String jwkSetUri;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.jws-algorithms:}")
+    private String jwsAlgorithms;
 
     /**
      * 鏄惧紡鍒涘缓浣跨敤 JWKS 鐨?JwtDecoder (ES256/P-256)
@@ -33,11 +42,52 @@ public class WebSecurityConfiguration {
      */
     @Bean
     public JwtDecoder jwtDecoder() {
-        System.out.println("? WebSecurityConfiguration: 浣跨敤 JWKS 绔偣楠岃瘉 JWT (ES256)");
-        System.out.println("   JWKS URI: " + jwkSetUri);
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
-                .jwsAlgorithm(SignatureAlgorithm.ES256)
-                .build();
+        System.out.println("? WebSecurityConfiguration: use JWKS endpoint to verify JWT");
+        System.out.println("   issuer-uri: " + (issuerUri == null ? "" : issuerUri));
+        System.out.println("   jwk-set-uri: " + (jwkSetUri == null ? "" : jwkSetUri));
+        System.out.println("   jws-algorithms: " + (jwsAlgorithms == null ? "" : jwsAlgorithms));
+
+        NimbusJwtDecoder.JwkSetUriJwtDecoderBuilder builder;
+        if (jwkSetUri != null && !jwkSetUri.isBlank()) {
+            builder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri);
+        } else if (issuerUri != null && !issuerUri.isBlank()) {
+            builder = NimbusJwtDecoder.withIssuerLocation(issuerUri);
+        } else {
+            throw new IllegalStateException(
+                    "JWT decoder requires either 'spring.security.oauth2.resourceserver.jwt.issuer-uri' " +
+                    "or 'spring.security.oauth2.resourceserver.jwt.jwk-set-uri'"
+            );
+        }
+
+        SignatureAlgorithm signatureAlgorithm = resolveSignatureAlgorithm(jwsAlgorithms);
+        if (signatureAlgorithm != null) {
+            builder = builder.jwsAlgorithm(signatureAlgorithm);
+        }
+
+        NimbusJwtDecoder decoder = builder.build();
+        if (issuerUri != null && !issuerUri.isBlank()) {
+            decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuerUri));
+        }
+        return decoder;
+    }
+
+    private SignatureAlgorithm resolveSignatureAlgorithm(String configured) {
+        if (configured == null || configured.isBlank()) {
+            return null;
+        }
+
+        // spring.security...jws-algorithms 可能是 "ES256" 或 "RS256,ES256"。
+        String first = configured.split("[,\\s]+")[0].trim();
+        if (first.isBlank()) {
+            return null;
+        }
+
+        String normalized = first.toUpperCase(Locale.ROOT);
+        try {
+            return SignatureAlgorithm.from(normalized);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     @Bean

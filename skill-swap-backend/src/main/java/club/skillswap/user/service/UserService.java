@@ -117,13 +117,13 @@ public class UserService {
      * 鏍规嵁瀛楃涓插舰寮忕殑鐢ㄦ埛 ID 鏌ユ壘鐢ㄦ埛鍏紑淇℃伅銆?
      */
     public UserAccount findUserByStringId(String userId) {
-        UUID userUuid;
-        try {
-            userUuid = UUID.fromString(userId);
-        } catch (IllegalArgumentException e) {
-            throw new ResourceNotFoundException("Invalid user ID format: " + userId);
+        UUID userUuid = tryParseUuid(userId);
+        if (userUuid != null) {
+            return findUserById(userUuid);
         }
-        return findUserById(userUuid);
+
+        return userRepository.findByAuthSubject(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
     }
 
     /**
@@ -131,34 +131,56 @@ public class UserService {
      */
     @Transactional
     public UserProfileDto findOrCreateCurrentUserProfile(Jwt jwt) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        String jwtEmail = extractEmailFromJwt(jwt);
-        requireVerifiedEmail(jwt, jwtEmail);
-        String roleFromJwt = extractRoleFromJwt(jwt);
-        
-        UserAccount user = userRepository.findById(userId).orElseGet(() -> {
-            UserAccount newUser = new UserAccount();
-            newUser.setId(userId);
-            String baseUsername = buildBaseUsername(userId, jwtEmail);
-            newUser.setUsername(baseUsername);
-            newUser.setEmail(jwtEmail);
-            newUser.setRole(roleFromJwt);
-            return userRepository.save(newUser);
-        });
+        UserAccount user = findOrCreateCurrentUser(jwt);
+        return getUserProfileWithStats(user.getId());
+    }
 
-        // Backfill email for existing records created before email persistence was implemented.
+    @Transactional
+    public UserAccount findOrCreateCurrentUser(Jwt jwt) {
+        String subject = jwt.getSubject();
+        String issuer = jwt.getIssuer() != null ? jwt.getIssuer().toString() : null;
+        UUID subjectUuid = tryParseUuid(subject);
+
+        UserAccount user = userRepository.findByAuthSubject(subject)
+                .or(() -> subjectUuid == null ? java.util.Optional.empty() : userRepository.findById(subjectUuid))
+                .orElseGet(() -> {
+                    UUID newId = subjectUuid != null ? subjectUuid : UUID.randomUUID();
+                    String jwtEmail = extractEmailFromJwt(jwt);
+                    maybeRequireVerifiedEmail(jwt, jwtEmail);
+
+                    UserAccount newUser = new UserAccount();
+                    newUser.setId(newId);
+                    newUser.setAuthProvider(issuer);
+                    newUser.setAuthSubject(subject);
+                    newUser.setEmail(jwtEmail);
+                    newUser.setUsername(buildBaseUsername(newId, jwtEmail, subject));
+                    newUser.setRole("member");
+                    return userRepository.save(newUser);
+                });
+
+        boolean dirty = false;
+
+        if ((user.getAuthSubject() == null || user.getAuthSubject().isBlank()) && subject != null && !subject.isBlank()) {
+            user.setAuthSubject(subject);
+            dirty = true;
+        }
+        if ((user.getAuthProvider() == null || user.getAuthProvider().isBlank()) && issuer != null && !issuer.isBlank()) {
+            user.setAuthProvider(issuer);
+            dirty = true;
+        }
+
+        String jwtEmail = extractEmailFromJwt(jwt);
         if ((user.getEmail() == null || user.getEmail().isBlank()) && jwtEmail != null && !jwtEmail.isBlank()) {
             user.setEmail(jwtEmail);
-            user = userRepository.save(user);
+            dirty = true;
         }
 
-        if (roleFromJwt != null && !roleFromJwt.equalsIgnoreCase(user.getRole())) {
-            user.setRole(roleFromJwt);
-            user = userRepository.save(user);
+        if (user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole("member");
+            dirty = true;
         }
 
-        // 杩斿洖鍖呭惈瀹屾暣缁熻鏁版嵁鐨?DTO
-        return getUserProfileWithStats(user.getId());
+        return dirty ? userRepository.save(user) : user;
     }
 
     @Transactional(readOnly = true)
@@ -171,10 +193,7 @@ public class UserService {
      */
     @Transactional
     public UserAccount updateCurrentUserProfile(Jwt jwt, UpdateProfileRequestDto updateRequest) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        
-        UserAccount userToUpdate = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
+        UserAccount userToUpdate = findOrCreateCurrentUser(jwt);
 
         if (updateRequest.getUsername() != null) {
             String nextUsername = updateRequest.getUsername().trim();
@@ -212,9 +231,8 @@ public class UserService {
 
     @Transactional
     public UserProfileDto uploadCurrentUserAvatar(Jwt jwt, MultipartFile file) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        UserAccount user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
+        UserAccount user = findOrCreateCurrentUser(jwt);
+        UUID userId = user.getId();
         String previousAvatarUrl = trimToNull(user.getAvatarUrl());
 
         if (file == null || file.isEmpty()) {
@@ -251,9 +269,7 @@ public class UserService {
      */
     @Transactional
     public UserAccount addSkillToCurrentUser(Jwt jwt, SkillRequestDto skillRequest) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        UserAccount user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
+        UserAccount user = findOrCreateCurrentUser(jwt);
 
         String normalizedSkill = normalizeSkill(skillRequest.getSkillName());
         requireNonBlank(normalizedSkill);
@@ -279,9 +295,8 @@ public class UserService {
      */
     @Transactional
     public boolean removeSkillFromCurrentUserByName(Jwt jwt, String skillName) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        UserAccount user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("UserAccount", "ID", userId));
+        UserAccount user = findOrCreateCurrentUser(jwt);
+        UUID userId = user.getId();
         
         String normalizedSkill = normalizeSkill(skillName);
 
@@ -342,69 +357,69 @@ public class UserService {
         return (email == null || email.isBlank()) ? null : email;
     }
 
-    private void requireVerifiedEmail(Jwt jwt, String email) {
+    private void maybeRequireVerifiedEmail(Jwt jwt, String email) {
+        // 邮箱缺失时：不强制（某些身份平台默认 JWT 不包含 email claim）。
         if (email == null || email.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email is missing in auth token. Please sign in again.");
+            return;
         }
 
         // Supabase deployments may expose either `confirmed_at` or `email_confirmed_at`.
-        boolean verifiedByConfirmedAt = hasText(jwt.getClaimAsString("confirmed_at"));
-        boolean verifiedByTimestamp = hasText(jwt.getClaimAsString("email_confirmed_at"));
+        String confirmedAt = jwt.getClaimAsString("confirmed_at");
+        String emailConfirmedAt = jwt.getClaimAsString("email_confirmed_at");
         Boolean emailVerified = jwt.getClaimAsBoolean("email_verified");
-        boolean verifiedByBoolean = Boolean.TRUE.equals(emailVerified);
 
         Map<String, Object> userMetadata = jwt.getClaimAsMap("user_metadata");
-        boolean verifiedByMetadata = userMetadata != null && Boolean.TRUE.equals(userMetadata.get("email_verified"));
-
+        Object metaVerified = userMetadata == null ? null : userMetadata.get("email_verified");
         Map<String, Object> rawUserMetadata = jwt.getClaimAsMap("raw_user_meta_data");
-        boolean verifiedByRawMetadata = rawUserMetadata != null && Boolean.TRUE.equals(rawUserMetadata.get("email_verified"));
+        Object rawMetaVerified = rawUserMetadata == null ? null : rawUserMetadata.get("email_verified");
 
-        if (!verifiedByConfirmedAt && !verifiedByTimestamp && !verifiedByBoolean && !verifiedByMetadata && !verifiedByRawMetadata) {
+        boolean hasAnyVerificationSignal =
+                confirmedAt != null || emailConfirmedAt != null || emailVerified != null || metaVerified != null || rawMetaVerified != null;
+
+        boolean isVerified =
+                hasText(confirmedAt)
+                        || hasText(emailConfirmedAt)
+                        || Boolean.TRUE.equals(emailVerified)
+                        || Boolean.TRUE.equals(metaVerified)
+                        || Boolean.TRUE.equals(rawMetaVerified);
+
+        // 只有当 token 明确提供了验证信号但都不通过时，才拒绝。
+        if (hasAnyVerificationSignal && !isVerified) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email before accessing profile.");
         }
-    }
-
-    private String extractRoleFromJwt(Jwt jwt) {
-        Map<String, Object> appMetadata = jwt.getClaimAsMap("app_metadata");
-        if (appMetadata == null) {
-            return "member";
-        }
-
-        List<String> roles = new ArrayList<>();
-        Object roleList = appMetadata.get("roles");
-        if (roleList instanceof List<?> rawRoles) {
-            for (Object role : rawRoles) {
-                if (role instanceof String roleValue && !roleValue.isBlank()) {
-                    roles.add(roleValue);
-                }
-            }
-        }
-
-        Object singleRole = appMetadata.get("role");
-        if (singleRole instanceof String roleValue && !roleValue.isBlank()) {
-            roles.add(roleValue);
-        }
-
-        for (String role : roles) {
-            String normalized = role.trim().toLowerCase(Locale.ROOT);
-            if ("admin".equals(normalized) || "role_admin".equals(normalized)) {
-                return "admin";
-            }
-        }
-
-        return "member";
     }
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
 
-    private String buildBaseUsername(UUID userId, String email) {
+    private UUID tryParseUuid(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String buildBaseUsername(UUID userId, String email, String subject) {
         if (email != null && !email.isBlank()) {
             String localPart = email.split("@")[0];
             String sanitized = localPart.replaceAll("[^a-zA-Z0-9]", "_");
             if (!sanitized.isBlank()) {
                 return sanitized;
+            }
+        }
+
+        if (subject != null && !subject.isBlank()) {
+            String sanitized = subject.replaceAll("[^a-zA-Z0-9]", "_");
+            if (sanitized.length() > 24) {
+                sanitized = sanitized.substring(0, 24);
+            }
+            if (!sanitized.isBlank()) {
+                return "user_" + sanitized;
             }
         }
 

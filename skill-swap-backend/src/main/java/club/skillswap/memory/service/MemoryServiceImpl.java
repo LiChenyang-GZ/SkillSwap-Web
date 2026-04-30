@@ -549,7 +549,7 @@ public class MemoryServiceImpl implements MemoryService {
 
     private String extractUserId(Authentication authentication) {
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            return jwtAuth.getToken().getSubject();
+            return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
         }
         if (authentication != null && authentication.getName() != null && !authentication.getName().isBlank()) {
             return authentication.getName();
