@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { categories } from '../../lib/mock-data';
+import { workshopCategories } from '../../constants/workshop';
 import { useApp } from '../../contexts/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -206,7 +206,7 @@ export function CreateWorkshopForm() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
+                  {workshopCategories.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
                     </SelectItem>

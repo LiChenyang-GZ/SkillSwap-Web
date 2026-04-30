@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { useApp } from '../contexts/AppContext';
 import { workshopAPI } from '../lib/api';
 import { Workshop } from '../types';
@@ -13,7 +14,7 @@ import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
 import { Calendar, Check, Clock, Download, Globe, MapPin, RefreshCw, ShieldCheck, Upload, Users, X } from 'lucide-react';
-import { categories } from '../lib/mock-data';
+import { workshopCategories } from '../constants/workshop';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import type { WorkshopUpsertPayload } from '../lib/api';
@@ -72,6 +73,7 @@ const emptyForm: WorkshopFormState = {
 
 export function AdminReview() {
   const { sessionToken, setCurrentPage } = useApp();
+  const { getToken } = useAuth();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formData, setFormData] = useState<WorkshopFormState>(emptyForm);
@@ -97,6 +99,29 @@ export function AdminReview() {
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const hasSession = Boolean(sessionToken);
   const pageSize = 8;
+
+  const withAuthRetry = async <T,>(action: (token: string) => Promise<T>): Promise<T> => {
+    const initialToken = sessionToken ?? (await getToken({ template: 'signupTemplate' }));
+    if (!initialToken) {
+      throw new Error('Authentication token unavailable');
+    }
+
+    try {
+      return await action(initialToken);
+    } catch (error) {
+      const status = (error as Error & { status?: number }).status;
+      if (status !== 401) {
+        throw error;
+      }
+
+      const refreshedToken = await getToken({ template: 'signupTemplate' });
+      if (!refreshedToken || refreshedToken === initialToken) {
+        throw error;
+      }
+
+      return action(refreshedToken);
+    }
+  };
 
   const buildFormState = (workshop: Workshop): WorkshopFormState => {
     const locationValue = Array.isArray(workshop.location)
@@ -469,9 +494,13 @@ export function AdminReview() {
         detailsConfirmed: formData.detailsConfirmed,
       };
 
-      let updated = await workshopAPI.updatePendingByAdmin(selectedWorkshop.id, payload, sessionToken);
+      let updated = await withAuthRetry((token) =>
+        workshopAPI.updatePendingByAdmin(selectedWorkshop.id, payload, token)
+      );
       if (pendingImageFile) {
-        updated = await workshopAPI.uploadImageByAdmin(selectedWorkshop.id, pendingImageFile, sessionToken);
+        updated = await withAuthRetry((token) =>
+          workshopAPI.uploadImageByAdmin(selectedWorkshop.id, pendingImageFile, token)
+        );
       }
 
       setWorkshops((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
@@ -491,7 +520,7 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      await workshopAPI.approveByAdmin(selectedWorkshop.id, sessionToken);
+      await withAuthRetry((token) => workshopAPI.approveByAdmin(selectedWorkshop.id, token));
       toast.success('Workshop approved.');
       setWorkshops((prev) =>
         prev.map((w) =>
@@ -520,7 +549,9 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      await workshopAPI.rejectByAdmin(selectedWorkshop.id, rejectComment || undefined, sessionToken);
+      await withAuthRetry((token) =>
+        workshopAPI.rejectByAdmin(selectedWorkshop.id, rejectComment || undefined, token)
+      );
       toast.success('Workshop rejected.');
       setWorkshops((prev) =>
         prev.map((w) =>
@@ -550,7 +581,7 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      await workshopAPI.cancelByAdmin(selectedWorkshop.id, sessionToken);
+      await withAuthRetry((token) => workshopAPI.cancelByAdmin(selectedWorkshop.id, token));
       toast.success('Workshop cancelled.');
       setWorkshops((prev) =>
         prev.map((w) =>
@@ -878,7 +909,7 @@ export function AdminReview() {
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((category) => (
+                          {workshopCategories.map((category) => (
                             <SelectItem key={category} value={category}>{category}</SelectItem>
                           ))}
                         </SelectContent>
