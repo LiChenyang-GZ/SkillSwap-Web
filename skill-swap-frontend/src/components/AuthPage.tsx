@@ -17,6 +17,11 @@ export function AuthPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [authErrorNotice, setAuthErrorNotice] = useState<string | null>(null);
+  const handleAuthTabChange = (value: string) => {
+    if (value === 'signin' || value === 'signup') {
+      setActiveTab(value);
+    }
+  };
 
   const clerkAppearance = {
     layout: {
@@ -181,7 +186,7 @@ export function AuthPage() {
               </div>
             )}
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')} className="w-full">
+            <Tabs value={activeTab} onValueChange={handleAuthTabChange} className="w-full">
               <TabsList className={
                 isDarkMode
                   ? 'grid w-full grid-cols-2 rounded-xl bg-slate-700/90 p-1 border border-slate-300/40'
