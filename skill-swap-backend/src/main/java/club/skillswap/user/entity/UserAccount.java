@@ -17,9 +17,18 @@ import java.util.List;
 @Setter
 public class UserAccount {
 
-    // 涓婚敭锛屼笌 Supabase auth.users.id 瀵瑰簲
+    // 本地用户主键（内部 UUID）。
+    // 注意：认证平台的 subject(sub) 不一定是 UUID（例如 Clerk）。
     @Id
     private UUID id;
+
+    // 外部身份平台标识（可选），例如："supabase" / "clerk" / issuer URI。
+    @Column(name = "auth_provider")
+    private String authProvider;
+
+    // 外部身份平台 subject(sub)。用于把 JWT sub 映射到本地用户 UUID。
+    @Column(name = "auth_subject", unique = true)
+    private String authSubject;
 
     @Column(nullable = false)
     private String username;

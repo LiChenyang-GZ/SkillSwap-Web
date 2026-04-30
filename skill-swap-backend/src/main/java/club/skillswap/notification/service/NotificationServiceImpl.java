@@ -6,6 +6,7 @@ import club.skillswap.notification.entity.Notification;
 import club.skillswap.notification.repository.NotificationRepository;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.repository.UserRepository;
+import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
     private final WorkshopRepository workshopRepository;
 
     @Override
@@ -131,7 +133,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            return UUID.fromString(jwtAuth.getToken().getSubject());
+            return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId();
         }
 
         Object principal = authentication.getPrincipal();

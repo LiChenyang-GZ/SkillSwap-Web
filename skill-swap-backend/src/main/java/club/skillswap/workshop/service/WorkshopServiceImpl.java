@@ -1083,9 +1083,9 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         // 1) Spring Resource Server锛圔earer JWT锛?
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            // 涓€鑸氨鏄敤鎴风殑 UUID锛圝WT 鐨?sub锛?
-            return jwtAuth.getToken().getSubject();
-            // 涔熷彲浠ヤ粠 claim 閲屽彇锛歫wtAuth.getTokenAttributes().get("sub")
+            // JWT 的 subject(sub) 可能不是 UUID（例如 Clerk）。
+            // 统一映射到本地 user_account.id（UUID），保证下游 UUID 解析稳定。
+            return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
         }
 
         // 2) 浼犵粺琛ㄥ崟/鑷畾涔?UserDetails

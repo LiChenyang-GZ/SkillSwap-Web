@@ -1,326 +1,203 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../utils/supabase/supabase';
-import { getAuthRedirectUrl } from '../lib/authRedirect';
+import { useEffect } from 'react';
+import { SignIn, SignUp, useAuth } from '@clerk/clerk-react';
 import { useApp } from '../contexts/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { 
   LogIn, 
   UserPlus, 
-  Mail, 
-  Lock, 
-  Eye,
-  EyeOff,
-  ArrowLeft
+  ArrowLeft,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 export function AuthPage() {
-  const { setCurrentPage } = useApp();
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { setCurrentPage, isDarkMode, toggleDarkMode } = useApp();
+  const { isLoaded, isSignedIn } = useAuth();
 
-  // Sign In state
-  const [signInData, setSignInData] = useState({
-    email: '',
-    password: '',
-  });
+  const clerkAppearance = {
+    variables: isDarkMode
+      ? {
+          colorPrimary: '#f59e0b',
+          colorBackground: 'transparent',
+          colorText: '#ffffff',
+          colorInputBackground: 'rgba(30,41,59,0.95)',
+          colorInputText: '#ffffff',
+          colorNeutral: '#cbd5e1',
+          colorDanger: '#fda4af',
+          borderRadius: '0.75rem',
+        }
+      : {
+          colorPrimary: '#ea580c',
+          colorBackground: 'transparent',
+          colorText: '#0f172a',
+          colorInputBackground: 'rgba(15,23,42,0.03)',
+          colorInputText: '#0f172a',
+          colorNeutral: '#475569',
+          colorDanger: '#e11d48',
+          borderRadius: '0.75rem',
+        },
+    elements: {
+      rootBox: 'w-full',
+      cardBox: 'w-full shadow-none',
+      card: 'w-full bg-transparent shadow-none border-0 p-0',
+      headerTitle: 'hidden',
+      headerSubtitle: 'hidden',
+      socialButtonsBlockButton:
+        isDarkMode
+          ? 'h-11 rounded-xl border border-slate-300/60 bg-slate-700 text-white hover:bg-slate-600 transition'
+          : 'h-11 rounded-xl border border-slate-300 bg-white text-slate-900 hover:bg-slate-50 transition',
+      socialButtonsBlockButtonText: isDarkMode ? 'text-sm font-medium text-white' : 'text-sm font-medium text-slate-900',
+      dividerLine: isDarkMode ? 'bg-slate-300/50' : 'bg-slate-300',
+      dividerText: isDarkMode ? 'text-slate-100 text-xs' : 'text-slate-500 text-xs',
+      formFieldLabel: isDarkMode ? 'text-slate-100 text-sm font-medium' : 'text-slate-700 text-sm',
+      formFieldInput:
+        isDarkMode
+          ? 'h-11 rounded-xl border border-slate-300/60 bg-slate-700 text-white placeholder:text-slate-200/95 focus:border-amber-300 focus:ring-0'
+          : 'h-11 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:border-orange-500 focus:ring-0',
+      formButtonPrimary:
+        isDarkMode
+          ? 'h-11 rounded-xl bg-amber-400 text-slate-950 font-bold hover:bg-amber-300 transition'
+          : 'h-11 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-500 transition',
+      identityPreviewText: isDarkMode ? 'text-slate-300' : 'text-slate-600',
+      formResendCodeLink: isDarkMode ? 'text-orange-300 hover:text-orange-200' : 'text-orange-600 hover:text-orange-500',
+      otpCodeFieldInput:
+        isDarkMode
+          ? 'rounded-xl border border-slate-300/60 bg-slate-700 text-white focus:border-amber-300'
+          : 'rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-orange-500',
+      alertText: isDarkMode ? 'text-rose-300 text-sm' : 'text-rose-600 text-sm',
+      formFieldErrorText: isDarkMode ? 'text-rose-300 text-xs' : 'text-rose-600 text-xs',
+      footer: 'hidden',
+      footerAction: 'hidden',
+      footerActionText: 'hidden',
+      footerActionLink: 'hidden',
+      formFieldSuccessText: isDarkMode ? 'text-emerald-300 text-xs' : 'text-emerald-600 text-xs',
+    },
+  } as const;
 
-  // Sign Up state
-  const [signUpData, setSignUpData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
-
-  // 检查邮件链接回调和 session
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      // 检查 URL 中是否有 auth token（从邮件链接或 OAuth 回调）
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log("✅ Found auth session from email link or OAuth:", session.user.email);
-        // 直接跳转到 explore，AppContext 的 onAuthStateChange 会处理登录状态
-        setCurrentPage("explore");
-      }
-    };
-
-    handleAuthCallback();
-  }, []);
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    console.log("clicked sign in", signInData);
-    e.preventDefault();
-    setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: signInData.email,
-      password: signInData.password,
-    });
-    console.log("signIn result", { data, error });
-    if (error) {
-      alert(error.message);
-      setLoading(false);
-    } else {
-      // 登录成功，重新跳转触发 AppContext 的 onAuthStateChange 监听
-      setCurrentPage("explore");
+    if (!isLoaded) return;
+    if (isSignedIn) {
+      setCurrentPage('explore');
     }
-  };
-
-  
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (signUpData.password !== signUpData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: signUpData.email,
-      password: signUpData.password,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl(),
-      },
-    });
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Check your email for a confirmation link');
-    }
-    // setLoading(false);
-    // try {
-    //   // Mock 模式下，注册和登录使用同样的逻辑
-    //   await signIn(signUpData.email, signUpData.password);
-    // } catch (err: any) {
-    //   console.error("Sign up error:", err);
-    //   setError(err.message || "注册失败，请重试");
-    // } finally {
-    //   setLoading(false);
-    // }
-  };
-
-  const handleMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: signInData.email,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl(),
-      },
-    });
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Check your email for a magic link');
-    }
-    setLoading(false);
-  };
+  }, [isLoaded, isSignedIn, setCurrentPage]);
 
   return (
-    <div className="min-h-screen bg-background pt-20 lg:pt-24">
-      <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Back Button */}
-        <div className="mb-6">
+    <div
+      className={
+        isDarkMode
+          ? 'min-h-screen bg-[radial-gradient(1200px_520px_at_15%_0%,rgba(245,158,11,0.28),transparent),linear-gradient(135deg,#020617_0%,#0f172a_45%,#1e293b_100%)] pt-20 lg:pt-24'
+          : 'min-h-screen bg-[radial-gradient(1100px_420px_at_10%_0%,rgba(251,146,60,0.25),transparent),linear-gradient(135deg,#fff7ed_0%,#f8fafc_55%,#eef2ff_100%)] pt-20 lg:pt-24'
+      }
+    >
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-6 flex items-center justify-between">
           <Button
             variant="ghost"
             onClick={() => setCurrentPage('hero')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            className={isDarkMode ? 'flex items-center gap-2 text-slate-300 hover:text-white' : 'flex items-center gap-2 text-slate-700 hover:text-slate-900'}
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Home
           </Button>
+          <Button
+            variant="outline"
+            onClick={toggleDarkMode}
+            className={
+              isDarkMode
+                ? 'border-slate-300/60 bg-slate-700/90 text-white hover:bg-slate-600'
+                : 'border-slate-300 bg-white/70 text-slate-900 hover:bg-white'
+            }
+          >
+            {isDarkMode ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+            {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+          </Button>
         </div>
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-lg flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">SS</span>
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Welcome to Skill Swap Club</h1>
-          <p className="text-muted-foreground">
-            Sign in or create an account to continue
-          </p>
+        <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] items-start">
+          <section className={isDarkMode ? 'text-white' : 'text-slate-900'}>
+            <p className={isDarkMode
+              ? 'inline-flex items-center rounded-full border border-orange-300/30 bg-orange-400/15 px-3 py-1 text-xs tracking-wide text-orange-100'
+              : 'inline-flex items-center rounded-full border border-orange-300/50 bg-orange-100 px-3 py-1 text-xs tracking-wide text-orange-700'}>
+              SKILL SWAP CLUB
+            </p>
+            <h1 className="mt-4 text-4xl lg:text-5xl font-black leading-tight">
+              Learn together,
+              <br />
+              teach each other.
+            </h1>
+            <p className={isDarkMode ? 'mt-4 max-w-md text-slate-200/90' : 'mt-4 max-w-md text-slate-700'}>
+              Join workshops, share practical skills, and connect with people who are excited to build with you.
+            </p>
+          </section>
+
+          <section className={
+            isDarkMode
+              ? 'rounded-3xl border border-slate-300/45 bg-slate-900/88 backdrop-blur-xl p-5 sm:p-6 shadow-2xl shadow-black/70'
+              : 'rounded-3xl border border-slate-200 bg-white/85 backdrop-blur-xl p-5 sm:p-6 shadow-xl shadow-slate-300/40'
+          }>
+            <div className="text-center mb-5">
+              <div className={
+                isDarkMode
+                  ? 'w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center mx-auto mb-3'
+                  : 'w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mx-auto mb-3'
+              }>
+                <span className="text-slate-900 font-black text-lg">SS</span>
+              </div>
+              <h2 className={isDarkMode ? 'text-2xl font-bold text-white' : 'text-2xl font-bold text-slate-900'}>Welcome</h2>
+              <p className={isDarkMode ? 'text-sm text-slate-100 mt-1' : 'text-sm text-slate-600 mt-1'}>Sign in or create an account to continue</p>
+            </div>
+
+            <Tabs defaultValue="signin" className="w-full">
+              <TabsList className={
+                isDarkMode
+                  ? 'grid w-full grid-cols-2 rounded-xl bg-slate-700/90 p-1 border border-slate-300/40'
+                  : 'grid w-full grid-cols-2 rounded-xl bg-slate-100 p-1'
+              }>
+                <TabsTrigger
+                  value="signin"
+                  className={
+                    isDarkMode
+                      ? 'rounded-lg data-[state=active]:bg-amber-300 data-[state=active]:text-slate-950 text-slate-100'
+                      : 'rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-900 text-slate-600'
+                  }
+                >
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger
+                  value="signup"
+                  className={
+                    isDarkMode
+                      ? 'rounded-lg data-[state=active]:bg-amber-300 data-[state=active]:text-slate-950 text-slate-100'
+                      : 'rounded-lg data-[state=active]:bg-white data-[state=active]:text-slate-900 text-slate-600'
+                  }
+                >
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="signin" className="mt-5">
+                <h3 className={isDarkMode ? 'mb-3 flex items-center gap-2 text-lg font-semibold text-white' : 'mb-3 flex items-center gap-2 text-lg font-semibold text-slate-900'}>
+                  <LogIn className={isDarkMode ? 'w-5 h-5 text-orange-300' : 'w-5 h-5 text-orange-600'} />
+                  Sign In
+                </h3>
+                <SignIn appearance={clerkAppearance} />
+                <p className={isDarkMode ? 'mt-3 text-xs text-slate-100' : 'mt-3 text-xs text-slate-600'}>
+                  First time using Google on this app? If Sign In shows
+                  &quot;External Account was not found&quot;, switch to Sign Up once to create the account.
+                </p>
+              </TabsContent>
+
+              <TabsContent value="signup" className="mt-5">
+                <h3 className={isDarkMode ? 'mb-3 flex items-center gap-2 text-lg font-semibold text-white' : 'mb-3 flex items-center gap-2 text-lg font-semibold text-slate-900'}>
+                  <UserPlus className={isDarkMode ? 'w-5 h-5 text-orange-300' : 'w-5 h-5 text-orange-600'} />
+                  Create Account
+                </h3>
+                <SignUp appearance={clerkAppearance} />
+              </TabsContent>
+            </Tabs>
+          </section>
         </div>
-
-        <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
-
-          {/* Sign In */}
-          <TabsContent value="signin">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <LogIn className="w-5 h-5" />
-                  <span>Sign In</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div>
-                    <Label>Email</Label>
-                    <div className="relative mt-1">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        type="email"
-                        placeholder="your.email@example.com"
-                        value={signInData.email}
-                        onChange={(e) =>
-                          setSignInData({ ...signInData, email: e.target.value })
-                        }
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Password</Label>
-                    <div className="relative mt-1">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Your password"
-                        value={signInData.password}
-                        onChange={(e) =>
-                          setSignInData({
-                            ...signInData,
-                            password: e.target.value,
-                          })
-                        }
-                        className="pl-10 pr-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Signing In...' : 'Sign In'}
-                  </Button>
-                </form>
-
-                <div className="mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleMagicLink}
-                    disabled={loading || !signInData.email}
-                  >
-                    {loading ? 'Sending...' : 'Send Magic Link'}
-                  </Button>
-                </div>
-
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Sign Up */}
-          <TabsContent value="signup">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <UserPlus className="w-5 h-5" />
-                  <span>Create Account</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div>
-                    <Label>Email</Label>
-                    <div className="relative mt-1">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        type="email"
-                        placeholder="your.email@example.com"
-                        value={signUpData.email}
-                        onChange={(e) =>
-                          setSignUpData({ ...signUpData, email: e.target.value })
-                        }
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Password</Label>
-                    <div className="relative mt-1">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Choose a password"
-                        value={signUpData.password}
-                        onChange={(e) =>
-                          setSignUpData({
-                            ...signUpData,
-                            password: e.target.value,
-                          })
-                        }
-                        className="pl-10 pr-10"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Confirm Password</Label>
-                    <Input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Confirm your password"
-                      value={signUpData.confirmPassword}
-                      onChange={(e) =>
-                        setSignUpData({
-                          ...signUpData,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
-                  </Button>
-                </form>
-
-                <div className="mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleMagicLink}
-                    disabled={loading || !signUpData.email}
-                  >
-                    {loading ? 'Sending...' : 'Send Magic Link Instead'}
-                  </Button>
-                </div>
-
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   );
