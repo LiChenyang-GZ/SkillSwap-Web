@@ -10,7 +10,7 @@ export const adminWorkshopService = {
     const data = await apiCall<any[]>('/api/v1/admin/workshops', {}, token);
     return data.map(enrichWorkshop);
   },
-  getById: async (id: string, token?: string | null): Promise<Workshop | null> => {
+  getById: async (id: string, token?: string | null): Promise<Workshop> => {
     const data = await apiCall<any>(`/api/v1/workshops/${toBackendWorkshopId(id)}`, {}, token);
     return enrichWorkshop(data);
   },

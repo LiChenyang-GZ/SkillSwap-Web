@@ -139,11 +139,6 @@ export function AdminReviewScreen() {
     setIsDetailLoading(true);
     try {
       const detail = await adminWorkshopService.getById(workshopId, sessionToken);
-      if (!detail) {
-        // Fallback to summary data instead of keeping the details pane in loading state forever.
-        setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
-        return;
-      }
 
       setWorkshops((prev) => prev.map((w) => (w.id === detail.id ? { ...w, ...detail } : w)));
       setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
