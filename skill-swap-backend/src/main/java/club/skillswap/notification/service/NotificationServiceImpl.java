@@ -10,12 +10,12 @@ import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +26,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
@@ -72,14 +73,12 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createNotification(UUID recipientId, String type, String title, String message, Long workshopId) {
         persistNotification(recipientId, type, title, message, workshopId);
     }
 
     @Override
-    @Async
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createNotification(UserAccount recipient, String type, String title, String message, Workshop workshop) {
         UUID recipientId = recipient != null ? recipient.getId() : null;
@@ -89,11 +88,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     private void persistNotification(UUID recipientId, String type, String title, String message, Long workshopId) {
         if (recipientId == null) {
+            log.warn("Skip notification because recipientId is null. type={}, workshopId={}", type, workshopId);
             return;
         }
 
         UserAccount recipient = userRepository.findById(recipientId).orElse(null);
         if (recipient == null) {
+            log.warn("Skip notification because recipient user not found. recipientId={}, type={}, workshopId={}", recipientId, type, workshopId);
             return;
         }
 
@@ -111,6 +112,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRead(false);
 
         notificationRepository.save(notification);
+        log.info("Notification created. recipientId={}, type={}, workshopId={}", recipientId, type, workshopId);
     }
 
     private NotificationResponseDto mapToDto(Notification notification) {

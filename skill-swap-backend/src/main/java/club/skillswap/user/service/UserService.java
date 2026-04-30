@@ -185,7 +185,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserAccount> findAdmins() {
-        return userRepository.findByRoleIgnoreCase("admin");
+        return userRepository.findAllAdminUsers();
     }
 
     /**
