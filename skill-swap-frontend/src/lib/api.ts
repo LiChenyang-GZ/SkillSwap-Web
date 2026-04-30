@@ -1,18 +1,8 @@
 // lib/api.ts
 
-import { CreditTransaction, MemoryEntry, NotificationItem, Workshop, User } from '@/types';
+import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
 import { supabase } from '../utils/supabase/supabase';
 import { getAuthRedirectUrl } from './authRedirect';
-// Legacy in-memory fallback data used by development-only helper APIs.
-import {
-  addFallbackTransaction,
-  addFallbackUser,
-  getFallbackProfile,
-  getFallbackTransactions,
-  getFallbackUserById,
-  getPrimaryFallbackUser,
-  updateFallbackProfile,
-} from './devFallback';
 
 export interface WorkshopUpsertPayload {
   hostName: string;
@@ -388,30 +378,6 @@ export const authAPI = {
     }
   },
 
-  // Mock sign-in (just return the first mock user)
-  signInMock: async () => {
-    return getPrimaryFallbackUser(); // ✅ always use the first mock user
-  },
-
-  // Mock sign-up (local only, creates a fake user object)
-  signUpMock: async (email: string, name: string): Promise<User> => {
-    const newUser: User = {
-      id: 'mock-user-' + Date.now(),
-      email,
-      username: name,
-      avatarUrl: 'https://placehold.co/150x150',
-      creditBalance: 50,
-      bio: '',
-      skills: [],
-      totalWorkshopsHosted: 0,
-      totalWorkshopsAttended: 0,
-      rating: 0,
-      createdAt: new Date().toISOString(),
-    };
-    addFallbackUser(newUser); // add to in-memory list
-    return newUser;
-  },
-
   // Sign out (real 和 dev 都支持)
   signOut: async () => {
     // 清除 dev token
@@ -436,13 +402,12 @@ export const authAPI = {
     };
   },
 
-  // Always return a user (Supabase user if logged in, otherwise first fallback user)
   getUser: async () => {
     const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      return data.session.user;
+    if (!data.session?.user) {
+      return null;
     }
-    return getPrimaryFallbackUser(); // fallback mock user
+    return data.session.user;
   },
 };
 
@@ -450,26 +415,21 @@ export const authAPI = {
 // USER API
 // ----------------------
 export const userAPI = {
-  // 获取当前用户 profile（需要认证）
   getProfile: async (): Promise<User> => {
-    // TODO: 当后端 /api/v1/users/me 实现后，改为真实调用
-    return getFallbackProfile();
+    return apiCall<User>('/api/v1/users/me');
   },
 
   // 根据 ID 获取用户
   getById: async (id: string): Promise<User | null> => {
-    try {
-      const data = await apiCall<User>(`/api/v1/users/${id}`);
-      return data;
-    } catch (error) {
-      console.warn("⚠️ Backend unavailable, using mock data");
-      return getFallbackUserById(id);
-    }
+    const data = await apiCall<User>(`/api/v1/users/${id}`);
+    return data;
   },
 
-  // Update profile locally
   updateProfile: async (updates: Partial<User>): Promise<User> => {
-    return updateFallbackProfile(updates);
+    return apiCall<User>('/api/v1/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
   },
 };
 
@@ -717,16 +677,12 @@ export const workshopAPI = {
 // TRANSACTION API
 // ----------------------
 export const transactionAPI = {
-  getAll: async () => getFallbackTransactions(),
+  getAll: async () => {
+    throw new Error('transactionAPI.getAll requires a backend endpoint and is not implemented.');
+  },
 
-  add: async (tx: any) => {
-    const newTx = {
-      id: 'tx-' + Date.now(),
-      timestamp: new Date().toISOString(),
-      ...tx,
-    };
-    addFallbackTransaction(newTx as CreditTransaction);
-    return newTx;
+  add: async (_tx: any) => {
+    throw new Error('transactionAPI.add requires a backend endpoint and is not implemented.');
   },
 };
 
