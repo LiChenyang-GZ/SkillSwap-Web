@@ -112,7 +112,7 @@ export function Navigation() {
                   <button className="flex items-center space-x-2">
                     <Avatar className="w-8 h-8">
                       <AvatarImage src={user.avatarUrl} alt={user.username} />
-                      <AvatarFallback>{user.username.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                      <AvatarFallback>{user.username.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                     <div className="hidden xl:block text-left">
                       <p className="text-sm font-medium">{user.username}</p>

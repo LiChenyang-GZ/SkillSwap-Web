@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../contexts/AppContext";
 import { memoryAPI } from "../lib/api";
-import { MemoryEntry } from "../types";
+import type { MemoryEntry } from "../types/memory";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Archive, ArrowRight, ChevronLeft, ChevronRight, Loader2, Users } from "lucide-react";

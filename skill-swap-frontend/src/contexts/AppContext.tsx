@@ -8,7 +8,9 @@ import {
   ReactNode,
 } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import { User, Workshop, CreditTransaction } from "../types";
+import type { User } from "../types/user";
+import type { Workshop } from "../types/workshop";
+import type { CreditTransaction } from "../types/creditTransaction";
 import { notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
 import { toast } from "sonner";
 
