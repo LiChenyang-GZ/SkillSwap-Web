@@ -12,7 +12,7 @@ import {
   MapPin,
   Globe,
 } from 'lucide-react';
-import { categories } from '../../lib/mock-data';
+import { workshopCategories } from '../../constants/workshop';
 import {
   getWorkshopAccessLabel,
   getUserWorkshopStatusLabel,
@@ -68,7 +68,7 @@ export function ExploreWorkshops() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
+                {workshopCategories.map(category => (
                   <SelectItem key={category} value={category}>{category}</SelectItem>
                 ))}
               </SelectContent>

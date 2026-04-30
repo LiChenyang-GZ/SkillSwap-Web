@@ -9,10 +9,6 @@ import {
 } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import { User, Workshop, CreditTransaction } from "../types";
-import {
-  // mockWorkshops,
-  // mockTransactions,
-} from "../lib/mock-data";
 import { notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
 import { toast } from "sonner";
 
@@ -170,6 +166,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!candidate) return true;
     return /^user([_\s-]|$)/i.test(candidate);
   };
+
+  const refreshSessionToken = useCallback(async () => {
+    const nextToken = await getToken({ template: "signupTemplate" });
+    if (nextToken) {
+      setSessionToken(nextToken);
+    }
+    return nextToken ?? null;
+  }, [getToken]);
 
   const buildIdentityFallback = (backendUser: User): User => {
     const primaryEmail =
@@ -868,14 +872,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const createWorkshop = async (workshopData: any) => {
-    if (!isAuthenticated || !user || !sessionToken) {
+    if (!isAuthenticated || !user) {
       toast.error("Please sign in to create workshops");
       return;
     }
     
     try {
+      let tokenToUse = sessionToken ?? (await refreshSessionToken());
+      if (!tokenToUse) {
+        toast.error("Please sign in to create workshops");
+        return;
+      }
+
       // 调用后端 API 创建 workshop
-      await workshopAPI.create(workshopData, sessionToken);
+      try {
+        await workshopAPI.create(workshopData, tokenToUse);
+      } catch (error) {
+        const status = (error as Error & { status?: number }).status;
+        if (status !== 401) throw error;
+
+        const refreshedToken = await refreshSessionToken();
+        if (!refreshedToken || refreshedToken === tokenToUse) {
+          throw error;
+        }
+        tokenToUse = refreshedToken;
+        await workshopAPI.create(workshopData, tokenToUse);
+      }
       
       toast.success("Workshop created successfully!");
       setCurrentPage("dashboard");
