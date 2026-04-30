@@ -64,6 +64,10 @@ export function AuthPage() {
               </CardHeader>
               <CardContent>
                 <SignIn />
+                <p className="mt-3 text-xs text-muted-foreground">
+                  First time using Google on this app? If Sign In shows
+                  &quot;External Account was not found&quot;, switch to Sign Up once to create the account.
+                </p>
 
               </CardContent>
             </Card>

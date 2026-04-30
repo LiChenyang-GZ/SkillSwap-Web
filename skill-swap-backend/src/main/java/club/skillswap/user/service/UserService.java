@@ -153,7 +153,7 @@ public class UserService {
                     newUser.setAuthProvider(issuer);
                     newUser.setAuthSubject(subject);
                     newUser.setEmail(jwtEmail);
-                    newUser.setUsername(buildBaseUsername(newId, jwtEmail, subject));
+                    newUser.setUsername(buildBaseUsername(newId, jwtEmail, subject, jwt));
                     newUser.setRole("member");
                     return userRepository.save(newUser);
                 });
@@ -353,8 +353,18 @@ public class UserService {
     }
 
     private String extractEmailFromJwt(Jwt jwt) {
-        String email = jwt.getClaimAsString("email");
-        return (email == null || email.isBlank()) ? null : email;
+        String email = trimToNull(jwt.getClaimAsString("email"));
+        if (email != null) {
+            return email;
+        }
+
+        // Some providers may expose an alternate email claim.
+        String alternateEmail = trimToNull(jwt.getClaimAsString("email_address"));
+        if (alternateEmail != null) {
+            return alternateEmail;
+        }
+
+        return null;
     }
 
     private void maybeRequireVerifiedEmail(Jwt jwt, String email) {
@@ -404,12 +414,24 @@ public class UserService {
         }
     }
 
-    private String buildBaseUsername(UUID userId, String email, String subject) {
+    private String buildBaseUsername(UUID userId, String email, String subject, Jwt jwt) {
         if (email != null && !email.isBlank()) {
             String localPart = email.split("@")[0];
-            String sanitized = localPart.replaceAll("[^a-zA-Z0-9]", "_");
+            String sanitized = localPart.replaceAll("[^\\p{L}\\p{N}._-]", "_");
             if (!sanitized.isBlank()) {
                 return sanitized;
+            }
+        }
+
+        String preferredUsername = firstNonBlank(
+                jwt.getClaimAsString("preferred_username"),
+                jwt.getClaimAsString("username"),
+                jwt.getClaimAsString("name"),
+                jwt.getClaimAsString("given_name"));
+        if (preferredUsername != null) {
+            String sanitized = preferredUsername.replaceAll("[^\\p{L}\\p{N}._\\-\\s]", "_").trim();
+            if (!sanitized.isBlank()) {
+                return sanitized.length() > 32 ? sanitized.substring(0, 32) : sanitized;
             }
         }
 
@@ -424,5 +446,14 @@ public class UserService {
         }
 
         return "user_" + userId.toString().replace("-", "").substring(0, 8);
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 }

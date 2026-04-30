@@ -7,7 +7,7 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { User, Workshop, CreditTransaction } from "../types";
 import {
   // mockWorkshops,
@@ -123,6 +123,7 @@ const resolvePostLoginPage = () => {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { isLoaded: clerkLoaded, isSignedIn, getToken, signOut: clerkSignOut } = useAuth();
+  const { user: clerkUser } = useUser();
 
   const [user, setUser] = useState<User | null>(null);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -159,6 +160,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.warn("Failed to decode JWT payload", error);
       return null;
     }
+  };
+
+  const normalizeWhitespace = (value: string) => value.trim().replace(/\s+/g, " ");
+
+  const isGeneratedUsername = (value: string | null | undefined) => {
+    if (!value) return true;
+    const candidate = value.trim();
+    if (!candidate) return true;
+    return /^user([_\s-]|$)/i.test(candidate);
+  };
+
+  const buildIdentityFallback = (backendUser: User): User => {
+    const primaryEmail =
+      clerkUser?.primaryEmailAddress?.emailAddress?.trim() ||
+      clerkUser?.emailAddresses?.[0]?.emailAddress?.trim() ||
+      "";
+
+    const fullNameCandidate = normalizeWhitespace(
+      clerkUser?.fullName ||
+        [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") ||
+        ""
+    );
+
+    const usernameCandidate =
+      (fullNameCandidate && !/^user([_\s-]|$)/i.test(fullNameCandidate) ? fullNameCandidate : "") ||
+      clerkUser?.username?.trim() ||
+      (primaryEmail.includes("@") ? primaryEmail.split("@")[0] : "");
+
+    const nextEmail = backendUser.email?.trim() || primaryEmail || "";
+    const nextUsername = isGeneratedUsername(backendUser.username)
+      ? (usernameCandidate || backendUser.username)
+      : backendUser.username;
+
+    return {
+      ...backendUser,
+      email: nextEmail,
+      username: nextUsername,
+    };
   };
 
 
@@ -312,7 +351,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const token = await getToken();
+        const token = await getToken({ template: 'signupTemplate' });
         if (!token) {
           clearAuthState("auth");
           setIsLoading(false);
@@ -323,11 +362,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         try {
           const mapped = await fetchBackendUser(token);
-          setUser(mapped);
+          const hydrated = buildIdentityFallback(mapped);
+          setUser(hydrated);
           setIsAuthenticated(true);
           setSessionToken(token);
           lastAppliedProfileTokenRef.current = token;
           hasBackendProfileRef.current = true;
+
+          if (hydrated.username && hydrated.username !== mapped.username) {
+            // Best effort: persist a friendlier username back to backend.
+            try {
+              await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/v1/users/me`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ username: hydrated.username }),
+              });
+            } catch (syncError) {
+              console.warn("Failed to sync fallback username to backend", syncError);
+            }
+          }
 
           // 登录后回到用户请求页（或默认 explore）
           setCurrentPage(resolvePostLoginPage());
@@ -343,7 +399,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         initializedRef.current = true;
       }
     })();
-  }, [clerkLoaded, isSignedIn, getToken, fetchBackendUser]);
+  }, [clerkLoaded, isSignedIn, getToken, fetchBackendUser, clerkUser]);
 
   // --------------------------
   // Helpers
