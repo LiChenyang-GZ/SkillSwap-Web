@@ -204,20 +204,20 @@ export function WorkshopDetails({ workshopId }: WorkshopDetailsProps) {
 
             <div className="pb-8">
               <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">About</h2>
-              <p className="text-base leading-relaxed text-foreground">{workshop.description}</p>
+              <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{workshop.description}</p>
             </div>
 
             {(workshop.materialsProvided || '').trim() && (
               <div className="pb-8">
                 <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Provided</h2>
-                <p className="text-base leading-relaxed text-foreground">{workshop.materialsProvided}</p>
+                <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{workshop.materialsProvided}</p>
               </div>
             )}
 
             {(workshop.materialsNeededFromClub || '').trim() && (
               <div className="pb-8">
                 <h2 className="text-sm font-semibold text-muted-foreground mb-4 uppercase">Materials Needed From Club</h2>
-                <p className="text-base leading-relaxed text-foreground">{workshop.materialsNeededFromClub}</p>
+                <p className="text-base leading-relaxed text-foreground whitespace-pre-wrap">{workshop.materialsNeededFromClub}</p>
               </div>
             )}
 
