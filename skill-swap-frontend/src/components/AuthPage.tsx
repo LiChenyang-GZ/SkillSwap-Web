@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useState } from 'react';
+import { useRef } from 'react';
 import { SignIn, SignUp, useAuth } from '@clerk/clerk-react';
 import { useApp } from '../contexts/AppContext';
 import { Button } from './ui/button';
@@ -17,6 +18,7 @@ export function AuthPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [authErrorNotice, setAuthErrorNotice] = useState<string | null>(null);
+  const signInPaneRef = useRef<HTMLDivElement | null>(null);
   const handleAuthTabChange = (value: string) => {
     if (value === 'signin' || value === 'signup') {
       setActiveTab(value);
@@ -104,6 +106,35 @@ export function AuthPage() {
     setActiveTab('signup');
     sessionStorage.removeItem('skill_swap_auth_error');
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'signin') {
+      return;
+    }
+    const root = signInPaneRef.current;
+    if (!root) {
+      return;
+    }
+
+    const checkForExternalAccountError = () => {
+      const text = (root.textContent || '').toLowerCase();
+      const hit =
+        text.includes('external account was not found') ||
+        text.includes('account is not linked yet');
+      if (!hit) {
+        return;
+      }
+      setAuthErrorNotice(
+        'This Google account is not linked yet. Please use Sign Up once, then return to Sign In.'
+      );
+      setActiveTab('signup');
+    };
+
+    checkForExternalAccountError();
+    const observer = new MutationObserver(() => checkForExternalAccountError());
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [activeTab]);
 
   return (
     <div
@@ -219,7 +250,9 @@ export function AuthPage() {
                   <LogIn className={isDarkMode ? 'w-5 h-5 text-orange-300' : 'w-5 h-5 text-orange-600'} />
                   Sign In
                 </h3>
-                <SignIn appearance={clerkAppearance} />
+                <div ref={signInPaneRef}>
+                  <SignIn appearance={clerkAppearance} />
+                </div>
               </TabsContent>
 
               <TabsContent value="signup" className="mt-5">

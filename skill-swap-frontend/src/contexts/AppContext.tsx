@@ -359,9 +359,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         if (!isSignedIn) {
+          const currentPageFromPath = pageFromPath(window.location.pathname);
           const authErrorMessage = detectClerkAuthError();
           if (authErrorMessage) {
             sessionStorage.setItem("skill_swap_auth_error", authErrorMessage);
+            clearAuthState("auth");
+          } else if (currentPageFromPath === "auth") {
             clearAuthState("auth");
           } else {
             clearAuthState("hero");
