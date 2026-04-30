@@ -343,8 +343,8 @@ export const authAPI = {
 // USER API
 // ----------------------
 export const userAPI = {
-  getProfile: async (): Promise<User> => {
-    return apiCall<User>('/api/v1/users/me');
+  getProfile: async (token?: string | null): Promise<User> => {
+    return apiCall<User>('/api/v1/users/me', {}, token);
   },
 
   // 根据 ID 获取用户
@@ -353,11 +353,11 @@ export const userAPI = {
     return data;
   },
 
-  updateProfile: async (updates: Partial<User>): Promise<User> => {
+  updateProfile: async (updates: Partial<User>, token?: string | null): Promise<User> => {
     return apiCall<User>('/api/v1/users/me', {
       method: 'PATCH',
       body: JSON.stringify(updates),
-    });
+    }, token);
   },
 };
 

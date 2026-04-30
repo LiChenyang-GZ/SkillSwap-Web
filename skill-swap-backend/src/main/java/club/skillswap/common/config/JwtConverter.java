@@ -55,11 +55,15 @@ public class JwtConverter implements Converter<Jwt, AbstractAuthenticationToken>
     }
 
     private boolean isAdminRole(String role) {
-        if (role == null) {
-            return false;
-        }
-        String normalized = role.trim().toLowerCase(Locale.ROOT);
+        String normalized = normalizeRole(role);
         return "admin".equals(normalized) || "role_admin".equals(normalized);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return "";
+        }
+        return role.replaceAll("[\\s\\p{Cntrl}]+", "").toLowerCase(Locale.ROOT);
     }
 
     private UUID tryParseUuid(String value) {

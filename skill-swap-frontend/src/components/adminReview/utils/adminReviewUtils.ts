@@ -1,4 +1,5 @@
 import type { Workshop } from '../../../types/workshop';
+import { normalizeAdminWorkshopStatus } from '../../workshop/workshopStatusRules';
 import { WorkshopFormState } from '../models/adminReviewFormModel';
 import { ADMIN_REVIEW_RESOLVED_WORKSHOP_STATUSES } from '../constants/adminReviewStatusConstants';
 
@@ -18,7 +19,7 @@ export const normalizeAttendCloseAtForApi = (value: string): string | null => {
 };
 
 export const resolveAdminDisplayStatus = (workshop: Workshop): Workshop['status'] => {
-  const status = String(workshop.status || '').trim().toLowerCase();
+  const status = normalizeAdminWorkshopStatus(workshop.status);
 
   if (ADMIN_REVIEW_RESOLVED_WORKSHOP_STATUSES.includes(status as (typeof ADMIN_REVIEW_RESOLVED_WORKSHOP_STATUSES)[number])) {
     return status as Workshop['status'];

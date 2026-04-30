@@ -1,4 +1,5 @@
 import { Check, Download, Globe, MapPin, RefreshCw, Upload, Users, X } from 'lucide-react';
+import type { RefObject } from 'react';
 import type { Workshop } from '../../../types/workshop';
 import { workshopCategories } from '../../../constants/workshop';
 import { Badge } from '../../../components/ui/badge';
@@ -29,7 +30,7 @@ interface AdminReviewDetailPanelProps {
   formData: WorkshopFormState;
   rejectComment: string;
   localImagePreviewUrl: string | null;
-  imageFileInputRef: React.RefObject<HTMLInputElement>;
+  imageFileInputRef: RefObject<HTMLInputElement>;
   isDirty: boolean;
   onRetryLoadDetails: () => void;
   onInputChange: (field: keyof WorkshopFormState, value: string | boolean) => void;
