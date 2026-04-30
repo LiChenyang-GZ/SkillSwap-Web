@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Workshop } from '../../../types/workshop';
 import { WorkshopFormState, emptyWorkshopForm } from '../models/adminReviewFormModel';
 import { buildWorkshopFormState, normalizeFormState } from '../utils/adminReviewUtils';
@@ -14,12 +14,12 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
   const [rejectComment, setRejectComment] = useState('');
   const imageFileInputRef = useRef<HTMLInputElement>(null);
 
-  const isDirty = (() => {
+  const isDirty = useMemo(() => {
     if (!selectedWorkshop) return false;
     const baseline = normalizeFormState(buildWorkshopFormState(selectedWorkshop));
     const current = normalizeFormState(formData);
     return JSON.stringify(baseline) !== JSON.stringify(current);
-  })();
+  }, [selectedWorkshop, formData]);
 
   const clearLocalImagePreview = () => {
     setLocalImagePreviewUrl((previousUrl) => {

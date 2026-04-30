@@ -11,6 +11,7 @@ import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { Textarea } from '../../../components/ui/textarea';
+import { normalizeAdminWorkshopStatus } from '../../workshop/workshopStatusRules';
 import {
   ADMIN_REVIEW_CANCELLABLE_STATUSES,
   ADMIN_REVIEW_NON_EDITABLE_STATUSES,
@@ -20,6 +21,7 @@ import {
 } from '../constants/adminReviewStatusConstants';
 import { ADMIN_REVIEW_EVENT_SUBMITTED_OPTIONS } from '../constants/adminReviewUiConstants';
 import { WorkshopFormState } from '../models/adminReviewFormModel';
+import { hasWorkshopStarted } from '../utils/adminReviewUtils';
 
 interface AdminReviewDetailPanelProps {
   isLoading: boolean;
@@ -90,11 +92,8 @@ export function AdminReviewDetailPanel({
         ) : (
           <div className="space-y-6">
             {(() => {
-              const normalizedStatus = (selectedWorkshop.status || '').toLowerCase();
-              const dateValue = selectedWorkshop.date;
-              const timeValue = selectedWorkshop.time || '00:00';
-              const dateTime = dateValue ? new Date(`${dateValue}T${timeValue}`) : null;
-              const hasStarted = dateTime ? dateTime.getTime() <= Date.now() : false;
+              const normalizedStatus = normalizeAdminWorkshopStatus(selectedWorkshop.status);
+              const hasStarted = hasWorkshopStarted(selectedWorkshop);
               const canApprove = normalizedStatus === 'pending' && !hasStarted;
               const canReject = normalizedStatus === 'pending' && !hasStarted;
               const canEdit = !hasStarted && !ADMIN_REVIEW_NON_EDITABLE_STATUSES.includes(normalizedStatus as (typeof ADMIN_REVIEW_NON_EDITABLE_STATUSES)[number]);

@@ -25,16 +25,7 @@ export const resolveAdminDisplayStatus = (workshop: Workshop): Workshop['status'
     return status as Workshop['status'];
   }
 
-  const dateValue = String(workshop.date || '').trim();
-  const timeValue = String(workshop.time || '').trim();
-  const datePart = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
-  const timePart = timeValue ? (timeValue.length === 5 ? `${timeValue}:00` : timeValue) : '00:00:00';
-
-  if (!datePart) {
-    return 'approved';
-  }
-
-  const start = new Date(`${datePart}T${timePart}`);
+  const start = parseWorkshopStart(workshop);
   if (Number.isNaN(start.getTime())) {
     return 'approved';
   }
@@ -56,6 +47,25 @@ export const resolveAdminDisplayStatus = (workshop: Workshop): Workshop['status'
   }
 
   return 'approved';
+};
+
+export const parseWorkshopStart = (workshop: Pick<Workshop, 'date' | 'time'>): Date => {
+  const dateValue = String(workshop.date || '').trim();
+  const timeValue = String(workshop.time || '').trim();
+  const datePart = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
+  const timePart = timeValue ? (timeValue.length === 5 ? `${timeValue}:00` : timeValue) : '00:00:00';
+  if (!datePart) {
+    return new Date(Number.NaN);
+  }
+  return new Date(`${datePart}T${timePart}`);
+};
+
+export const hasWorkshopStarted = (workshop: Pick<Workshop, 'date' | 'time'>, now: number = Date.now()): boolean => {
+  const start = parseWorkshopStart(workshop);
+  if (Number.isNaN(start.getTime())) {
+    return false;
+  }
+  return start.getTime() <= now;
 };
 
 export const normalizeFormState = (state: WorkshopFormState): WorkshopFormState => ({

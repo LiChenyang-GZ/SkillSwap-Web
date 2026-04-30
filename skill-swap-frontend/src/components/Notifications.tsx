@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { notificationAPI, workshopAPI } from "../lib/api";
 import type { NotificationItem } from "../types/notification";
 import { useApp } from "../contexts/AppContext";
@@ -20,6 +20,7 @@ export function Notifications() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const isMountedRef = useRef(false);
 
   const sortedNotifications = useMemo(() => {
     return [...notifications].sort((a, b) => {
@@ -29,9 +30,9 @@ export function Notifications() {
     });
   }, [notifications]);
 
-  const loadNotifications = async (isMounted: () => boolean) => {
+  const loadNotifications = async () => {
     if (!isAuthenticated) {
-      if (isMounted()) {
+      if (isMountedRef.current) {
         setNotifications([]);
         setErrorMessage(null);
         setIsLoading(false);
@@ -40,7 +41,7 @@ export function Notifications() {
     }
 
     if (!sessionToken) {
-      if (isMounted()) {
+      if (isMountedRef.current) {
         setNotifications([]);
         setErrorMessage("Please sign in again to view your notifications.");
         setIsLoading(false);
@@ -48,20 +49,20 @@ export function Notifications() {
       return;
     }
 
-    if (isMounted()) {
+    if (isMountedRef.current) {
       setIsLoading(true);
       setErrorMessage(null);
     }
 
     try {
       const data = await notificationAPI.getAll(sessionToken);
-      if (isMounted()) {
+      if (isMountedRef.current) {
         setNotifications(data);
       }
     } catch (error) {
       console.warn("Failed to load notifications", error);
       const status = (error as Error & { status?: number }).status;
-      if (isMounted()) {
+      if (isMountedRef.current) {
         if (status === 401) {
           setErrorMessage("Please sign in again to view your notifications.");
         } else if (status === 403) {
@@ -71,20 +72,18 @@ export function Notifications() {
         }
       }
     } finally {
-      if (isMounted()) {
+      if (isMountedRef.current) {
         setIsLoading(false);
       }
     }
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    const mounted = () => isMounted;
-    void loadNotifications(mounted);
+    isMountedRef.current = true;
+    void loadNotifications();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
   }, [isAuthenticated, sessionToken]);
 
@@ -206,8 +205,7 @@ export function Notifications() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  const mounted = () => true;
-                  void loadNotifications(mounted);
+                  void loadNotifications();
                 }}
               >
                 Retry
