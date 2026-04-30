@@ -14,9 +14,21 @@ if (!clerkPublishableKey) {
 	throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
 }
 
+const clerkLocalization = {
+	unstable__errors: {
+		external_account_not_found:
+			"This Google account is not linked yet. Please use Sign Up first, then Sign In.",
+		oauth_access_denied:
+			"Google sign-in was cancelled or denied. Please try again.",
+	},
+};
+
 createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
-		<ClerkProvider publishableKey={clerkPublishableKey}>
+		<ClerkProvider
+			publishableKey={clerkPublishableKey}
+			localization={clerkLocalization}
+		>
 			<App />
 		</ClerkProvider>
 	</React.StrictMode>
