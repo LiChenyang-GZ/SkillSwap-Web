@@ -30,7 +30,7 @@ export interface WorkshopUpsertPayload {
 }
 
 // Backend API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'skillswap-media';
 
@@ -120,7 +120,7 @@ function getDefaultImage(category: string): string {
 }
 
 // 后端返回的数据直接映射，转换字段名，添加 image 字段
-function enrichWorkshop(workshop: any): Workshop {
+export function enrichWorkshop(workshop: any): Workshop {
   // 处理后端返回的蛇形命名字段，转换为驼峰命名
   const facilitator = workshop.facilitator 
     ? {
@@ -229,7 +229,7 @@ function enrichMemory(entry: any): MemoryEntry {
   };
 }
 
-function toBackendWorkshopId(workshopId: string): string {
+export function toBackendWorkshopId(workshopId: string): string {
   // 兼容 mock id: workshop-1 -> 1
   const match = /^workshop-(\d+)$/.exec(workshopId);
   if (match) return match[1];
@@ -239,7 +239,7 @@ function toBackendWorkshopId(workshopId: string): string {
 const workshopDetailInFlight = new Map<string, Promise<Workshop | null>>();
 
 // Helper function to make API calls with authentication
-async function apiCall<T>(
+export async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {},
   token?: string | null
@@ -596,81 +596,6 @@ export const workshopAPI = {
     }
   },
 
-  // 管理员：获取待审核工作坊
-  getPendingForAdmin: async (token?: string | null): Promise<Workshop[]> => {
-    const data = await apiCall<any[]>("/api/v1/admin/workshops/pending", {}, token);
-    return data.map(enrichWorkshop);
-  },
-
-  // 管理员：获取全部工作坊
-  getAllForAdmin: async (token?: string | null): Promise<Workshop[]> => {
-    const data = await apiCall<any[]>("/api/v1/admin/workshops", {}, token);
-    return data.map(enrichWorkshop);
-  },
-
-  // 管理员：编辑待审核工作坊
-  updatePendingByAdmin: async (workshopId: string, workshopData: WorkshopUpsertPayload, token?: string | null): Promise<Workshop> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<any>(
-      `/api/v1/admin/workshops/${backendId}`,
-      {
-        method: "PUT",
-        body: JSON.stringify(workshopData),
-      },
-      token
-    );
-    return enrichWorkshop(data);
-  },
-
-  uploadImageByAdmin: async (workshopId: string, file: File, token?: string | null): Promise<Workshop> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const data = await apiCall<any>(
-      `/api/v1/admin/workshops/${backendId}/image`,
-      {
-        method: 'POST',
-        body: formData,
-      },
-      token
-    );
-
-    return enrichWorkshop(data);
-  },
-
-  // 管理员：通过待审核工作坊
-  approveByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    await apiCall<{ message: string }>(
-      `/api/v1/admin/workshops/${backendId}/approve`,
-      { method: "POST" },
-      token
-    );
-  },
-
-  // 管理员：拒绝待审核工作坊
-  rejectByAdmin: async (workshopId: string, comment?: string, token?: string | null): Promise<void> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    await apiCall<{ message: string }>(
-      `/api/v1/admin/workshops/${backendId}/reject`,
-      {
-        method: "POST",
-        body: JSON.stringify({ comment: comment || null }),
-      },
-      token
-    );
-  },
-
-  // 管理员：取消工作坊
-  cancelByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    await apiCall<{ message: string }>(
-      `/api/v1/admin/workshops/${backendId}/cancel`,
-      { method: "POST" },
-      token
-    );
-  },
 };
 
 // ----------------------

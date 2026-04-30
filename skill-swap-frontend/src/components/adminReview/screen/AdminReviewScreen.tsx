@@ -1,82 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@clerk/clerk-react';
-import { useApp } from '../contexts/AppContext';
-import { workshopAPI } from '../lib/api';
-import { Workshop } from '../types';
-import { normalizeAdminWorkshopStatus } from './workshop/workshopStatusPublicApi';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Switch } from './ui/switch';
-import { Badge } from './ui/badge';
-import { Checkbox } from './ui/checkbox';
+import { useApp } from '../../../contexts/AppContext';
+import { Workshop } from '../../../types';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { Textarea } from '../../../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { Switch } from '../../../components/ui/switch';
+import { Badge } from '../../../components/ui/badge';
+import { Checkbox } from '../../../components/ui/checkbox';
 import { Calendar, Check, Clock, Download, Globe, MapPin, RefreshCw, ShieldCheck, Upload, Users, X } from 'lucide-react';
-import { workshopCategories } from '../constants/workshop';
+import { workshopCategories } from '../../../constants/workshop';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import type { WorkshopUpsertPayload } from '../lib/api';
+import type { WorkshopUpsertPayload } from '../../../lib/api';
+import { adminWorkshopService } from '../../../shared/service/workshop/adminWorkshopService';
+import { useAuthRetry } from '../hooks/useAuthRetry';
+import { WorkshopFormState, emptyWorkshopForm } from '../models/adminReviewModels';
+import {
+  normalizeAttendCloseAtForApi,
+  normalizeContactNumber,
+  normalizeFormState,
+  resolveAdminDisplayStatus,
+} from '../utils/adminReviewUtils';
+import { AdminReviewToolbar } from '../components/AdminReviewToolbar';
 
-interface WorkshopFormState {
-  image: string;
-  hostName: string;
-  title: string;
-  description: string;
-  category: string;
-  contactNumber: string;
-  duration: string;
-  maxParticipants: string;
-  date: string;
-  time: string;
-  attendCloseAt: string;
-  location: string;
-  isOnline: boolean;
-  materialsProvided: string;
-  materialsNeededFromClub: string;
-  venueRequirements: string;
-  otherImportantInfo: string;
-  weekNumber: string;
-  memberResponsible: string;
-  membersPresent: string;
-  eventSubmitted: 'true' | 'false';
-  usuApprovalStatus: 'pending' | 'approved';
-  detailsConfirmed: boolean;
-}
-
-const emptyForm: WorkshopFormState = {
-  image: '',
-  hostName: '',
-  title: '',
-  description: '',
-  category: '',
-  contactNumber: '',
-  duration: '',
-  maxParticipants: '',
-  date: '',
-  time: '',
-  attendCloseAt: '',
-  location: '',
-  isOnline: false,
-  materialsProvided: '',
-  materialsNeededFromClub: '',
-  venueRequirements: '',
-  otherImportantInfo: '',
-  weekNumber: '',
-  memberResponsible: '',
-  membersPresent: '',
-  eventSubmitted: 'false',
-  usuApprovalStatus: 'pending',
-  detailsConfirmed: false,
-};
-
-export function AdminReview() {
+export function AdminReviewScreen() {
   const { sessionToken, setCurrentPage } = useApp();
-  const { getToken } = useAuth();
+  const withAuthRetry = useAuthRetry(sessionToken);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [formData, setFormData] = useState<WorkshopFormState>(emptyForm);
+  const [formData, setFormData] = useState<WorkshopFormState>(emptyWorkshopForm);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
@@ -100,28 +55,6 @@ export function AdminReview() {
   const hasSession = Boolean(sessionToken);
   const pageSize = 8;
 
-  const withAuthRetry = async <T,>(action: (token: string) => Promise<T>): Promise<T> => {
-    const initialToken = sessionToken ?? (await getToken({ template: 'signupTemplate' }));
-    if (!initialToken) {
-      throw new Error('Authentication token unavailable');
-    }
-
-    try {
-      return await action(initialToken);
-    } catch (error) {
-      const status = (error as Error & { status?: number }).status;
-      if (status !== 401) {
-        throw error;
-      }
-
-      const refreshedToken = await getToken({ template: 'signupTemplate' });
-      if (!refreshedToken || refreshedToken === initialToken) {
-        throw error;
-      }
-
-      return action(refreshedToken);
-    }
-  };
 
   const buildFormState = (workshop: Workshop): WorkshopFormState => {
     const locationValue = Array.isArray(workshop.location)
@@ -170,71 +103,6 @@ export function AdminReview() {
     };
   };
 
-  const normalizeFormState = (state: WorkshopFormState): WorkshopFormState => ({
-    ...state,
-    title: state.title.trim(),
-    description: state.description.trim(),
-    category: state.category.trim(),
-    hostName: state.hostName.trim(),
-    contactNumber: state.contactNumber.trim(),
-    duration: state.duration.trim(),
-    maxParticipants: state.maxParticipants.trim(),
-    date: state.date.trim(),
-    time: state.time.trim(),
-    attendCloseAt: state.attendCloseAt.trim(),
-    location: state.location.trim(),
-    image: state.image.trim(),
-    materialsProvided: state.materialsProvided.trim(),
-    materialsNeededFromClub: state.materialsNeededFromClub.trim(),
-    venueRequirements: state.venueRequirements.trim(),
-    otherImportantInfo: state.otherImportantInfo.trim(),
-    weekNumber: state.weekNumber.trim(),
-    memberResponsible: state.memberResponsible.trim(),
-    membersPresent: state.membersPresent.trim(),
-    eventSubmitted: state.eventSubmitted,
-    usuApprovalStatus: state.usuApprovalStatus,
-    detailsConfirmed: state.detailsConfirmed,
-  });
-
-  const resolveAdminDisplayStatus = (workshop: Workshop): Workshop['status'] => {
-    const adminStatus = normalizeAdminWorkshopStatus(workshop.status);
-
-    if (adminStatus === 'pending' || adminStatus === 'rejected' || adminStatus === 'cancelled' || adminStatus === 'completed') {
-      return adminStatus;
-    }
-
-    const dateValue = String(workshop.date || '').trim();
-    const timeValue = String(workshop.time || '').trim();
-    const datePart = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;
-    const timePart = timeValue ? (timeValue.length === 5 ? `${timeValue}:00` : timeValue) : '00:00:00';
-
-    if (!datePart) {
-      return 'approved';
-    }
-
-    const start = new Date(`${datePart}T${timePart}`);
-    if (Number.isNaN(start.getTime())) {
-      return 'approved';
-    }
-
-    const durationMinutes = Number(workshop.duration);
-    if (Number.isFinite(durationMinutes) && durationMinutes > 0) {
-      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-      return Date.now() >= end.getTime() ? 'completed' : 'approved';
-    }
-
-    const now = new Date();
-    const isSameCalendarDay =
-      now.getFullYear() === start.getFullYear() &&
-      now.getMonth() === start.getMonth() &&
-      now.getDate() === start.getDate();
-
-    if (now > start && !isSameCalendarDay) {
-      return 'completed';
-    }
-
-    return 'approved';
-  };
 
   const filteredWorkshops =
     statusFilter === 'all'
@@ -270,7 +138,7 @@ export function AdminReview() {
 
     setIsDetailLoading(true);
     try {
-      const detail = await workshopAPI.getById(workshopId, sessionToken);
+      const detail = await adminWorkshopService.getById(workshopId, sessionToken);
       if (!detail) {
         // Fallback to summary data instead of keeping the details pane in loading state forever.
         setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
@@ -300,8 +168,8 @@ export function AdminReview() {
     try {
       const data =
         mode === 'pending'
-          ? await workshopAPI.getPendingForAdmin(sessionToken)
-          : await workshopAPI.getAllForAdmin(sessionToken);
+          ? await adminWorkshopService.getPending(sessionToken)
+          : await adminWorkshopService.getAll(sessionToken);
 
       setLoadedDetailIds((previous) => {
         const next: Record<string, boolean> = {};
@@ -398,7 +266,7 @@ export function AdminReview() {
 
   useEffect(() => {
     if (!selectedWorkshop) {
-      setFormData(emptyForm);
+      setFormData(emptyWorkshopForm);
       setPendingImageFile(null);
       clearLocalImagePreview();
       setRejectComment('');
@@ -433,20 +301,6 @@ export function AdminReview() {
     });
   };
 
-  const normalizeContactNumber = (value: string) => value.replace(/\D/g, '');
-
-  const normalizeAttendCloseAtForApi = (value: string): string | null => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    if (trimmed.length === 16) {
-      return `${trimmed}:00`;
-    }
-
-    return trimmed;
-  };
 
   const handleImageFileSelection = (file: File | null) => {
     if (!file) {
@@ -495,11 +349,11 @@ export function AdminReview() {
       };
 
       let updated = await withAuthRetry((token) =>
-        workshopAPI.updatePendingByAdmin(selectedWorkshop.id, payload, token)
+        adminWorkshopService.update(selectedWorkshop.id, payload, token)
       );
       if (pendingImageFile) {
         updated = await withAuthRetry((token) =>
-          workshopAPI.uploadImageByAdmin(selectedWorkshop.id, pendingImageFile, token)
+          adminWorkshopService.uploadImage(selectedWorkshop.id, pendingImageFile, token)
         );
       }
 
@@ -520,7 +374,7 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      await withAuthRetry((token) => workshopAPI.approveByAdmin(selectedWorkshop.id, token));
+      await withAuthRetry((token) => adminWorkshopService.approve(selectedWorkshop.id, token));
       toast.success('Workshop approved.');
       setWorkshops((prev) =>
         prev.map((w) =>
@@ -550,7 +404,7 @@ export function AdminReview() {
 
     try {
       await withAuthRetry((token) =>
-        workshopAPI.rejectByAdmin(selectedWorkshop.id, rejectComment || undefined, token)
+        adminWorkshopService.reject(selectedWorkshop.id, rejectComment || undefined, token)
       );
       toast.success('Workshop rejected.');
       setWorkshops((prev) =>
@@ -581,7 +435,7 @@ export function AdminReview() {
     setIsSaving(true);
 
     try {
-      await withAuthRetry((token) => workshopAPI.cancelByAdmin(selectedWorkshop.id, token));
+      await withAuthRetry((token) => adminWorkshopService.cancel(selectedWorkshop.id, token));
       toast.success('Workshop cancelled.');
       setWorkshops((prev) =>
         prev.map((w) =>
@@ -670,32 +524,15 @@ export function AdminReview() {
             <h1 className="text-3xl font-bold mb-2">Workshop Administration</h1>
             <p className="text-muted-foreground">Review, edit, approve, or cancel workshops before they start.</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter} modal={false}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Filter status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const mode = statusFilter === 'pending' ? 'pending' : 'all';
-                void loadWorkshops(mode);
-              }}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+          <AdminReviewToolbar
+            statusFilter={statusFilter}
+            isLoading={isLoading}
+            onStatusFilterChange={setStatusFilter}
+            onRefresh={() => {
+              const mode = statusFilter === 'pending' ? 'pending' : 'all';
+              void loadWorkshops(mode);
+            }}
+          />
         </div>
 
         {errorMessage && (
