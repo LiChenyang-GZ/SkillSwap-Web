@@ -74,6 +74,9 @@ jobs:
               -e SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
               -e AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
               -e AZURE_STORAGE_MEMORIES_CONTAINER="memories" \
+              -e CLERK_ISSUER_URI="${{ secrets.CLERK_ISSUER_URI }}" \
+              -e CLERK_JWKS_URI="${{ secrets.CLERK_JWKS_URI }}" \
+              -e CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}" \
               ghcr.io/${{ env.IMAGE_NAME }}:latest
 
             # 清理旧镜像（节省 VM 磁盘空间）
