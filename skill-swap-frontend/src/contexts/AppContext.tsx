@@ -342,11 +342,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentPage(targetPage);
     };
 
+    const detectClerkAuthError = () => {
+      const raw = `${window.location.search} ${window.location.hash}`.toLowerCase();
+      const hasExternalAccountNotFound = raw.includes("external_account_not_found");
+      const hasOauthError = raw.includes("oauth") && (raw.includes("error") || raw.includes("failed"));
+      if (!hasExternalAccountNotFound && !hasOauthError) {
+        return null;
+      }
+      if (hasExternalAccountNotFound) {
+        return "This Google account is not linked yet. Please click Sign Up once to create and link your account, then use Sign In.";
+      }
+      return "Third-party sign-in did not complete. Please try again. If this is your first time with Google, click Sign Up first.";
+    };
+
     bootstrapAuthInProgressRef.current = true;
     void (async () => {
       try {
         if (!isSignedIn) {
-          clearAuthState("hero");
+          const authErrorMessage = detectClerkAuthError();
+          if (authErrorMessage) {
+            sessionStorage.setItem("skill_swap_auth_error", authErrorMessage);
+            clearAuthState("auth");
+          } else {
+            clearAuthState("hero");
+          }
           setIsLoading(false);
           return;
         }

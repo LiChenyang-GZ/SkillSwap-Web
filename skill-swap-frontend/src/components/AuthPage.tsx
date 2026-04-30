@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useState } from 'react';
 import { SignIn, SignUp, useAuth } from '@clerk/clerk-react';
 import { useApp } from '../contexts/AppContext';
 import { Button } from './ui/button';
@@ -14,8 +15,13 @@ import {
 export function AuthPage() {
   const { setCurrentPage, isDarkMode, toggleDarkMode } = useApp();
   const { isLoaded, isSignedIn } = useAuth();
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
+  const [authErrorNotice, setAuthErrorNotice] = useState<string | null>(null);
 
   const clerkAppearance = {
+    layout: {
+      unsafe_disableDevelopmentModeWarnings: true,
+    },
     variables: isDarkMode
       ? {
           colorPrimary: '#f59e0b',
@@ -67,10 +73,14 @@ export function AuthPage() {
           : 'rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-orange-500',
       alertText: isDarkMode ? 'text-rose-300 text-sm' : 'text-rose-600 text-sm',
       formFieldErrorText: isDarkMode ? 'text-rose-300 text-xs' : 'text-rose-600 text-xs',
-      footer: 'hidden',
-      footerAction: 'hidden',
-      footerActionText: 'hidden',
-      footerActionLink: 'hidden',
+      footer: '!hidden',
+      footerAction: '!hidden',
+      // Fallback selectors for current Clerk DOM variants.
+      formFooterAction: '!hidden',
+      formFooterActionText: '!hidden',
+      formFooterActionLink: '!hidden',
+      footerActionText: '!hidden',
+      footerActionLink: '!hidden',
       formFieldSuccessText: isDarkMode ? 'text-emerald-300 text-xs' : 'text-emerald-600 text-xs',
     },
   } as const;
@@ -81,6 +91,14 @@ export function AuthPage() {
       setCurrentPage('explore');
     }
   }, [isLoaded, isSignedIn, setCurrentPage]);
+
+  useEffect(() => {
+    const message = sessionStorage.getItem('skill_swap_auth_error');
+    if (!message) return;
+    setAuthErrorNotice(message);
+    setActiveTab('signup');
+    sessionStorage.removeItem('skill_swap_auth_error');
+  }, []);
 
   return (
     <div
@@ -148,7 +166,22 @@ export function AuthPage() {
               <p className={isDarkMode ? 'text-sm text-slate-100 mt-1' : 'text-sm text-slate-600 mt-1'}>Sign in or create an account to continue</p>
             </div>
 
-            <Tabs defaultValue="signin" className="w-full">
+            {authErrorNotice && (
+              <div className={isDarkMode
+                ? 'mb-4 rounded-xl border border-amber-300/50 bg-amber-200/10 px-4 py-3 text-sm text-amber-100'
+                : 'mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900'}>
+                <p>{authErrorNotice}</p>
+                <Button
+                  type="button"
+                  onClick={() => setActiveTab('signup')}
+                  className="mt-2 h-8 rounded-lg bg-amber-500 px-3 text-xs font-semibold text-slate-950 hover:bg-amber-400"
+                >
+                  Switch to Sign Up
+                </Button>
+              </div>
+            )}
+
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')} className="w-full">
               <TabsList className={
                 isDarkMode
                   ? 'grid w-full grid-cols-2 rounded-xl bg-slate-700/90 p-1 border border-slate-300/40'
@@ -182,10 +215,6 @@ export function AuthPage() {
                   Sign In
                 </h3>
                 <SignIn appearance={clerkAppearance} />
-                <p className={isDarkMode ? 'mt-3 text-xs text-slate-100' : 'mt-3 text-xs text-slate-600'}>
-                  First time using Google on this app? If Sign In shows
-                  &quot;External Account was not found&quot;, switch to Sign Up once to create the account.
-                </p>
               </TabsContent>
 
               <TabsContent value="signup" className="mt-5">
