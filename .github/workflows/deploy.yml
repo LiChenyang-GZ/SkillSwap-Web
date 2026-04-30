@@ -57,17 +57,20 @@ jobs:
             # 登录 GHCR
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # 拉取最新镜像
-            docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
-
             # 停止并删除旧容器
             docker stop backend-api || true
             docker rm backend-api || true
+
+            # 拉取最新镜像
+            docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
 
             # 启动新容器
             docker run -d \
               --name backend-api \
               --restart unless-stopped \
+              --log-driver json-file \
+              --log-opt max-size=10m \
+              --log-opt max-file=3 \
               -p 8080:8080 \
               -e SPRING_DATASOURCE_URL="${{ secrets.DB_URL }}" \
               -e SPRING_DATASOURCE_USERNAME="${{ secrets.DB_USERNAME }}" \
