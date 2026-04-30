@@ -97,20 +97,6 @@ export function Navigation() {
 
           {/* User Section */}
           <div className="flex items-center space-x-4">
-            {/* 积分系统已停用：导航栏不再展示积分入口�?*/}
-            {/*
-            {user && (
-              <Badge 
-                variant="secondary" 
-                className="flex items-center space-x-1 cursor-pointer hover:bg-secondary/80 transition-colors"
-                onClick={() => setCurrentPage('credits')}
-              >
-                <CreditCard className="w-3 h-3" />
-                <span>{user.creditBalance}</span>
-              </Badge>
-            )}
-            */}
-            
             <Button
               variant="ghost"
               size="sm"
