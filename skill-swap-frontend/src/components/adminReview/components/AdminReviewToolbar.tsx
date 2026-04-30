@@ -2,6 +2,10 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { AdminReviewStatusFilter } from '../models/adminReviewStatusModel';
+import {
+  ADMIN_REVIEW_STATUS_FILTER_OPTIONS,
+  isAdminReviewStatusFilter,
+} from '../constants/adminReviewStatusConstants';
 
 interface AdminReviewToolbarProps {
   statusFilter: AdminReviewStatusFilter;
@@ -20,19 +24,22 @@ export function AdminReviewToolbar({
     <div className="flex items-center gap-3">
       <Select
         value={statusFilter}
-        onValueChange={(value) => onStatusFilterChange(value as AdminReviewStatusFilter)}
+        onValueChange={(value: string) => {
+          if (isAdminReviewStatusFilter(value)) {
+            onStatusFilterChange(value);
+          }
+        }}
         modal={false}
       >
         <SelectTrigger className="w-44">
           <SelectValue placeholder="Filter status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
-          <SelectItem value="pending">Pending</SelectItem>
-          <SelectItem value="approved">Approved</SelectItem>
-          <SelectItem value="rejected">Rejected</SelectItem>
-          <SelectItem value="cancelled">Cancelled</SelectItem>
-          <SelectItem value="completed">Completed</SelectItem>
+          {ADMIN_REVIEW_STATUS_FILTER_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
       <Button variant="outline" onClick={onRefresh} disabled={isLoading}>

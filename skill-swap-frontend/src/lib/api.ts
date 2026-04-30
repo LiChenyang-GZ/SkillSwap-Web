@@ -1,6 +1,9 @@
 // lib/api.ts
 
-import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
+import type { MemoryEntry } from '@/types/memory';
+import type { NotificationItem } from '@/types/notification';
+import type { Workshop } from '@/types/workshop';
+import type { User } from '@/types/user';
 import { supabase } from '../utils/supabase/supabase';
 import { getAuthRedirectUrl } from './authRedirect';
 

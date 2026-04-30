@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Workshop } from '../../../types';
+import type { Workshop } from '../../../types/workshop';
 import { adminWorkshopService } from '../../../shared/service/workshop/adminWorkshopService';
 import { AdminReviewStatusFilter } from '../models/adminReviewStatusModel';
+import {
+  ADMIN_REVIEW_DEFAULT_STATUS_FILTER,
+} from '../constants/adminReviewStatusConstants';
+import {
+  ADMIN_REVIEW_PAGE_SIZE,
+  ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY,
+} from '../constants/adminReviewUiConstants';
 import { resolveAdminDisplayStatus } from '../utils/adminReviewUtils';
 
 interface UseAdminReviewQueryParams {
@@ -17,12 +24,12 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<AdminReviewStatusFilter>('pending');
+  const [statusFilter, setStatusFilter] = useState<AdminReviewStatusFilter>(ADMIN_REVIEW_DEFAULT_STATUS_FILTER);
   const [currentPage, setCurrentPageState] = useState(1);
   const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(() => {
-    const storedTarget = sessionStorage.getItem('adminReviewTargetId');
+    const storedTarget = sessionStorage.getItem(ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY);
     if (storedTarget) {
-      sessionStorage.removeItem('adminReviewTargetId');
+      sessionStorage.removeItem(ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY);
       return storedTarget;
     }
     return null;
@@ -30,7 +37,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
 
   const detailInFlightRef = useRef<Set<string>>(new Set());
   const hasSession = Boolean(sessionToken);
-  const pageSize = 8;
+  const pageSize = ADMIN_REVIEW_PAGE_SIZE;
 
   const filteredWorkshops =
     statusFilter === 'all'

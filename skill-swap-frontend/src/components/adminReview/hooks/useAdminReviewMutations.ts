@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import type { WorkshopUpsertPayload } from '../../../lib/api';
-import { Workshop } from '../../../types';
+import type { Workshop } from '../../../types/workshop';
 import { adminWorkshopService } from '../../../shared/service/workshop/adminWorkshopService';
 import { WorkshopFormState } from '../models/adminReviewFormModel';
 import { normalizeAttendCloseAtForApi, normalizeContactNumber } from '../utils/adminReviewUtils';

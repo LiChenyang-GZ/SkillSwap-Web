@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { notificationAPI, workshopAPI } from "../lib/api";
-import { NotificationItem } from "../types";
+import type { NotificationItem } from "../types/notification";
 import { useApp } from "../contexts/AppContext";
 import { Button } from "./ui/button";
 import { Bell, CheckCheck } from "lucide-react";
@@ -15,9 +15,9 @@ import {
 
 export function Notifications() {
   const { sessionToken, refreshNotificationsUnreadCount, isAuthenticated, setCurrentPage, upsertWorkshop } = useApp();
-  const hasSession = Boolean(sessionToken);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -29,36 +29,64 @@ export function Notifications() {
     });
   }, [notifications]);
 
+  const loadNotifications = async (isMounted: () => boolean) => {
+    if (!isAuthenticated) {
+      if (isMounted()) {
+        setNotifications([]);
+        setErrorMessage(null);
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    if (!sessionToken) {
+      if (isMounted()) {
+        setNotifications([]);
+        setErrorMessage("Please sign in again to view your notifications.");
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    if (isMounted()) {
+      setIsLoading(true);
+      setErrorMessage(null);
+    }
+
+    try {
+      const data = await notificationAPI.getAll(sessionToken);
+      if (isMounted()) {
+        setNotifications(data);
+      }
+    } catch (error) {
+      console.warn("Failed to load notifications", error);
+      const status = (error as Error & { status?: number }).status;
+      if (isMounted()) {
+        if (status === 401) {
+          setErrorMessage("Please sign in again to view your notifications.");
+        } else if (status === 403) {
+          setErrorMessage("You do not have permission to view notifications.");
+        } else {
+          setErrorMessage("Failed to load notifications. Please try again.");
+        }
+      }
+    } finally {
+      if (isMounted()) {
+        setIsLoading(false);
+      }
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
 
-    const loadNotifications = async () => {
-      if (!isAuthenticated || !hasSession) {
-        setNotifications([]);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const data = await notificationAPI.getAll(sessionToken!);
-        if (isMounted) {
-          setNotifications(data);
-        }
-      } catch (error) {
-        console.warn("Failed to load notifications", error);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    loadNotifications();
+    const mounted = () => isMounted;
+    void loadNotifications(mounted);
 
     return () => {
       isMounted = false;
     };
-  }, [hasSession, isAuthenticated]);
+  }, [isAuthenticated, sessionToken]);
 
   const handleMarkRead = async (notificationId: string) => {
     try {
@@ -170,6 +198,21 @@ export function Notifications() {
         <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
           {isLoading ? (
             <div className="p-6 text-center text-muted-foreground">Loading notifications...</div>
+          ) : errorMessage ? (
+            <div className="p-10 text-center text-muted-foreground space-y-3">
+              <Bell className="w-10 h-10 mx-auto mb-1" />
+              <p>{errorMessage}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const mounted = () => true;
+                  void loadNotifications(mounted);
+                }}
+              >
+                Retry
+              </Button>
+            </div>
           ) : sortedNotifications.length === 0 ? (
             <div className="p-10 text-center text-muted-foreground">
               <Bell className="w-10 h-10 mx-auto mb-3" />

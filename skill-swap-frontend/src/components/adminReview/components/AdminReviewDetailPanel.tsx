@@ -1,5 +1,5 @@
 import { Check, Download, Globe, MapPin, RefreshCw, Upload, Users, X } from 'lucide-react';
-import { Workshop } from '../../../types';
+import type { Workshop } from '../../../types/workshop';
 import { workshopCategories } from '../../../constants/workshop';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -10,6 +10,14 @@ import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { Textarea } from '../../../components/ui/textarea';
+import {
+  ADMIN_REVIEW_CANCELLABLE_STATUSES,
+  ADMIN_REVIEW_NON_EDITABLE_STATUSES,
+  ADMIN_REVIEW_PARTICIPANT_VISIBLE_STATUSES,
+  ADMIN_REVIEW_REJECTION_NOTE_HIDDEN_STATUS,
+  ADMIN_REVIEW_USU_APPROVAL_STATUS_OPTIONS,
+} from '../constants/adminReviewStatusConstants';
+import { ADMIN_REVIEW_EVENT_SUBMITTED_OPTIONS } from '../constants/adminReviewUiConstants';
 import { WorkshopFormState } from '../models/adminReviewFormModel';
 
 interface AdminReviewDetailPanelProps {
@@ -88,10 +96,10 @@ export function AdminReviewDetailPanel({
               const hasStarted = dateTime ? dateTime.getTime() <= Date.now() : false;
               const canApprove = normalizedStatus === 'pending' && !hasStarted;
               const canReject = normalizedStatus === 'pending' && !hasStarted;
-              const canEdit = !hasStarted && !['completed', 'cancelled'].includes(normalizedStatus);
-              const canCancel = !hasStarted && ['approved', 'upcoming'].includes(normalizedStatus);
-              const shouldShowParticipants = ['approved', 'completed'].includes(normalizedStatus);
-              const shouldShowRejectionNote = normalizedStatus !== 'approved';
+              const canEdit = !hasStarted && !ADMIN_REVIEW_NON_EDITABLE_STATUSES.includes(normalizedStatus as (typeof ADMIN_REVIEW_NON_EDITABLE_STATUSES)[number]);
+              const canCancel = !hasStarted && ADMIN_REVIEW_CANCELLABLE_STATUSES.includes(normalizedStatus as (typeof ADMIN_REVIEW_CANCELLABLE_STATUSES)[number]);
+              const shouldShowParticipants = ADMIN_REVIEW_PARTICIPANT_VISIBLE_STATUSES.includes(normalizedStatus as (typeof ADMIN_REVIEW_PARTICIPANT_VISIBLE_STATUSES)[number]);
+              const shouldShowRejectionNote = normalizedStatus !== ADMIN_REVIEW_REJECTION_NOTE_HIDDEN_STATUS;
               const participants = selectedWorkshop.participants ?? [];
               const participantCount = participants.length || selectedWorkshop.currentParticipants || 0;
 
@@ -207,8 +215,11 @@ export function AdminReviewDetailPanel({
                           <SelectValue placeholder="Select value" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="false">false</SelectItem>
-                          <SelectItem value="true">true</SelectItem>
+                          {ADMIN_REVIEW_EVENT_SUBMITTED_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -219,8 +230,11 @@ export function AdminReviewDetailPanel({
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">pending</SelectItem>
-                          <SelectItem value="approved">approved</SelectItem>
+                          {ADMIN_REVIEW_USU_APPROVAL_STATUS_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

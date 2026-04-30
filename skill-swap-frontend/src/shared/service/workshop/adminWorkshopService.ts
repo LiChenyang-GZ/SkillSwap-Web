@@ -1,5 +1,5 @@
 import { apiCall, enrichWorkshop, toBackendWorkshopId, WorkshopUpsertPayload } from '../../../lib/api';
-import { Workshop } from '../../../types';
+import type { Workshop } from '../../../types/workshop';
 
 export const adminWorkshopService = {
   getPending: async (token?: string | null): Promise<Workshop[]> => {

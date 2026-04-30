@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { memoryAPI, resolveAssetUrl } from '../lib/api';
-import { MemoryEntry } from '../types';
+import type { MemoryEntry } from '../types/memory';
 import { Button } from './ui/button';
 import { ArrowLeft, CalendarDays, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { memoryAPI } from '../lib/api';
-import { MemoryEntry } from '../types';
+import type { MemoryEntry } from '../types/memory';
 import { Button } from './ui/button';
 import { Archive, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react';

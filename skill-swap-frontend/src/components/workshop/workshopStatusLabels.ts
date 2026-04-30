@@ -1,4 +1,4 @@
-import { Workshop } from '../../types';
+import type { Workshop } from '../../types/workshop';
 import { resolveUserWorkshopStatus } from './workshopStatusRules';
 
 export type WorkshopBadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Workshop } from '../../../types';
+import type { Workshop } from '../../../types/workshop';
 import { WorkshopFormState, emptyWorkshopForm } from '../models/adminReviewFormModel';
 import { buildWorkshopFormState, normalizeFormState } from '../utils/adminReviewUtils';
 

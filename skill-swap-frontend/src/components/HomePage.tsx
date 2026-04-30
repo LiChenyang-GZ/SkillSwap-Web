@@ -1,5 +1,5 @@
 import { useApp } from '../contexts/AppContext';
-import { Workshop } from '../types';
+import type { Workshop } from '../types/workshop';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';

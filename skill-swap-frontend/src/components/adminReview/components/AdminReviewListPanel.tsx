@@ -1,8 +1,9 @@
 import { Calendar, Clock, RefreshCw } from 'lucide-react';
-import { Workshop } from '../../../types';
+import type { Workshop } from '../../../types/workshop';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { ADMIN_REVIEW_DESTRUCTIVE_BADGE_STATUSES } from '../constants/adminReviewStatusConstants';
 import { resolveAdminDisplayStatus } from '../utils/adminReviewUtils';
 
 interface AdminReviewListPanelProps {
@@ -68,7 +69,7 @@ export function AdminReviewListPanel({
                     <p className="text-xs text-muted-foreground">{workshop.facilitator?.name}</p>
                   </div>
                   <Badge
-                    variant={displayStatus === 'rejected' || displayStatus === 'cancelled' ? 'destructive' : 'secondary'}
+                    variant={ADMIN_REVIEW_DESTRUCTIVE_BADGE_STATUSES.includes(displayStatus as (typeof ADMIN_REVIEW_DESTRUCTIVE_BADGE_STATUSES)[number]) ? 'destructive' : 'secondary'}
                     className="capitalize"
                   >
                     {displayStatus}
