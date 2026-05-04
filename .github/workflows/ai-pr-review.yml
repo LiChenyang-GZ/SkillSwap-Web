@@ -1,0 +1,79 @@
+name: AI PR Review
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  ai-review:
+    if: >
+      github.event.issue.pull_request != null &&
+      contains(github.event.comment.body, '/review-summary') &&
+      (
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      )
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download PR diff from API
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const { owner, repo } = context.repo;
+            const pull_number = context.issue.number;
+
+            const diff = await github.request("GET /repos/{owner}/{repo}/pulls/{pull_number}", {
+              owner,
+              repo,
+              pull_number,
+              headers: {
+                accept: "application/vnd.github.v3.diff"
+              }
+            });
+
+            fs.writeFileSync("pr.diff", diff.data, "utf8");
+
+      - name: Limit diff size
+        run: |
+          head -c 60000 pr.diff > pr_limited.diff
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: AI Review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_MODEL: gpt-4o-mini
+          CLAUDE_MODEL: claude-sonnet-4-5
+          REVIEW_COMMENT: ${{ github.event.comment.body }}
+        run: |
+          node .github/scripts/ai-review.js
+
+      - name: Comment review on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const review = fs.readFileSync("review.md", "utf8");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🤖 AI PR Review\n\n${review}`
+            });
