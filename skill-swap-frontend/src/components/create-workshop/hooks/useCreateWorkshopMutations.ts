@@ -17,8 +17,11 @@ export function useCreateWorkshopMutations() {
 
     try {
       const payload = toWorkshopUpsertPayload(values);
-      await createWorkshop(payload);
+      const created = await createWorkshop(payload);
       toast.dismiss(loadingToastId);
+      if (!created) {
+        return false;
+      }
       setCurrentPage('dashboard');
       return true;
     } catch {
