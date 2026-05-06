@@ -1,4 +1,4 @@
-import { Workshop } from '../../types';
+import type { Workshop } from '../../types/workshop';
 
 export type AdminWorkshopStatus =
   | 'pending'

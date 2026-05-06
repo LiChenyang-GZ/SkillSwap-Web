@@ -12,7 +12,7 @@ import {
   Globe,
   ArrowLeft,
 } from 'lucide-react';
-import { Workshop } from '../../types';
+import type { Workshop } from '../../types/workshop';
 import { toast } from 'sonner';
 import { getWorkshopAccessLabel, resolveUserWorkshopStatus } from './workshopStatusPublicApi';
 

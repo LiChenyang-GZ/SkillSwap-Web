@@ -1,5 +1,5 @@
 import { useApp } from '../contexts/AppContext';
-import { Workshop } from '../types';
+import type { Workshop } from '../types/workshop';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -168,7 +168,7 @@ export function HomePage() {
                           <div className="flex items-center space-x-2">
                             <Avatar className="w-6 h-6">
                               <AvatarImage src={workshop.facilitator?.avatarUrl} />
-                              <AvatarFallback>{workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}</AvatarFallback>
+                              <AvatarFallback>{workshop.facilitator?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}</AvatarFallback>
                             </Avatar>
                             <span className="text-sm text-muted-foreground">{workshop.facilitator?.name}</span>
                           </div>
@@ -246,7 +246,7 @@ export function HomePage() {
                     <div className="flex items-center space-x-2">
                       <Avatar className="w-5 h-5">
                         <AvatarImage src={workshop.facilitator?.avatarUrl} />
-                        <AvatarFallback className="text-xs">{workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{workshop.facilitator?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}</AvatarFallback>
                       </Avatar>
                       <span className="text-xs text-muted-foreground">{workshop.facilitator?.name}</span>
                     </div>

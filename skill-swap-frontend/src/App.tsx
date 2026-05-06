@@ -12,7 +12,9 @@ const CreateWorkshop = React.lazy(() => import('./components/create-workshop/Cre
 const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
 const WorkshopDetails = React.lazy(() => import('./components/workshop/WorkshopDetailsPage').then((m) => ({ default: m.WorkshopDetails })));
 const MemoryDetail = React.lazy(() => import('./components/MemoryDetail.tsx').then((m) => ({ default: m.MemoryDetail })));
-const AdminReview = React.lazy(() => import('./components/AdminReview').then((m) => ({ default: m.AdminReview })));
+const AdminReview = React.lazy(() =>
+  import('./components/adminReview/screen/AdminReviewScreen').then((m) => ({ default: m.AdminReviewScreen }))
+);
 const MemoryStudio = React.lazy(() => import('./components/MemoryStudio.tsx').then((m) => ({ default: m.MemoryStudio })));
 const Notifications = React.lazy(() => import('./components/Notifications').then((m) => ({ default: m.Notifications })));
 

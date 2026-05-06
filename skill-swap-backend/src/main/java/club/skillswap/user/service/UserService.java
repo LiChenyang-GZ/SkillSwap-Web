@@ -185,7 +185,9 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserAccount> findAdmins() {
-        return userRepository.findByRoleIgnoreCase("admin");
+        return userRepository.findAdminCandidates().stream()
+                .filter(user -> isAdminRole(user.getRole()))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -455,5 +457,17 @@ public class UserService {
             }
         }
         return null;
+    }
+
+    private boolean isAdminRole(String role) {
+        String normalized = normalizeRole(role);
+        return "admin".equals(normalized) || "role_admin".equals(normalized);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return "";
+        }
+        return role.replaceAll("[\\s\\p{Cntrl}]+", "").toLowerCase(Locale.ROOT);
     }
 }

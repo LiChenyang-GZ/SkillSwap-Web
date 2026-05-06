@@ -1,6 +1,9 @@
 // lib/api.ts
 
-import { MemoryEntry, NotificationItem, Workshop, User } from '@/types';
+import type { MemoryEntry } from '@/types/memory';
+import type { NotificationItem } from '@/types/notification';
+import type { Workshop } from '@/types/workshop';
+import type { User } from '@/types/user';
 import { supabase } from '../utils/supabase/supabase';
 import { getAuthRedirectUrl } from './authRedirect';
 
@@ -30,7 +33,7 @@ export interface WorkshopUpsertPayload {
 }
 
 // Backend API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'skillswap-media';
 
@@ -120,7 +123,7 @@ function getDefaultImage(category: string): string {
 }
 
 // 后端返回的数据直接映射，转换字段名，添加 image 字段
-function enrichWorkshop(workshop: any): Workshop {
+export function enrichWorkshop(workshop: any): Workshop {
   // 处理后端返回的蛇形命名字段，转换为驼峰命名
   const facilitator = workshop.facilitator 
     ? {
@@ -192,7 +195,7 @@ function enrichWorkshop(workshop: any): Workshop {
     tags: workshop.tags,
     image: resolvedImage || getDefaultImage(workshop.category),
     createdAt: workshop.createdAt,
-    participants: participants as any,
+    participants,
     materials: workshop.materials,
     requirements: workshop.requirements,
   };
@@ -229,7 +232,7 @@ function enrichMemory(entry: any): MemoryEntry {
   };
 }
 
-function toBackendWorkshopId(workshopId: string): string {
+export function toBackendWorkshopId(workshopId: string): string {
   // 兼容 mock id: workshop-1 -> 1
   const match = /^workshop-(\d+)$/.exec(workshopId);
   if (match) return match[1];
@@ -239,7 +242,7 @@ function toBackendWorkshopId(workshopId: string): string {
 const workshopDetailInFlight = new Map<string, Promise<Workshop | null>>();
 
 // Helper function to make API calls with authentication
-async function apiCall<T>(
+export async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {},
   token?: string | null
@@ -250,11 +253,8 @@ async function apiCall<T>(
     ...options.headers,
   };
 
-  // 如果没有显式传入 token，尝试从 localStorage 读取
-  const tokenToUse = token ?? localStorage.getItem('dev_token');
-  
-  if (tokenToUse) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${tokenToUse}`;
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
   const method = (options.method || "GET").toUpperCase();
@@ -311,80 +311,8 @@ export const authAPI = {
     return data;
   },
 
-  // 开发环境：调用后端 /dev/auth/dev-login，自动创建/获取用户并获取 JWT
-  devRegisterLogin: async (email: string, username?: string): Promise<{ access_token: string; user: any; expiresIn: number }> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/dev/auth/dev-login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          username: username || email.split('@')[0],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to dev login: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      // 保存 token 到 localStorage
-      localStorage.setItem('dev_token', data.access_token);
-      localStorage.setItem('dev_token_user_id', data.user.id);
-      localStorage.setItem('dev_token_username', data.user.username);
-
-      return data;
-    } catch (error) {
-      console.error('❌ Dev register-login failed:', error);
-      throw error;
-    }
-  },
-
-  // 开发环境：从后端 /dev/token 获取 JWT token
-  devLogin: async (userId?: string, username?: string): Promise<{ token: string; userId: string; username: string; expiresIn: number }> => {
-    try {
-      const params = new URLSearchParams();
-      if (userId) params.append('userId', userId);
-      if (username) params.append('username', username);
-      
-      const queryString = params.toString();
-      const url = queryString ? `/dev/token?${queryString}` : '/dev/token';
-      
-      const response = await fetch(`${API_BASE_URL}${url}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get dev token: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // 保存 token 到 localStorage
-      localStorage.setItem('dev_token', data.token);
-      localStorage.setItem('dev_token_user_id', data.userId);
-      localStorage.setItem('dev_token_username', data.username);
-      
-      return data;
-    } catch (error) {
-      console.error('❌ Dev login failed:', error);
-      throw error;
-    }
-  },
-
-  // Sign out (real 和 dev 都支持)
+  // Sign out
   signOut: async () => {
-    // 清除 dev token
-    localStorage.removeItem('dev_token');
-    localStorage.removeItem('dev_token_user_id');
-    localStorage.removeItem('dev_token_username');
-    
     // 清除 Supabase 会话
     await supabase.auth.signOut();
   },
@@ -415,8 +343,8 @@ export const authAPI = {
 // USER API
 // ----------------------
 export const userAPI = {
-  getProfile: async (): Promise<User> => {
-    return apiCall<User>('/api/v1/users/me');
+  getProfile: async (token?: string | null): Promise<User> => {
+    return apiCall<User>('/api/v1/users/me', {}, token);
   },
 
   // 根据 ID 获取用户
@@ -425,11 +353,11 @@ export const userAPI = {
     return data;
   },
 
-  updateProfile: async (updates: Partial<User>): Promise<User> => {
+  updateProfile: async (updates: Partial<User>, token?: string | null): Promise<User> => {
     return apiCall<User>('/api/v1/users/me', {
       method: 'PATCH',
       body: JSON.stringify(updates),
-    });
+    }, token);
   },
 };
 
@@ -596,81 +524,6 @@ export const workshopAPI = {
     }
   },
 
-  // 管理员：获取待审核工作坊
-  getPendingForAdmin: async (token?: string | null): Promise<Workshop[]> => {
-    const data = await apiCall<any[]>("/api/v1/admin/workshops/pending", {}, token);
-    return data.map(enrichWorkshop);
-  },
-
-  // 管理员：获取全部工作坊
-  getAllForAdmin: async (token?: string | null): Promise<Workshop[]> => {
-    const data = await apiCall<any[]>("/api/v1/admin/workshops", {}, token);
-    return data.map(enrichWorkshop);
-  },
-
-  // 管理员：编辑待审核工作坊
-  updatePendingByAdmin: async (workshopId: string, workshopData: WorkshopUpsertPayload, token?: string | null): Promise<Workshop> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    const data = await apiCall<any>(
-      `/api/v1/admin/workshops/${backendId}`,
-      {
-        method: "PUT",
-        body: JSON.stringify(workshopData),
-      },
-      token
-    );
-    return enrichWorkshop(data);
-  },
-
-  uploadImageByAdmin: async (workshopId: string, file: File, token?: string | null): Promise<Workshop> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const data = await apiCall<any>(
-      `/api/v1/admin/workshops/${backendId}/image`,
-      {
-        method: 'POST',
-        body: formData,
-      },
-      token
-    );
-
-    return enrichWorkshop(data);
-  },
-
-  // 管理员：通过待审核工作坊
-  approveByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    await apiCall<{ message: string }>(
-      `/api/v1/admin/workshops/${backendId}/approve`,
-      { method: "POST" },
-      token
-    );
-  },
-
-  // 管理员：拒绝待审核工作坊
-  rejectByAdmin: async (workshopId: string, comment?: string, token?: string | null): Promise<void> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    await apiCall<{ message: string }>(
-      `/api/v1/admin/workshops/${backendId}/reject`,
-      {
-        method: "POST",
-        body: JSON.stringify({ comment: comment || null }),
-      },
-      token
-    );
-  },
-
-  // 管理员：取消工作坊
-  cancelByAdmin: async (workshopId: string, token?: string | null): Promise<void> => {
-    const backendId = toBackendWorkshopId(workshopId);
-    await apiCall<{ message: string }>(
-      `/api/v1/admin/workshops/${backendId}/cancel`,
-      { method: "POST" },
-      token
-    );
-  },
 };
 
 // ----------------------

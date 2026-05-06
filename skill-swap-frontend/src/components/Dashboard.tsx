@@ -431,7 +431,7 @@ export function Dashboard() {
                   <Avatar className="w-20 h-20 mx-auto mb-4">
                     <AvatarImage key={user.avatarUrl || 'empty-avatar'} src={user.avatarUrl} alt={user.username} />
                     <AvatarFallback className="text-lg">
-                      {user.username.split(' ').map(n => n[0]).join('')}
+                      {user.username.split(' ').map((n: string) => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
                   <h2 className="text-xl font-semibold mb-4 break-words">{user.username}</h2>
@@ -587,7 +587,7 @@ export function Dashboard() {
                                 <Avatar className="w-6 h-6">
                                   <AvatarImage src={workshop.facilitator?.avatarUrl} />
                                   <AvatarFallback className="text-xs">
-                                    {workshop.facilitator?.name?.split(' ').map(n => n[0]).join('') || '?'}
+                                    {workshop.facilitator?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="text-sm text-muted-foreground">{workshop.facilitator?.name}</span>

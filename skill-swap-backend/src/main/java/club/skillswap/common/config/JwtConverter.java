@@ -47,14 +47,23 @@ public class JwtConverter implements Converter<Jwt, AbstractAuthenticationToken>
             }
         }
 
-        if (userOpt.isPresent()) {
-            String role = userOpt.get().getRole();
-            if (role != null && !role.isBlank() && "admin".equalsIgnoreCase(role.trim())) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-            }
+        if (userOpt.isPresent() && isAdminRole(userOpt.get().getRole())) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
         }
 
         return authorities;
+    }
+
+    private boolean isAdminRole(String role) {
+        String normalized = normalizeRole(role);
+        return "admin".equals(normalized) || "role_admin".equals(normalized);
+    }
+
+    private String normalizeRole(String role) {
+        if (role == null) {
+            return "";
+        }
+        return role.replaceAll("[\\s\\p{Cntrl}]+", "").toLowerCase(Locale.ROOT);
     }
 
     private UUID tryParseUuid(String value) {

@@ -10,6 +10,7 @@ import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,6 +27,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
@@ -89,11 +91,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     private void persistNotification(UUID recipientId, String type, String title, String message, Long workshopId) {
         if (recipientId == null) {
+            log.warn("Skip notification because recipientId is null. type={}, workshopId={}", type, workshopId);
             return;
         }
 
         UserAccount recipient = userRepository.findById(recipientId).orElse(null);
         if (recipient == null) {
+            log.warn("Skip notification because recipient user not found. recipientId={}, type={}, workshopId={}", recipientId, type, workshopId);
             return;
         }
 
@@ -111,6 +115,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRead(false);
 
         notificationRepository.save(notification);
+        log.debug("Notification created. recipientId={}, type={}, workshopId={}", recipientId, type, workshopId);
     }
 
     private NotificationResponseDto mapToDto(Notification notification) {

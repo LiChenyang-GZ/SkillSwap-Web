@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { notificationAPI, workshopAPI } from "../lib/api";
-import { NotificationItem } from "../types";
+import type { NotificationItem } from "../types/notification";
 import { useApp } from "../contexts/AppContext";
 import { Button } from "./ui/button";
 import { Bell, CheckCheck } from "lucide-react";
@@ -15,11 +15,13 @@ import {
 
 export function Notifications() {
   const { sessionToken, refreshNotificationsUnreadCount, isAuthenticated, setCurrentPage, upsertWorkshop } = useApp();
-  const hasSession = Boolean(sessionToken);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const canMarkAllRead = Boolean(sessionToken) && !errorMessage && !isLoading;
 
   const sortedNotifications = useMemo(() => {
     return [...notifications].sort((a, b) => {
@@ -30,35 +32,62 @@ export function Notifications() {
   }, [notifications]);
 
   useEffect(() => {
-    let isMounted = true;
+    let isCancelled = false;
 
     const loadNotifications = async () => {
-      if (!isAuthenticated || !hasSession) {
-        setNotifications([]);
-        setIsLoading(false);
+      if (!isAuthenticated) {
+        if (!isCancelled) {
+          setNotifications([]);
+          setErrorMessage(null);
+          setIsLoading(false);
+        }
         return;
       }
 
+      if (!sessionToken) {
+        if (!isCancelled) {
+          setNotifications([]);
+          setErrorMessage("Please sign in again to view your notifications.");
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      if (!isCancelled) {
+        setIsLoading(true);
+        setErrorMessage(null);
+      }
+
       try {
-        const data = await notificationAPI.getAll(sessionToken!);
-        if (isMounted) {
+        const data = await notificationAPI.getAll(sessionToken);
+        if (!isCancelled) {
           setNotifications(data);
         }
       } catch (error) {
         console.warn("Failed to load notifications", error);
+        const status = (error as Error & { status?: number }).status;
+        if (!isCancelled) {
+          if (status === 401) {
+            setErrorMessage("Please sign in again to view your notifications.");
+          } else if (status === 403) {
+            setErrorMessage("You do not have permission to view notifications.");
+          } else {
+            setErrorMessage("Failed to load notifications. Please try again.");
+          }
+        }
       } finally {
-        if (isMounted) {
+        if (!isCancelled) {
           setIsLoading(false);
         }
       }
     };
 
-    loadNotifications();
+    void loadNotifications();
 
     return () => {
-      isMounted = false;
+      isCancelled = true;
     };
-  }, [hasSession, isAuthenticated]);
+  }, [isAuthenticated, sessionToken, reloadNonce]);
 
   const handleMarkRead = async (notificationId: string) => {
     try {
@@ -73,6 +102,9 @@ export function Notifications() {
   };
 
   const handleMarkAllRead = async () => {
+    if (!canMarkAllRead) {
+      return;
+    }
     try {
       await notificationAPI.markAllRead(sessionToken);
       setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
@@ -161,7 +193,7 @@ export function Notifications() {
             <h1 className="text-2xl font-bold">Notifications</h1>
             <p className="text-muted-foreground">Stay on top of workshop updates.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+          <Button variant="outline" size="sm" onClick={handleMarkAllRead} disabled={!canMarkAllRead}>
             <CheckCheck className="w-4 h-4 mr-2" />
             Mark all read
           </Button>
@@ -170,6 +202,20 @@ export function Notifications() {
         <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
           {isLoading ? (
             <div className="p-6 text-center text-muted-foreground">Loading notifications...</div>
+          ) : errorMessage ? (
+            <div className="p-10 text-center text-muted-foreground space-y-3">
+              <Bell className="w-10 h-10 mx-auto mb-1" />
+              <p>{errorMessage}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setReloadNonce((prev) => prev + 1);
+                }}
+              >
+                Retry
+              </Button>
+            </div>
           ) : sortedNotifications.length === 0 ? (
             <div className="p-10 text-center text-muted-foreground">
               <Bell className="w-10 h-10 mx-auto mb-3" />

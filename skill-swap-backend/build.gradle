@@ -53,9 +53,6 @@ dependencies {
   // OAuth2 Resource Server & JWT
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
   implementation 'org.springframework.security:spring-security-oauth2-jose'
-  implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
-  runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
-  runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
 	
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
@@ -100,7 +97,6 @@ tasks.named('bootRun') {
   doFirst {
     println "[bootRun] Loaded .env keys: ${envMap.keySet()}" // 不打印值
 	println "DB_PASSWORD preview: ${envMap['DB_PASSWORD']}***"
-	println "JWT_HS256_SECRET preview: ${envMap['JWT_HS256_SECRET']}***"
 
   }
 

@@ -16,6 +16,7 @@ import club.skillswap.workshop.entity.WorkshopParticipant;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WorkshopServiceImpl implements WorkshopService {
 
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
@@ -973,6 +975,11 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         List<UserAccount> admins = userService.findAdmins();
+        log.debug("notifyAdminsForWorkshop: workshopId={}, facilitatorId={}, adminCount={}, type={}",
+                workshop.getId(),
+                facilitator != null ? facilitator.getId() : null,
+                admins.size(),
+                type);
         for (UserAccount admin : admins) {
             if (admin == null || admin.getId() == null) {
                 continue;

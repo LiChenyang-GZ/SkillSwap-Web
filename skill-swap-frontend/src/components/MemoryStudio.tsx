@@ -1,7 +1,7 @@
 import { ChangeEvent, ClipboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { memoryAPI, resolveAssetUrl } from '../lib/api';
-import { MemoryEntry } from '../types';
+import type { MemoryEntry } from '../types/memory';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
