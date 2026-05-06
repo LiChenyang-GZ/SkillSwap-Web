@@ -1,5 +1,5 @@
 import type { Workshop } from '../../../types/workshop';
-import { normalizeAdminWorkshopStatus } from '../../workshop/workshopStatusRules';
+import { normalizeAdminWorkshopStatus } from '../../workshop/utils/workshopStatusRules';
 import { WorkshopFormState } from '../models/adminReviewFormModel';
 import { ADMIN_REVIEW_RESOLVED_WORKSHOP_STATUSES } from '../constants/adminReviewStatusConstants';
 

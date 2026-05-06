@@ -14,6 +14,7 @@ import type { Workshop } from "../types/workshop";
 import type { CreditTransaction } from "../types/creditTransaction";
 import { notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
 import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
+import { workshopDiscoveryService } from "../shared/service/workshop/workshopDiscoveryService";
 import { toast } from "sonner";
 
 interface AppContextType {
@@ -289,9 +290,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchVisibleWorkshops = useCallback(async () => {
     if (isAuthenticated && sessionToken) {
       const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
-        workshopAPI.getPublic(),
-        workshopAPI.getMine(sessionToken),
-        workshopAPI.getAttending(sessionToken),
+        workshopDiscoveryService.getPublic(),
+        workshopDiscoveryService.getMine(sessionToken),
+        workshopDiscoveryService.getAttending(sessionToken),
       ]);
       const merged = new Map<string, Workshop>();
       [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
@@ -300,18 +301,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return Array.from(merged.values());
     }
 
-    return workshopAPI.getPublic();
+    return workshopDiscoveryService.getPublic();
   }, [isAuthenticated, sessionToken]);
 
   const fetchPublicWorkshops = useCallback(async () => {
-    return workshopAPI.getPublic();
+    return workshopDiscoveryService.getPublic();
   }, []);
 
   const fetchMineWorkshops = useCallback(async () => {
     if (!isAuthenticated || !sessionToken) {
       return [];
     }
-    return workshopAPI.getMine(sessionToken);
+    return workshopDiscoveryService.getMine(sessionToken);
   }, [isAuthenticated, sessionToken]);
 
   const fetchDashboardWorkshops = useCallback(async () => {
@@ -320,8 +321,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const [myWorkshops, attendingWorkshops] = await Promise.all([
-      workshopAPI.getMine(sessionToken),
-      workshopAPI.getAttending(sessionToken),
+      workshopDiscoveryService.getMine(sessionToken),
+      workshopDiscoveryService.getAttending(sessionToken),
     ]);
 
     const merged = new Map<string, Workshop>();
@@ -494,7 +495,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : "";
 
     return {
-      id: userProfile.id,
+      id: String(userProfile.id),
       email: userProfile.email,
       username: userProfile.username,
       avatarUrl,

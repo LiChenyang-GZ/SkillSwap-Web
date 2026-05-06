@@ -29,7 +29,7 @@ import {
   isUserWorkshopVisible,
   normalizeAdminWorkshopStatus,
   resolveUserWorkshopStatus,
-} from './workshop/workshopStatusPublicApi';
+} from './workshop/utils/workshopStatusPublicApi';
 
 export function Dashboard() {
   const { user, workshops, sessionToken, setCurrentPage, cancelWorkshopAttendance, updateCurrentUserProfile, uploadCurrentUserAvatar } = useApp();

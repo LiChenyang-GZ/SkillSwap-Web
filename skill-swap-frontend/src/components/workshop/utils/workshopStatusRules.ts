@@ -1,17 +1,8 @@
-import type { Workshop } from '../../types/workshop';
+import type { Workshop } from '../../../types/workshop';
+import { USER_VISIBLE_ACTIVE_STATUSES } from '../constants/workshopStatusConstants';
+import type { AdminWorkshopStatus, UserWorkshopStatus } from '../models/workshopStatusModel';
 
-export type AdminWorkshopStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'cancelled'
-  | 'completed'
-  | 'upcoming'
-  | 'ongoing';
-
-export type UserWorkshopStatus = 'upcoming' | 'ongoing' | 'completed';
-
-const USER_VISIBLE_ACTIVE_STATUSES = new Set(['approved', 'upcoming', 'ongoing']);
+const USER_VISIBLE_ACTIVE_STATUS_SET = new Set<string>(USER_VISIBLE_ACTIVE_STATUSES);
 
 export function normalizeAdminWorkshopStatus(status?: string): AdminWorkshopStatus {
   const normalized = (status || 'pending').toLowerCase();
@@ -73,7 +64,7 @@ export function resolveUserWorkshopStatus(
     return 'completed';
   }
 
-  if (!USER_VISIBLE_ACTIVE_STATUSES.has(adminStatus)) {
+  if (!USER_VISIBLE_ACTIVE_STATUS_SET.has(adminStatus)) {
     return null;
   }
 
