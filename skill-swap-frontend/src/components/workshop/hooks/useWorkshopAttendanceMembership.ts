@@ -15,14 +15,16 @@ export function useWorkshopAttendanceMembership({
   const controllerRef = useRef<AbortController | null>(null);
 
   const refreshMembership = useCallback(async () => {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
     if (!sessionToken) {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
       setIsAttendingByMembership(false);
       return;
     }
+
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
 
     try {
       const attendingWorkshops = await workshopQueryService.getAttending(

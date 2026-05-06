@@ -18,6 +18,7 @@ export function useWorkshopDetailQuery({
 }: UseWorkshopDetailQueryParams) {
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const lastFetchKeyRef = useRef<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const normalizedWorkshopId = toBackendWorkshopId(workshopId);
@@ -28,6 +29,7 @@ export function useWorkshopDetailQuery({
     if (found) {
       setWorkshop(found);
       setIsLoading(false);
+      setErrorStatus(null);
       return;
     }
 
@@ -43,11 +45,17 @@ export function useWorkshopDetailQuery({
       workshop !== null && toBackendWorkshopId(String(workshop.id)) === normalizedWorkshopId;
 
     const loadWorkshop = async (force = false) => {
-      if (!force && lastFetchKeyRef.current === detailFetchKey) {
+      const hasActiveSameKeyRequest =
+        lastFetchKeyRef.current === detailFetchKey &&
+        controllerRef.current !== null &&
+        !controllerRef.current.signal.aborted;
+
+      if (!force && hasActiveSameKeyRequest) {
         return;
       }
 
       lastFetchKeyRef.current = detailFetchKey;
+      setErrorStatus(null);
       if (!hasLocalSnapshot) {
         setIsLoading(true);
       }
@@ -61,9 +69,12 @@ export function useWorkshopDetailQuery({
         if (!controller.signal.aborted && latest) {
           setWorkshop(latest);
           upsertWorkshop(latest);
+          setErrorStatus(null);
         }
       } catch (error) {
         if ((error as { name?: string })?.name !== 'AbortError') {
+          const status = (error as { status?: number })?.status;
+          setErrorStatus(status ?? 500);
           console.warn('Failed to refresh workshop details', error);
         }
       } finally {
@@ -77,16 +88,12 @@ export function useWorkshopDetailQuery({
 
     return () => {
       controllerRef.current?.abort();
-      // React StrictMode mounts/unmounts effects twice in dev.
-      // Reset the key so the remount pass can still attach to the in-flight request.
-      if (lastFetchKeyRef.current === detailFetchKey) {
-        lastFetchKeyRef.current = null;
-      }
     };
   }, [detailFetchKey, normalizedWorkshopId, sessionToken, upsertWorkshop, workshopId]);
 
   return {
     workshop,
     isLoading,
+    errorStatus,
   };
 }

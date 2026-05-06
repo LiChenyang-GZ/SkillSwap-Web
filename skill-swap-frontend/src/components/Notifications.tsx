@@ -117,11 +117,16 @@ export function Notifications() {
 
   const openWorkshopFromNotification = (workshopId: string) => {
     if (sessionToken) {
-      void workshopQueryService.getById(workshopId, sessionToken).then((latest) => {
-        if (latest) {
-          upsertWorkshop(latest);
-        }
-      });
+      void workshopQueryService
+        .getById(workshopId, sessionToken)
+        .then((latest) => {
+          if (latest) {
+            upsertWorkshop(latest);
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to preload workshop from notification', error);
+        });
     }
     setCurrentPage(`workshop-${workshopId}`);
   };

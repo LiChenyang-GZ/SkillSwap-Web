@@ -1,4 +1,10 @@
 import { useApp } from '../../../contexts/AppContext';
+import {
+  WORKSHOP_DETAILS_FORBIDDEN_DESCRIPTION,
+  WORKSHOP_DETAILS_FORBIDDEN_TITLE,
+  WORKSHOP_DETAILS_UNAUTHORIZED_DESCRIPTION,
+  WORKSHOP_DETAILS_UNAUTHORIZED_TITLE,
+} from '../constants/workshopDetailUiConstants';
 import { WorkshopDetailsBackButton } from '../components/WorkshopDetailsBackButton';
 import { WorkshopDetailsMainContent } from '../components/WorkshopDetailsMainContent';
 import { WorkshopDetailsNotFound } from '../components/WorkshopDetailsNotFound';
@@ -53,6 +59,30 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (query.errorStatus === 401) {
+    return (
+      <div className="min-h-screen bg-background pt-20 lg:pt-24">
+        <WorkshopDetailsNotFound
+          onBack={mutations.goBackToExplore}
+          title={WORKSHOP_DETAILS_UNAUTHORIZED_TITLE}
+          description={WORKSHOP_DETAILS_UNAUTHORIZED_DESCRIPTION}
+        />
+      </div>
+    );
+  }
+
+  if (query.errorStatus === 403) {
+    return (
+      <div className="min-h-screen bg-background pt-20 lg:pt-24">
+        <WorkshopDetailsNotFound
+          onBack={mutations.goBackToExplore}
+          title={WORKSHOP_DETAILS_FORBIDDEN_TITLE}
+          description={WORKSHOP_DETAILS_FORBIDDEN_DESCRIPTION}
+        />
       </div>
     );
   }

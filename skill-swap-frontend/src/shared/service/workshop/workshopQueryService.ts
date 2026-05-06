@@ -1,12 +1,19 @@
 import type { Workshop } from '../../../types/workshop';
 import { apiCall, enrichWorkshop, toBackendWorkshopId } from '../../../lib/api';
 
+const isAbortError = (error: unknown): boolean => {
+  return (error as { name?: string })?.name === 'AbortError';
+};
+
 export const workshopQueryService = {
   getAll: async (signal?: AbortSignal): Promise<Workshop[]> => {
     try {
       const data = await apiCall<any[]>('/api/v1/workshops', { signal });
       return data.map(enrichWorkshop);
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       console.error('Failed to fetch workshops:', error);
       return [];
     }
@@ -17,6 +24,9 @@ export const workshopQueryService = {
       const data = await apiCall<any[]>('/api/v1/workshops/public', { signal });
       return data.map(enrichWorkshop);
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       console.error('Failed to fetch public workshops:', error);
       return [];
     }
@@ -27,6 +37,9 @@ export const workshopQueryService = {
       const data = await apiCall<any[]>('/api/v1/workshops/mine', { signal }, token);
       return data.map(enrichWorkshop);
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       console.error('Failed to fetch my workshops:', error);
       return [];
     }
@@ -37,6 +50,9 @@ export const workshopQueryService = {
       const data = await apiCall<any[]>('/api/v1/workshops/attending', { signal }, token);
       return data.map(enrichWorkshop);
     } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
       console.error('Failed to fetch attending workshops:', error);
       return [];
     }
@@ -51,17 +67,20 @@ export const workshopQueryService = {
       );
       return enrichWorkshop(data);
     } catch (error) {
-      if ((error as { name?: string })?.name === 'AbortError') {
+      if (isAbortError(error)) {
         throw error;
       }
       const status = (error as { status?: number })?.status;
+      if (status === 404) {
+        return null;
+      }
       console.warn('Failed to fetch workshop detail', {
         workshopId: id,
         backendId: toBackendWorkshopId(id),
         status: status ?? null,
         error,
       });
-      return null;
+      throw error;
     }
   },
 };
