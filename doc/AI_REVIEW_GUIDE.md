@@ -30,6 +30,11 @@ Inline Review 采用 Context First 两阶段：
 2. `backend`
 3. `fullstack`（前后端一起）
 
+Inline Review 支持两种策略档位：
+
+1. `strict`（默认）：强约束防循环，启用结构门槛与根因去重
+2. `normal`：更宽松，减少因格式不完整导致的评论丢弃
+
 ## 2. 触发位置与权限
 
 1. 触发位置：必须在 PR 页面底部评论区发命令。
@@ -53,6 +58,12 @@ Inline Review 采用 Context First 两阶段：
 4. `/review-context`
 作用：只输出 PR context（四段），不发 inline comments。
 
+4.1 `/review-strict`
+作用：切换为 strict 档位（默认值，可显式写出便于审计）。
+
+4.2 `/review-normal`
+作用：切换为 normal 档位（更宽松的评论校验）。
+
 5. `/review-frontend claude` 或 `/review-frontend-claude`
 作用：Claude + 前端规则，发 inline comments。
 
@@ -73,6 +84,12 @@ Inline Review 采用 Context First 两阶段：
 
 11. `/review-frontend /review-claude-sonnet-4-5`
 作用：强制使用指定 Claude 模型。
+
+12. `/review-fullstack /review-normal`
+作用：按 fullstack 模式执行，但使用 normal 档位。
+
+13. `/review-frontend /review-strict /review-gpt-5.4`
+作用：前端模式 + strict 档位 + 指定模型。
 
 ### 3.2 Summary Review 命令
 
@@ -111,6 +128,21 @@ Inline Review 采用 Context First 两阶段：
 7. OpenAI 别名支持：`/review-gpt54`、`gpt54`、`/review-gpt55`、`gpt55`。
 8. 显式模型命令可与 frontend/backend/fullstack、summary 组合使用。
 9. 未写模式关键字时，默认 `fullstack`。
+10. 未写策略关键字时，默认 `strict`。
+
+## 4.1 策略档位差异
+
+`strict`：
+1. 强制评论体包含：`Repro`、`Impact`、`Minimal fix`、`Acceptance`
+2. 强制 `category`（MustFix/CanDefer/NonBlocking）
+3. 强制按 `rootCause` 去重（同根因只保留一条）
+4. 更适合“防 review 循环、促收敛”
+
+`normal`：
+1. 保留 context-first 与主规则
+2. 不因结构字段缺失而直接丢弃评论
+3. 不强制 `rootCause` 去重拦截
+4. 更适合“先放宽覆盖，再人工筛选”
 
 ## 5. 依赖的 Secret 与默认模型
 
