@@ -68,6 +68,32 @@ export function AdminReviewDetailPanel({
   onApprove,
   onExportParticipantsExcel,
 }: AdminReviewDetailPanelProps) {
+  const normalizedStatus = selectedWorkshop ? normalizeAdminWorkshopStatus(selectedWorkshop.status) : null;
+  const hasStarted = selectedWorkshop ? hasWorkshopStarted(selectedWorkshop) : false;
+  const canApprove = normalizedStatus === 'pending' && !hasStarted;
+  const canReject = normalizedStatus === 'pending' && !hasStarted;
+  const canEdit =
+    normalizedStatus !== null &&
+    !hasStarted &&
+    !ADMIN_REVIEW_NON_EDITABLE_STATUSES.includes(
+      normalizedStatus as (typeof ADMIN_REVIEW_NON_EDITABLE_STATUSES)[number]
+    );
+  const canCancel =
+    normalizedStatus !== null &&
+    !hasStarted &&
+    ADMIN_REVIEW_CANCELLABLE_STATUSES.includes(
+      normalizedStatus as (typeof ADMIN_REVIEW_CANCELLABLE_STATUSES)[number]
+    );
+  const shouldShowParticipants =
+    normalizedStatus !== null &&
+    ADMIN_REVIEW_PARTICIPANT_VISIBLE_STATUSES.includes(
+      normalizedStatus as (typeof ADMIN_REVIEW_PARTICIPANT_VISIBLE_STATUSES)[number]
+    );
+  const shouldShowRejectionNote =
+    normalizedStatus !== null && normalizedStatus !== ADMIN_REVIEW_REJECTION_NOTE_HIDDEN_STATUS;
+  const participants = selectedWorkshop?.participants ?? [];
+  const participantCount = participants.length || selectedWorkshop?.currentParticipants || 0;
+
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
@@ -99,20 +125,7 @@ export function AdminReviewDetailPanel({
           </div>
         ) : (
           <div className="space-y-6">
-            {(() => {
-              const normalizedStatus = normalizeAdminWorkshopStatus(selectedWorkshop.status);
-              const hasStarted = hasWorkshopStarted(selectedWorkshop);
-              const canApprove = normalizedStatus === 'pending' && !hasStarted;
-              const canReject = normalizedStatus === 'pending' && !hasStarted;
-              const canEdit = !hasStarted && !ADMIN_REVIEW_NON_EDITABLE_STATUSES.includes(normalizedStatus as (typeof ADMIN_REVIEW_NON_EDITABLE_STATUSES)[number]);
-              const canCancel = !hasStarted && ADMIN_REVIEW_CANCELLABLE_STATUSES.includes(normalizedStatus as (typeof ADMIN_REVIEW_CANCELLABLE_STATUSES)[number]);
-              const shouldShowParticipants = ADMIN_REVIEW_PARTICIPANT_VISIBLE_STATUSES.includes(normalizedStatus as (typeof ADMIN_REVIEW_PARTICIPANT_VISIBLE_STATUSES)[number]);
-              const shouldShowRejectionNote = normalizedStatus !== ADMIN_REVIEW_REJECTION_NOTE_HIDDEN_STATUS;
-              const participants = selectedWorkshop.participants ?? [];
-              const participantCount = participants.length || selectedWorkshop.currentParticipants || 0;
-
-              return (
-                <>
+            <>
                   <div className="space-y-3">
                     <Label htmlFor="workshopImageUpload">Workshop Cover Image</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-4 items-start">
@@ -370,9 +383,7 @@ export function AdminReviewDetailPanel({
                       Approve
                     </Button>
                   </div>
-                </>
-              );
-            })()}
+            </>
           </div>
         )}
       </CardContent>

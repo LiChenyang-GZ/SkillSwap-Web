@@ -162,6 +162,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
       setSelectedId(null);
       setLoadedDetailIds({});
       setDetailLoadErrors({});
+      setErrorMessage(null);
     }
   }, [hasSession]);
 
@@ -176,7 +177,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   useEffect(() => {
     if (!selectedId) return;
     void loadWorkshopDetail(selectedId);
-  }, [selectedId, hasSession]);
+  }, [selectedId, sessionToken]);
 
   useEffect(() => {
     if (sortedWorkshops.length === 0) {
