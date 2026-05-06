@@ -43,6 +43,10 @@ function detectMode(reviewComment) {
   return "fullstack";
 }
 
+function isContextOnlyReview(reviewComment) {
+  return reviewComment.toLowerCase().includes("/review-context");
+}
+
 function parseModelFromComment(reviewComment) {
   const normalizedComment = ` ${reviewComment.toLowerCase()} `;
   const hasGpt55Alias = /(^|\s)(\/review-gpt-5\.5|\/review-gpt55|gpt55)(?=\s|$)/.test(
@@ -178,7 +182,7 @@ function isAllowedLine(allowedLines, path, line) {
   return allowedLines.has(path) && allowedLines.get(path).has(Number(line));
 }
 
-function buildPrompt({ mode, generalSkill, specificSkill, diff }) {
+function buildPrompt({ mode, generalSkill, specificSkill, prContext, diff }) {
   return `
 You are reviewing a GitHub pull request and must produce inline review comments.
 
@@ -193,6 +197,10 @@ ${generalSkill}
 <SPECIFIC_REVIEW_RULES>
 ${specificSkill}
 </SPECIFIC_REVIEW_RULES>
+
+<PR_CONTEXT>
+${prContext}
+</PR_CONTEXT>
 
 <PROJECT_CONTEXT>
 This repository contains frontend refactoring work and backend Spring Boot logic.
@@ -233,6 +241,7 @@ Schema:
 Rules:
 - Only comment on lines that exist on the RIGHT side of a diff hunk (+ or context lines).
 - Use the new-file line number shown by the diff.
+- Prioritize the most important issues based on PR context and likely production/user impact.
 - Prefer concise but sufficiently broad coverage.
 - Report all clearly supported issues that affect correctness, predictable behavior, maintainability, security, API contracts, frontend state/effect correctness, backend data consistency, or production safety.
 - Maximum ${MAX_INLINE_COMMENTS} inline comments.
@@ -245,6 +254,49 @@ Rules:
   "summary": "No major issues found.",
   "comments": []
 }
+
+<PR_DIFF>
+${diff}
+</PR_DIFF>
+`;
+}
+
+function buildContextPrompt({ mode, generalSkill, specificSkill, diff }) {
+  return `
+You are preparing PR context before inline review.
+
+Review mode: ${mode}
+
+Use the following review rules.
+
+<GENERAL_REVIEW_RULES>
+${generalSkill}
+</GENERAL_REVIEW_RULES>
+
+<SPECIFIC_REVIEW_RULES>
+${specificSkill}
+</SPECIFIC_REVIEW_RULES>
+
+<OUTPUT_RULES>
+Return markdown only with exactly these sections and short bullet points:
+
+## Pull request overview
+High-level intent and change type.
+
+## Changes
+Main code changes grouped by area/module.
+
+## Review scope detected
+What risk surfaces are in-scope for this PR.
+
+## Suggested review focus
+Top issues that should be prioritized in inline comments.
+
+Rules:
+- Be concrete and evidence-based from the diff.
+- Keep it concise and pragmatic.
+- Do not invent behavior not supported by the diff.
+</OUTPUT_RULES>
 
 <PR_DIFF>
 ${diff}
@@ -269,7 +321,7 @@ function extractJson(text) {
   }
 }
 
-async function reviewWithOpenAI(prompt, model) {
+async function reviewWithOpenAI(prompt, model, { json = true } = {}) {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -286,7 +338,7 @@ async function reviewWithOpenAI(prompt, model) {
       model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
-      response_format: { type: "json_object" },
+      ...(json ? { response_format: { type: "json_object" } } : {}),
     }),
   });
 
@@ -296,7 +348,7 @@ async function reviewWithOpenAI(prompt, model) {
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || "{}";
+  return data.choices?.[0]?.message?.content || (json ? "{}" : "");
 }
 
 async function reviewWithClaude(prompt, model) {
@@ -356,8 +408,12 @@ async function githubRequest(path, options = {}) {
   return response.json();
 }
 
-function formatReviewBody({ provider, model, mode, summary, skippedCount }) {
-  let body = `AI inline review using ${provider} (${model}). Mode: ${mode}.\n\n${summary || ""}`;
+function formatReviewBody({ provider, model, mode, prContext, summary, skippedCount }) {
+  let body = `AI inline review using ${provider} (${model}). Mode: ${mode}.\n\n${prContext || ""}`;
+
+  if (summary) {
+    body += `\n\n## Inline review summary\n${summary}`;
+  }
 
   if (skippedCount > 0) {
     body += `\n\nNote: ${skippedCount} generated comment(s) were skipped because their path/line was not present on the RIGHT side of the diff hunk.`;
@@ -392,6 +448,7 @@ async function createFallbackComment(body) {
 
 async function main() {
   const reviewComment = process.env.REVIEW_COMMENT || "";
+  const contextOnly = isContextOnlyReview(reviewComment);
   const mode = detectMode(reviewComment);
   const { provider, model } = resolveModelSelection(reviewComment);
   const skillFiles = loadSkillFiles();
@@ -402,17 +459,37 @@ async function main() {
   const generalSkill = readFirstExisting(skillFiles.general);
   const specificSkill = buildSpecificSkill(mode, skillFiles);
 
-  const prompt = buildPrompt({
+  const contextPrompt = buildContextPrompt({
     mode,
     generalSkill,
     specificSkill,
     diff,
   });
 
+  const prContext =
+    provider === "claude"
+      ? await reviewWithClaude(contextPrompt, model)
+      : await reviewWithOpenAI(contextPrompt, model, { json: false });
+
+  if (contextOnly) {
+    await createFallbackComment(
+      `## 🤖 AI Review Context\n\nAI review context using ${provider} (${model}). Mode: ${mode}.\n\n${prContext}`,
+    );
+    return;
+  }
+
+  const prompt = buildPrompt({
+    mode,
+    generalSkill,
+    specificSkill,
+    prContext,
+    diff,
+  });
+
   const rawOutput =
     provider === "claude"
       ? await reviewWithClaude(prompt, model)
-      : await reviewWithOpenAI(prompt, model);
+      : await reviewWithOpenAI(prompt, model, { json: true });
 
   const parsed = extractJson(rawOutput);
 
@@ -444,6 +521,7 @@ async function main() {
     provider,
     model,
     mode,
+    prContext,
     summary: parsed.summary,
     skippedCount,
   });
