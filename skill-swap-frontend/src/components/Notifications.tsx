@@ -21,6 +21,7 @@ export function Notifications() {
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const canMarkAllRead = Boolean(sessionToken) && !errorMessage && !isLoading;
 
   const sortedNotifications = useMemo(() => {
     return [...notifications].sort((a, b) => {
@@ -101,6 +102,9 @@ export function Notifications() {
   };
 
   const handleMarkAllRead = async () => {
+    if (!canMarkAllRead) {
+      return;
+    }
     try {
       await notificationAPI.markAllRead(sessionToken);
       setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
@@ -189,7 +193,7 @@ export function Notifications() {
             <h1 className="text-2xl font-bold">Notifications</h1>
             <p className="text-muted-foreground">Stay on top of workshop updates.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
+          <Button variant="outline" size="sm" onClick={handleMarkAllRead} disabled={!canMarkAllRead}>
             <CheckCheck className="w-4 h-4 mr-2" />
             Mark all read
           </Button>

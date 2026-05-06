@@ -1,4 +1,11 @@
-import { Facilitator, User } from './user';
+import { Facilitator } from './user';
+
+export interface WorkshopParticipant {
+  id: string;
+  username: string;
+  email?: string;
+  avatarUrl?: string;
+}
 
 export interface Workshop {
   id: string;
@@ -37,7 +44,7 @@ export interface Workshop {
   tags?: string[];
   image?: string;
   createdAt?: string;
-  participants?: User[];
+  participants?: WorkshopParticipant[];
   materials?: string[];
   requirements?: string[];
 }

@@ -195,7 +195,7 @@ export function enrichWorkshop(workshop: any): Workshop {
     tags: workshop.tags,
     image: resolvedImage || getDefaultImage(workshop.category),
     createdAt: workshop.createdAt,
-    participants: participants as any,
+    participants,
     materials: workshop.materials,
     requirements: workshop.requirements,
   };
