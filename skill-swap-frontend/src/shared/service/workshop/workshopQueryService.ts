@@ -14,52 +14,30 @@ const createAbortError = (): Error & { name: string } => {
 interface DetailTaskEntry {
   controller: AbortController;
   task: Promise<Workshop | null>;
-  subscribers: number;
 }
 
 const workshopDetailInFlight = new Map<string, DetailTaskEntry>();
 
-const withCallerAbort = async <T>(
-  entry: DetailTaskEntry,
-  release: () => void,
-  signal?: AbortSignal
-): Promise<T> => {
-  let settled = false;
-  const releaseOnce = () => {
-    if (settled) {
-      return;
-    }
-    settled = true;
-    release();
-  };
-
+const withCallerAbort = async <T>(entry: DetailTaskEntry, signal?: AbortSignal): Promise<T> => {
   if (!signal) {
-    try {
-      return (await entry.task) as T;
-    } finally {
-      releaseOnce();
-    }
+    return (await entry.task) as T;
   }
 
   if (signal.aborted) {
-    releaseOnce();
     throw createAbortError();
   }
 
   return new Promise<T>((resolve, reject) => {
     const onAbort = () => {
-      releaseOnce();
       reject(createAbortError());
     };
 
     signal.addEventListener('abort', onAbort, { once: true });
     entry.task
       .then((value) => {
-        releaseOnce();
         resolve(value as T);
       })
       .catch((error) => {
-        releaseOnce();
         reject(error);
       })
       .finally(() => {
@@ -126,20 +104,13 @@ export const workshopQueryService = {
     const cacheKey = `${token ?? 'anon'}:${backendId}`;
     const existingEntry = workshopDetailInFlight.get(cacheKey);
     if (existingEntry) {
-      existingEntry.subscribers += 1;
-      return withCallerAbort<Workshop | null>(existingEntry, () => {
-        existingEntry.subscribers -= 1;
-        if (existingEntry.subscribers <= 0) {
-          existingEntry.controller.abort();
-        }
-      }, signal);
+      return withCallerAbort<Workshop | null>(existingEntry, signal);
     }
 
     const controller = new AbortController();
     const entry: DetailTaskEntry = {
       controller,
       task: Promise.resolve(null),
-      subscribers: 1,
     };
 
     const task = (async () => {
@@ -169,11 +140,6 @@ export const workshopQueryService = {
 
     entry.task = task;
     workshopDetailInFlight.set(cacheKey, entry);
-    return withCallerAbort<Workshop | null>(entry, () => {
-      entry.subscribers -= 1;
-      if (entry.subscribers <= 0) {
-        entry.controller.abort();
-      }
-    }, signal);
+    return withCallerAbort<Workshop | null>(entry, signal);
   },
 };

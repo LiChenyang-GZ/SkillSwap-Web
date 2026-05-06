@@ -5,13 +5,7 @@ import { workshopQueryService } from '../../../shared/service/workshop/workshopQ
 
 const getErrorStatus = (error: unknown): number | null => {
   const status = (error as { status?: number })?.status;
-  if (typeof status === 'number') {
-    return status;
-  }
-
-  const message = (error as { message?: string })?.message;
-  const matched = typeof message === 'string' ? message.match(/\b(401|403)\b/) : null;
-  return matched ? Number(matched[1]) : null;
+  return typeof status === 'number' ? status : null;
 };
 
 interface UseWorkshopDetailQueryParams {
@@ -81,14 +75,21 @@ export function useWorkshopDetailQuery({
 
       try {
         const latest = await workshopQueryService.getById(workshopId, sessionToken, controller.signal);
-        if (!controller.signal.aborted && latest) {
-          setWorkshop(latest);
-          upsertWorkshop(latest);
-          setErrorStatus(null);
+        if (!controller.signal.aborted) {
+          if (latest) {
+            setWorkshop(latest);
+            upsertWorkshop(latest);
+            setErrorStatus(null);
+          } else {
+            setWorkshop(null);
+          }
         }
       } catch (error) {
         if ((error as { name?: string })?.name !== 'AbortError') {
-          if (!hasLocalSnapshotRef.current) {
+          if (force) {
+            setWorkshop(null);
+            setErrorStatus(getErrorStatus(error));
+          } else if (!hasLocalSnapshotRef.current) {
             setErrorStatus(getErrorStatus(error));
           }
           console.warn('Failed to refresh workshop details', error);
