@@ -46,7 +46,13 @@ export const workshopDiscoveryService = {
         const data = await apiCall<any>(`/api/v1/workshops/${toBackendWorkshopId(id)}`, {}, token);
         return enrichWorkshop(data);
       } catch (error) {
-        console.warn('Backend unavailable for workshop', id, error);
+        const status = (error as { status?: number })?.status;
+        console.warn('Failed to fetch workshop detail', {
+          workshopId: id,
+          backendId: toBackendWorkshopId(id),
+          status: status ?? null,
+          error,
+        });
         return null;
       }
     })();

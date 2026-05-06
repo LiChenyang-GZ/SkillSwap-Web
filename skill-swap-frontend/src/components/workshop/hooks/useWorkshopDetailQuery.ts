@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Workshop } from '../../../types/workshop';
 import { workshopDiscoveryService } from '../../../shared/service/workshop/workshopDiscoveryService';
+import { toBackendWorkshopId } from '../../../lib/api';
 
 interface UseWorkshopDetailQueryParams {
   workshopId: string;
@@ -18,25 +19,34 @@ export function useWorkshopDetailQuery({
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const lastFetchedIdRef = useRef<string | null>(null);
+  const normalizedWorkshopId = toBackendWorkshopId(workshopId);
 
   useEffect(() => {
-    const found = workshops.find((item) => item.id === workshopId);
+    const found = workshops.find((item) => toBackendWorkshopId(String(item.id)) === normalizedWorkshopId);
     if (found) {
       setWorkshop(found);
       setIsLoading(false);
+      return;
     }
-  }, [workshopId, workshops]);
+
+    // Prevent showing stale details from previous workshop while next detail request is loading.
+    setWorkshop((previous) =>
+      previous && toBackendWorkshopId(String(previous.id)) === normalizedWorkshopId ? previous : null
+    );
+    setIsLoading(true);
+  }, [normalizedWorkshopId, workshops]);
 
   useEffect(() => {
     let isMounted = true;
+    const hasLocalSnapshot =
+      workshop !== null && toBackendWorkshopId(String(workshop.id)) === normalizedWorkshopId;
 
     const loadWorkshop = async (force = false) => {
-      if (!force && lastFetchedIdRef.current === workshopId) {
+      if (!force && lastFetchedIdRef.current === normalizedWorkshopId) {
         return;
       }
 
-      lastFetchedIdRef.current = workshopId;
-      const hasLocalSnapshot = workshops.some((item) => item.id === workshopId);
+      lastFetchedIdRef.current = normalizedWorkshopId;
       if (!hasLocalSnapshot) {
         setIsLoading(true);
       }
@@ -61,7 +71,7 @@ export function useWorkshopDetailQuery({
     return () => {
       isMounted = false;
     };
-  }, [sessionToken, upsertWorkshop, workshopId, workshops]);
+  }, [normalizedWorkshopId, sessionToken, upsertWorkshop, workshop?.id, workshopId]);
 
   return {
     workshop,
