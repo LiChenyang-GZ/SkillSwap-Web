@@ -44,8 +44,8 @@ interface MemoryStudioEditorPanelProps {
   lockMessage: string | null;
   lockedOwnerName?: string;
   editorActionsDisabled: boolean;
-  editorRef: RefObject<HTMLTextAreaElement | null>;
-  fileInputRef: RefObject<HTMLInputElement | null>;
+  editorRef: RefObject<HTMLTextAreaElement>;
+  fileInputRef: RefObject<HTMLInputElement>;
   onSaveDraft: () => void;
   onEditorChange: (value: string) => void;
   onEditorPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;

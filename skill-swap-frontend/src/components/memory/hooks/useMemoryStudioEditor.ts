@@ -15,8 +15,8 @@ export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorPar
   const [documentText, setDocumentText] = useState<string>(MEMORY_EMPTY_DOC);
   const [mode, setMode] = useState<MemoryEditorMode>("split");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const editorRef = useRef<HTMLTextAreaElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadQueueRef = useRef<MemoryUploadQueueItem[]>([]);
   const uploadQueueRunningRef = useRef(false);
 
