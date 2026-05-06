@@ -8,6 +8,10 @@ interface UseWorkshopAttendanceMembershipParams {
   enabled?: boolean;
 }
 
+interface RefreshMembershipOptions {
+  resetOnFailure?: boolean;
+}
+
 export function useWorkshopAttendanceMembership({
   workshopId,
   sessionToken,
@@ -16,19 +20,19 @@ export function useWorkshopAttendanceMembership({
   const [isAttendingByMembership, setIsAttendingByMembership] = useState(false);
   const controllerRef = useRef<AbortController | null>(null);
 
-  const refreshMembership = useCallback(async () => {
+  const refreshMembership = useCallback(async ({ resetOnFailure = false }: RefreshMembershipOptions = {}) => {
     if (!enabled) {
       controllerRef.current?.abort();
       controllerRef.current = null;
       setIsAttendingByMembership(false);
-      return;
+      return true;
     }
 
     if (!sessionToken) {
       controllerRef.current?.abort();
       controllerRef.current = null;
       setIsAttendingByMembership(false);
-      return;
+      return true;
     }
 
     controllerRef.current?.abort();
@@ -47,11 +51,16 @@ export function useWorkshopAttendanceMembership({
       if (!controller.signal.aborted) {
         setIsAttendingByMembership(isAttending);
       }
+      return true;
     } catch (error) {
       if ((error as { name?: string })?.name !== 'AbortError') {
+        if (resetOnFailure) {
+          setIsAttendingByMembership(false);
+        }
         console.warn('Failed to load attending membership', error);
+        return false;
       }
-      // Keep previous membership state on transient errors.
+      return false;
     }
   }, [enabled, sessionToken, workshopId]);
 

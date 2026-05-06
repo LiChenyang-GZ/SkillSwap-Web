@@ -36,7 +36,8 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     sessionToken,
     upsertWorkshop,
   });
-  const shouldRefreshMembershipFromApi = !Array.isArray(query.workshop?.participants);
+  const shouldRefreshMembershipFromApi =
+    Boolean(query.workshop) && !Array.isArray(query.workshop?.participants);
   const attendanceMembership = useWorkshopAttendanceMembership({
     workshopId,
     sessionToken,
@@ -66,7 +67,7 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     );
   }
 
-  if (query.errorStatus === 401) {
+  if (!query.workshop && query.errorStatus === 401) {
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24">
         <WorkshopDetailsNotFound
@@ -78,7 +79,7 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     );
   }
 
-  if (query.errorStatus === 403) {
+  if (!query.workshop && query.errorStatus === 403) {
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24">
         <WorkshopDetailsNotFound

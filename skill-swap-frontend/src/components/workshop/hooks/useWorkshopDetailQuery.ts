@@ -33,6 +33,7 @@ export function useWorkshopDetailQuery({
   const [refreshNonce, setRefreshNonce] = useState(0);
   const lastFetchKeyRef = useRef<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const hasLocalSnapshotRef = useRef(false);
   const normalizedWorkshopId = toBackendWorkshopId(workshopId);
   const detailFetchKey = `${sessionToken ?? 'anon'}:${normalizedWorkshopId}`;
   const refreshWorkshop = useCallback(() => {
@@ -41,6 +42,7 @@ export function useWorkshopDetailQuery({
 
   useEffect(() => {
     const found = workshops.find((item) => toBackendWorkshopId(String(item.id)) === normalizedWorkshopId);
+    hasLocalSnapshotRef.current = Boolean(found);
     if (found) {
       setWorkshop(found);
       setIsLoading(false);
@@ -56,10 +58,8 @@ export function useWorkshopDetailQuery({
   }, [normalizedWorkshopId, workshops]);
 
   useEffect(() => {
-    const hasLocalSnapshot =
-      workshop !== null && toBackendWorkshopId(String(workshop.id)) === normalizedWorkshopId;
-
     const loadWorkshop = async (force = false) => {
+      const hasLocalSnapshot = hasLocalSnapshotRef.current;
       const hasActiveSameKeyRequest =
         lastFetchKeyRef.current === detailFetchKey &&
         controllerRef.current !== null &&
@@ -88,7 +88,9 @@ export function useWorkshopDetailQuery({
         }
       } catch (error) {
         if ((error as { name?: string })?.name !== 'AbortError') {
-          setErrorStatus(getErrorStatus(error));
+          if (!hasLocalSnapshotRef.current) {
+            setErrorStatus(getErrorStatus(error));
+          }
           console.warn('Failed to refresh workshop details', error);
         }
       } finally {

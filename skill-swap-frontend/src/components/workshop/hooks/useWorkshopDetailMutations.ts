@@ -7,7 +7,7 @@ interface UseWorkshopDetailMutationsParams {
   attendWorkshop: (id: string) => Promise<void>;
   cancelWorkshopAttendance: (id: string) => Promise<void>;
   setCurrentPage: (page: string) => void;
-  onMembershipChanged?: () => Promise<void>;
+  onMembershipChanged?: (options?: { resetOnFailure?: boolean }) => Promise<boolean>;
   onWorkshopChanged?: () => void;
 }
 
@@ -25,7 +25,7 @@ export function useWorkshopDetailMutations({
   const handleAttend = async () => {
     await attendWorkshop(workshopId);
     if (onMembershipChanged) {
-      await onMembershipChanged();
+      await onMembershipChanged({ resetOnFailure: true });
     }
     onWorkshopChanged?.();
   };
@@ -33,7 +33,7 @@ export function useWorkshopDetailMutations({
   const handleCancel = async () => {
     await cancelWorkshopAttendance(workshopId);
     if (onMembershipChanged) {
-      await onMembershipChanged();
+      await onMembershipChanged({ resetOnFailure: true });
     }
     onWorkshopChanged?.();
   };
