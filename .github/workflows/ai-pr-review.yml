@@ -13,6 +13,7 @@ jobs:
   ai-review:
     if: >
       github.event.issue.pull_request != null &&
+      github.event.comment.user.type != 'Bot' &&
       contains(github.event.comment.body, '/review-summary') &&
       (
         github.event.comment.author_association == 'OWNER' ||
@@ -47,7 +48,7 @@ jobs:
 
       - name: Limit diff size
         run: |
-          head -c 60000 pr.diff > pr_limited.diff
+          head -c 200000 pr.diff > pr_limited.diff
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -58,7 +59,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENAI_MODEL: gpt-4o-mini
+          OPENAI_MODEL: gpt-5.4-mini
           CLAUDE_MODEL: claude-sonnet-4-5
           REVIEW_COMMENT: ${{ github.event.comment.body }}
         run: |

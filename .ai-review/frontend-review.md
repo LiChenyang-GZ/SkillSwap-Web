@@ -75,6 +75,7 @@ Provide concise, actionable review comments focused on clarity, redundancy reduc
 5. Prefer minimal-diff recommendations.
 6. Do not prescribe architecture changes without clear impact.
 7. Keep tone factual and non-judgmental.
+8. Prefer concise but sufficiently broad coverage of clearly supported risks.
 
 ## Anti-Patterns to Flag
 - Repeated derivations from different sources of truth.

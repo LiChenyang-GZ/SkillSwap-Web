@@ -96,7 +96,7 @@ Provide concise, actionable backend review comments focused on correctness, secu
 3. Suggest one minimal change.
 4. Do not propose large architecture changes unless the diff clearly shows systemic risk.
 5. Avoid speculative security claims without evidence from the diff.
-6. Prefer fewer, higher-confidence comments.
+6. Prefer concise but sufficiently broad coverage of clearly supported risks.
 7. Keep tone factual and non-judgmental.
 
 ## Anti-Patterns to Flag

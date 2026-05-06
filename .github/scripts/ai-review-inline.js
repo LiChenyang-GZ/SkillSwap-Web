@@ -1,4 +1,5 @@
 const fs = require("fs");
+const MAX_INLINE_COMMENTS = 20;
 
 function readFile(path) {
   return fs.readFileSync(path, "utf8");
@@ -43,7 +44,23 @@ function detectMode(reviewComment) {
 }
 
 function parseModelFromComment(reviewComment) {
-  const tokens = [...reviewComment.toLowerCase().matchAll(/\/review-([a-z0-9.\-]+)/g)].map(
+  const normalizedComment = ` ${reviewComment.toLowerCase()} `;
+  const hasGpt55Alias = /(^|\s)(\/review-gpt-5\.5|\/review-gpt55|gpt55)(?=\s|$)/.test(
+    normalizedComment,
+  );
+  const hasGpt54Alias = /(^|\s)(\/review-gpt-5\.4|\/review-gpt54|gpt54)(?=\s|$)/.test(
+    normalizedComment,
+  );
+
+  if (hasGpt55Alias) {
+    return { provider: "openai", model: "gpt-5.5" };
+  }
+
+  if (hasGpt54Alias) {
+    return { provider: "openai", model: "gpt-5.4" };
+  }
+
+  const tokens = [...normalizedComment.matchAll(/\/review-([a-z0-9.\-]+)/g)].map(
     (match) => match[1],
   );
   const reserved = new Set(["frontend", "backend", "fullstack", "summary"]);
@@ -103,22 +120,25 @@ function buildSpecificSkill(mode, skillFiles) {
   return `${frontendSkill}\n\n${backendSkill}`;
 }
 
-function parseAddedLinesFromDiff(diff) {
+function parseRightSideLinesFromDiff(diff) {
   const allowed = new Map();
 
   let currentFile = null;
   let newLine = 0;
+  let inHunk = false;
 
   const lines = diff.split("\n");
 
   for (const rawLine of lines) {
     if (rawLine.startsWith("diff --git ")) {
       currentFile = null;
+      inHunk = false;
       continue;
     }
 
     if (rawLine.startsWith("+++ b/")) {
       currentFile = rawLine.replace("+++ b/", "").trim();
+      inHunk = false;
       if (!allowed.has(currentFile)) {
         allowed.set(currentFile, new Set());
       }
@@ -128,19 +148,26 @@ function parseAddedLinesFromDiff(diff) {
     const hunkMatch = rawLine.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
     if (hunkMatch) {
       newLine = Number(hunkMatch[1]);
+      inHunk = true;
       continue;
     }
 
-    if (!currentFile) continue;
+    if (!currentFile || !inHunk) continue;
 
     if (rawLine.startsWith("+") && !rawLine.startsWith("+++")) {
       allowed.get(currentFile).add(newLine);
       newLine += 1;
     } else if (rawLine.startsWith("-") && !rawLine.startsWith("---")) {
       // Deleted line. Does not advance new file line number.
-    } else {
-      // Context line.
+    } else if (rawLine.startsWith(" ")) {
+      // Context line on RIGHT side.
+      allowed.get(currentFile).add(newLine);
       newLine += 1;
+    } else if (rawLine.startsWith("\\ No newline at end of file")) {
+      // Diff metadata, not an actual line number.
+    } else {
+      // Any unexpected line ends hunk parsing until the next @@ header.
+      inHunk = false;
     }
   }
 
@@ -204,12 +231,14 @@ Schema:
 }
 
 Rules:
-- Only comment on lines that exist as added lines in the diff.
+- Only comment on lines that exist on the RIGHT side of a diff hunk (+ or context lines).
 - Use the new-file line number shown by the diff.
-- Prefer fewer, higher-confidence comments.
-- Maximum 8 inline comments.
+- Prefer concise but sufficiently broad coverage.
+- Report all clearly supported issues that affect correctness, predictable behavior, maintainability, security, API contracts, frontend state/effect correctness, backend data consistency, or production safety.
+- Maximum ${MAX_INLINE_COMMENTS} inline comments.
 - Do not comment on formatting only.
 - Do not invent issues not supported by the diff.
+- Prefer minimal-diff recommendations.
 - Do not request large rewrites unless there is clear behavioral or maintainability impact.
 - If there are no meaningful issues, return:
 {
@@ -331,7 +360,7 @@ function formatReviewBody({ provider, model, mode, summary, skippedCount }) {
   let body = `AI inline review using ${provider} (${model}). Mode: ${mode}.\n\n${summary || ""}`;
 
   if (skippedCount > 0) {
-    body += `\n\nNote: ${skippedCount} generated comment(s) were skipped because their path/line was not present as an added line in the diff.`;
+    body += `\n\nNote: ${skippedCount} generated comment(s) were skipped because their path/line was not present on the RIGHT side of the diff hunk.`;
   }
 
   return body;
@@ -368,7 +397,7 @@ async function main() {
   const skillFiles = loadSkillFiles();
 
   const diff = readFile("pr_limited.diff");
-  const allowedLines = parseAddedLinesFromDiff(diff);
+  const allowedLines = parseRightSideLinesFromDiff(diff);
 
   const generalSkill = readFirstExisting(skillFiles.general);
   const specificSkill = buildSpecificSkill(mode, skillFiles);
@@ -392,7 +421,7 @@ async function main() {
   const validComments = [];
   let skippedCount = 0;
 
-  for (const comment of generatedComments.slice(0, 8)) {
+  for (const comment of generatedComments.slice(0, MAX_INLINE_COMMENTS)) {
     const path = String(comment.path || "");
     const line = Number(comment.line);
     const severity = String(comment.severity || "Medium");
