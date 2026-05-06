@@ -21,9 +21,11 @@ export function resolveWorkshopDetailGuardState(
   userId: string | null,
   isAdmin: boolean,
   isAttendingByMembership: boolean = false,
+  attendCloseAt: Date | null = parseWorkshopAttendCloseAt(workshop),
   now: Date = new Date()
 ): WorkshopDetailGuardState {
   const normalizedUserId = userId ? String(userId) : null;
+  const normalizedUserIdTrimmed = normalizedUserId?.trim() || '';
   const isUserAttendingByParticipants =
     workshop.participants?.some((participant) => String(participant.id) === normalizedUserId) || false;
   const isUserAttending = isUserAttendingByParticipants || isAttendingByMembership;
@@ -39,10 +41,11 @@ export function resolveWorkshopDetailGuardState(
   const isUpcoming = resolvedUserStatus === 'upcoming';
   const isOngoing = resolvedUserStatus === 'ongoing';
   const isCompleted = resolvedUserStatus === 'completed' || normalizedStatus === 'completed';
-  const isHost = String(workshop.facilitator?.id || '') === String(normalizedUserId || '');
+  const facilitatorId = String(workshop.facilitator?.id || '').trim();
+  const hasValidUserId = normalizedUserIdTrimmed.length > 0;
+  const isHost = hasValidUserId && facilitatorId.length > 0 && facilitatorId === normalizedUserIdTrimmed;
   const canViewRestricted = isAdmin || isHost;
 
-  const attendCloseAt = parseWorkshopAttendCloseAt(workshop);
   const isAttendClosedByCutoff = isUpcoming && attendCloseAt !== null && now.getTime() >= attendCloseAt.getTime();
 
   return {

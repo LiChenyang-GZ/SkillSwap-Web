@@ -23,14 +23,17 @@ export function useWorkshopDetailSelection({
       };
     }
 
+    const attendCloseAt = parseWorkshopAttendCloseAt(workshop);
+
     return {
       guardState: resolveWorkshopDetailGuardState(
         workshop,
         userId,
         isAdmin,
-        isAttendingByMembership
+        isAttendingByMembership,
+        attendCloseAt
       ),
-      attendCloseAt: parseWorkshopAttendCloseAt(workshop),
+      attendCloseAt,
     };
   }, [isAdmin, isAttendingByMembership, userId, workshop]);
 }
