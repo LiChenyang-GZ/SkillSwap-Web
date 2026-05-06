@@ -66,8 +66,23 @@ jobs:
             fs.writeFileSync("pr.diff", diff.data, "utf8");
 
       - name: Limit diff size
+        env:
+          AI_REVIEW_DIFF_LIMIT: ${{ vars.AI_REVIEW_DIFF_LIMIT }}
         run: |
-          head -c 200000 pr.diff > pr_limited.diff
+          DIFF_LIMIT="${AI_REVIEW_DIFF_LIMIT:-200000}"
+          echo "Using AI review diff limit: ${DIFF_LIMIT} bytes"
+          head -c "${DIFF_LIMIT}" pr.diff > pr_limited.diff
+          FULL_SIZE=$(wc -c < pr.diff)
+          LIMITED_SIZE=$(wc -c < pr_limited.diff)
+          TRUNCATED=false
+          if [ "${FULL_SIZE}" -gt "${LIMITED_SIZE}" ]; then
+            TRUNCATED=true
+          fi
+          echo "AI_REVIEW_DIFF_LIMIT_EFFECTIVE=${DIFF_LIMIT}" >> "$GITHUB_ENV"
+          echo "AI_REVIEW_FULL_DIFF_SIZE=${FULL_SIZE}" >> "$GITHUB_ENV"
+          echo "AI_REVIEW_LIMITED_DIFF_SIZE=${LIMITED_SIZE}" >> "$GITHUB_ENV"
+          echo "AI_REVIEW_DIFF_TRUNCATED=${TRUNCATED}" >> "$GITHUB_ENV"
+          echo "Diff stats: full=${FULL_SIZE}, limited=${LIMITED_SIZE}, truncated=${TRUNCATED}"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -85,5 +100,9 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          AI_REVIEW_DIFF_TRUNCATED: ${{ env.AI_REVIEW_DIFF_TRUNCATED }}
+          AI_REVIEW_DIFF_LIMIT_EFFECTIVE: ${{ env.AI_REVIEW_DIFF_LIMIT_EFFECTIVE }}
+          AI_REVIEW_FULL_DIFF_SIZE: ${{ env.AI_REVIEW_FULL_DIFF_SIZE }}
+          AI_REVIEW_LIMITED_DIFF_SIZE: ${{ env.AI_REVIEW_LIMITED_DIFF_SIZE }}
         run: |
           node .github/scripts/ai-review-inline.js

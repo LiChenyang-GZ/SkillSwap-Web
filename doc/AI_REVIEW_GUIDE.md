@@ -150,11 +150,17 @@ Inline Review 支持两种策略档位：
 
 1. `OPENAI_API_KEY`
 2. `ANTHROPIC_API_KEY`
+3. `AI_REVIEW_DIFF_LIMIT`（可选，单位字节）
 
 默认模型（workflow env）：
 
 1. `OPENAI_MODEL: gpt-5.4-mini`
 2. `CLAUDE_MODEL: claude-sonnet-4-5`
+
+默认 diff 截断（workflow）：
+
+1. `AI_REVIEW_DIFF_LIMIT` 未设置时，默认 `200000` 字节
+2. 若 PR 很大，可在仓库变量设置更高值（例如 `800000` 或 `1000000`）
 
 ## 6. 规则文件位置
 
@@ -198,4 +204,10 @@ Inline Review 支持两种策略档位：
 先使用 `/review-context` 获取 context（四段），再决定跑 `/review-frontend`、`/review-backend` 或 `/review-fullstack`。
 
 5. 评论太少或没命中关键问题。
-当前 diff 会被截断（inline 与 summary 都是 `200000` 字符），大 PR 建议拆小后再 review。
+当前 diff 会被截断（inline 与 summary 使用 `AI_REVIEW_DIFF_LIMIT`，默认 `200000` 字节），大 PR 建议拆小后再 review，或临时提高该变量。
+
+6. 我怎么知道这次 review 是否因为 limit 被截断？
+Inline review 会自动在评论中显示 `Diff truncation warning`，并给出：
+- Effective limit
+- Full diff size
+- Reviewed diff size

@@ -47,8 +47,12 @@ jobs:
             fs.writeFileSync("pr.diff", diff.data, "utf8");
 
       - name: Limit diff size
+        env:
+          AI_REVIEW_DIFF_LIMIT: ${{ vars.AI_REVIEW_DIFF_LIMIT }}
         run: |
-          head -c 200000 pr.diff > pr_limited.diff
+          DIFF_LIMIT="${AI_REVIEW_DIFF_LIMIT:-200000}"
+          echo "Using AI review diff limit: ${DIFF_LIMIT} bytes"
+          head -c "${DIFF_LIMIT}" pr.diff > pr_limited.diff
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

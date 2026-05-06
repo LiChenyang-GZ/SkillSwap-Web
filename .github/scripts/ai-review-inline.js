@@ -451,11 +451,27 @@ async function githubRequest(path, options = {}) {
   return response.json();
 }
 
-function formatReviewBody({ provider, model, mode, policy, prContext, summary, skippedCount }) {
+function formatReviewBody({
+  provider,
+  model,
+  mode,
+  policy,
+  prContext,
+  summary,
+  skippedCount,
+  diffTruncated,
+  diffLimit,
+  fullDiffSize,
+  limitedDiffSize,
+}) {
   let body = `AI inline review using ${provider} (${model}). Mode: ${mode}. Policy: ${policy}.\n\n${prContext || ""}`;
 
   if (summary) {
     body += `\n\n## Inline review summary\n${summary}`;
+  }
+
+  if (diffTruncated) {
+    body += `\n\n## Diff truncation warning\nThe PR diff exceeded the current limit and was truncated before review.\n- Effective limit: ${diffLimit} bytes\n- Full diff size: ${fullDiffSize} bytes\n- Reviewed diff size: ${limitedDiffSize} bytes\nSuggestion: increase \`AI_REVIEW_DIFF_LIMIT\` or split the PR for fuller coverage.`;
   }
 
   if (skippedCount > 0) {
@@ -495,6 +511,10 @@ async function main() {
   const policy = detectReviewPolicy(reviewComment);
   const mode = detectMode(reviewComment);
   const { provider, model } = resolveModelSelection(reviewComment);
+  const diffTruncated = String(process.env.AI_REVIEW_DIFF_TRUNCATED || "").toLowerCase() === "true";
+  const diffLimit = process.env.AI_REVIEW_DIFF_LIMIT_EFFECTIVE || "unknown";
+  const fullDiffSize = process.env.AI_REVIEW_FULL_DIFF_SIZE || "unknown";
+  const limitedDiffSize = process.env.AI_REVIEW_LIMITED_DIFF_SIZE || "unknown";
   const skillFiles = loadSkillFiles();
 
   const diff = readFile("pr_limited.diff");
@@ -595,6 +615,10 @@ async function main() {
     prContext,
     summary: parsed.summary,
     skippedCount,
+    diffTruncated,
+    diffLimit,
+    fullDiffSize,
+    limitedDiffSize,
   });
 
   if (validComments.length > 0) {
