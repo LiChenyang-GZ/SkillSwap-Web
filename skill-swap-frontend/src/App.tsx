@@ -2,13 +2,16 @@ import React from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { Navigation } from './components/Navigation';
 import { Toaster } from './components/ui/sonner';
+import { MEMORY_ENTRY_PAGE_PREFIX } from './components/memory/constants/memoryRouteConstants';
 
 const HeroPage = React.lazy(() => import('./components/Hero').then((m) => ({ default: m.HeroPage })));
 const HomePage = React.lazy(() => import('./components/HomePage').then((m) => ({ default: m.HomePage })));
 const ExploreWorkshops = React.lazy(() =>
   import('./components/workshop/screen/ExploreWorkshopsScreen').then((m) => ({ default: m.ExploreWorkshopsScreen }))
 );
-const Memory = React.lazy(() => import('./components/Memory').then((m) => ({ default: m.Memory })));
+const Memory = React.lazy(() =>
+  import('./components/memory/screen/MemoryScreen').then((m) => ({ default: m.MemoryScreen }))
+);
 const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
 const CreateWorkshop = React.lazy(() =>
   import('./components/create-workshop/screen/CreateWorkshopScreen').then((m) => ({ default: m.CreateWorkshopScreen }))
@@ -17,11 +20,15 @@ const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({
 const WorkshopDetails = React.lazy(() =>
   import('./components/workshop/screen/WorkshopDetailsScreen').then((m) => ({ default: m.WorkshopDetailsScreen }))
 );
-const MemoryDetail = React.lazy(() => import('./components/MemoryDetail.tsx').then((m) => ({ default: m.MemoryDetail })));
+const MemoryDetail = React.lazy(() =>
+  import('./components/memory/screen/MemoryDetailScreen').then((m) => ({ default: m.MemoryDetailScreen }))
+);
 const AdminReview = React.lazy(() =>
   import('./components/adminReview/screen/AdminReviewScreen').then((m) => ({ default: m.AdminReviewScreen }))
 );
-const MemoryStudio = React.lazy(() => import('./components/MemoryStudio.tsx').then((m) => ({ default: m.MemoryStudio })));
+const MemoryStudio = React.lazy(() =>
+  import('./components/memory/screen/MemoryStudioScreen').then((m) => ({ default: m.MemoryStudioScreen }))
+);
 const Notifications = React.lazy(() =>
   import('./components/notifications/screen/NotificationsScreen').then((m) => ({ default: m.NotificationsScreen }))
 );
@@ -97,8 +104,8 @@ function AppContent() {
       return <WorkshopDetails workshopId={workshopId} />;
     }
 
-    if (currentPage.startsWith('memory-entry-')) {
-      const slug = currentPage.substring('memory-entry-'.length);
+    if (currentPage.startsWith(MEMORY_ENTRY_PAGE_PREFIX)) {
+      const slug = currentPage.substring(MEMORY_ENTRY_PAGE_PREFIX.length);
       return <MemoryDetail slug={slug} />;
     }
 

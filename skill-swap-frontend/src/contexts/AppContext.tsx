@@ -18,6 +18,14 @@ import { notificationQueryService } from "../shared/service/notification/notific
 import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
 import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
 import { toast } from "sonner";
+import {
+  ADMIN_MEMORY_PAGE_ID,
+  ADMIN_MEMORY_PATH,
+  MEMORY_ENTRY_PAGE_PREFIX,
+  MEMORY_PAGE_ID,
+  MEMORY_PATH,
+  MEMORY_PATH_PREFIX,
+} from "../components/memory/constants/memoryRouteConstants";
 
 interface AppContextType {
   user: User | null;
@@ -60,8 +68,8 @@ const PAGE_TO_PATH: Record<string, string> = {
   explore: "/explore",
   create: "/create",
   dashboard: "/dashboard",
-  memory: "/memory",
-  adminMemory: "/admin/memory",
+  [MEMORY_PAGE_ID]: MEMORY_PATH,
+  [ADMIN_MEMORY_PAGE_ID]: ADMIN_MEMORY_PATH,
   feedback: "/feedback",
   notifications: "/notifications",
   adminReview: "/admin/workshops",
@@ -75,8 +83,8 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/explore": "explore",
   "/create": "create",
   "/dashboard": "dashboard",
-  "/memory": "memory",
-  "/admin/memory": "adminMemory",
+  [MEMORY_PATH]: MEMORY_PAGE_ID,
+  [ADMIN_MEMORY_PATH]: ADMIN_MEMORY_PAGE_ID,
   "/feedback": "feedback",
   "/notifications": "notifications",
   "/admin/workshops": "adminReview",
@@ -97,9 +105,9 @@ const pageFromPath = (pathname: string) => {
     const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
     return workshopId ? `workshop-${workshopId}` : "explore";
   }
-  if (normalizedPath.startsWith("/memory/")) {
-    const slug = decodeURIComponent(normalizedPath.slice("/memory/".length));
-    return slug ? `memory-entry-${slug}` : "memory";
+  if (normalizedPath.startsWith(MEMORY_PATH_PREFIX)) {
+    const slug = decodeURIComponent(normalizedPath.slice(MEMORY_PATH_PREFIX.length));
+    return slug ? `${MEMORY_ENTRY_PAGE_PREFIX}${slug}` : MEMORY_PAGE_ID;
   }
   return PATH_TO_PAGE[normalizedPath] || "explore";
 };
@@ -109,9 +117,9 @@ const pathFromPage = (page: string) => {
     const workshopId = page.slice("workshop-".length);
     return `/workshops/${encodeURIComponent(workshopId)}`;
   }
-  if (page.startsWith("memory-entry-")) {
-    const slug = page.slice("memory-entry-".length);
-    return `/memory/${encodeURIComponent(slug)}`;
+  if (page.startsWith(MEMORY_ENTRY_PAGE_PREFIX)) {
+    const slug = page.slice(MEMORY_ENTRY_PAGE_PREFIX.length);
+    return `${MEMORY_PATH}/${encodeURIComponent(slug)}`;
   }
   return PAGE_TO_PATH[page] || "/explore";
 };
