@@ -56,3 +56,56 @@ Before generating inline comments, first build a concise PR context that include
 
 Use this context to prioritize the most important and highest-impact issues.
 Avoid low-value comments when context suggests larger correctness or contract risks.
+
+## Anti-Loop Decision Order (Fixed)
+
+Always evaluate in this exact order:
+1. Correctness
+2. User-visible behavior
+3. Availability
+4. Performance
+5. Maintainability
+6. Style
+
+Never downgrade a higher-priority concern to optimize a lower-priority one.
+
+## Allowed Trade-off Whitelist
+
+Allowed default trade-offs for this project:
+- stale data vs fail-closed: prefer keeping last known good data on transient fetch failure unless data correctness/security would be violated.
+- abort/cancel vs dedupe: prefer dedupe/shared in-flight requests first; add cancellation only for proven stale-write/race scenarios.
+- hook dependency stability vs forced freshness: prefer stable dependencies + explicit refresh triggers over broad dependency expansion.
+
+## No Re-Challenge Rule
+
+If a trade-off is already chosen in this PR iteration, do not challenge it again unless at least one trigger is present:
+- New evidence of correctness bug with reproducible steps.
+- New user-visible regression introduced by latest commit.
+- API contract change invalidates previous decision.
+- Security/privacy risk newly introduced.
+- Performance regression exceeds agreed threshold (latency/memory/load).
+
+Without one of these triggers, the reviewer must not re-open the same trade-off.
+
+## Comment Quality Gate
+
+A comment is allowed only if all fields are present:
+- Repro path
+- User impact
+- Severity
+- Minimal fix
+- Acceptance criteria
+
+If any field is missing, omit the comment.
+
+## Root-Cause Dedup Rule
+
+Only one comment per root cause is allowed.
+If multiple symptoms share one root cause, merge them into a single comment and reference the same root-cause id.
+
+## Stop Condition
+
+PR can be approved when:
+- Must fix: all correctness/security/user-visible regressions are resolved.
+- Can defer: performance/maintainability improvements tracked as follow-up.
+- Non-blocking: style-only or preference-only points are not blockers.

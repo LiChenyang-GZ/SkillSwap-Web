@@ -1,5 +1,6 @@
 const fs = require("fs");
 const MAX_INLINE_COMMENTS = 20;
+const ALLOWED_CATEGORIES = new Set(["MustFix", "CanDefer", "NonBlocking"]);
 
 function readFile(path) {
   return fs.readFileSync(path, "utf8");
@@ -45,6 +46,13 @@ function detectMode(reviewComment) {
 
 function isContextOnlyReview(reviewComment) {
   return reviewComment.toLowerCase().includes("/review-context");
+}
+
+function detectReviewPolicy(reviewComment) {
+  const normalized = reviewComment.toLowerCase();
+  if (normalized.includes("/review-normal")) return "normal";
+  if (normalized.includes("/review-strict")) return "strict";
+  return "strict";
 }
 
 function parseModelFromComment(reviewComment) {
@@ -182,11 +190,34 @@ function isAllowedLine(allowedLines, path, line) {
   return allowedLines.has(path) && allowedLines.get(path).has(Number(line));
 }
 
-function buildPrompt({ mode, generalSkill, specificSkill, prContext, diff }) {
+function normalizeCategory(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "mustfix" || raw === "must_fix" || raw === "must-fix") return "MustFix";
+  if (raw === "candefer" || raw === "can_defer" || raw === "can-defer") return "CanDefer";
+  if (raw === "nonblocking" || raw === "non_blocking" || raw === "non-blocking") {
+    return "NonBlocking";
+  }
+  return "CanDefer";
+}
+
+function normalizeRootCause(value, fallback) {
+  const rootCause = String(value || "").trim().toLowerCase();
+  if (rootCause) {
+    return rootCause;
+  }
+
+  return String(fallback || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .slice(0, 160);
+}
+
+function buildPrompt({ mode, policy, generalSkill, specificSkill, prContext, diff }) {
   return `
 You are reviewing a GitHub pull request and must produce inline review comments.
 
 Review mode: ${mode}
+Review policy: ${policy}
 
 Use the following review rules.
 
@@ -233,7 +264,9 @@ Schema:
       "path": "relative/path/to/file.ext",
       "line": 123,
       "severity": "High | Medium | Low",
-      "body": "Observed issue first. Then one sentence impact. Then one minimal suggested change."
+      "category": "MustFix | CanDefer | NonBlocking",
+      "rootCause": "stable root cause id in snake_case",
+      "body": "Repro: ... Impact: ... Minimal fix: ... Acceptance: ..."
     }
   ]
 }
@@ -249,6 +282,14 @@ Rules:
 - Do not invent issues not supported by the diff.
 - Prefer minimal-diff recommendations.
 - Do not request large rewrites unless there is clear behavioral or maintainability impact.
+- If policy is strict:
+  - Use fixed decision order: Correctness > User-visible behavior > Availability > Performance > Maintainability > Style.
+  - Do not re-challenge an already selected trade-off unless there is new evidence of correctness/user-visible/security/API-contract/performance regression.
+  - Use exactly one comment per rootCause. Merge related symptoms into that single comment.
+  - Every comment body must include all fields: Repro, Impact, Minimal fix, Acceptance.
+- If policy is normal:
+  - Prefer the same decision order, but allow comments with lighter structure.
+  - Dedup rootCause when obvious, but do not drop potentially useful comments only because body format is not strict.
 - If there are no meaningful issues, return:
 {
   "summary": "No major issues found.",
@@ -296,6 +337,8 @@ Rules:
 - Be concrete and evidence-based from the diff.
 - Keep it concise and pragmatic.
 - Do not invent behavior not supported by the diff.
+- Respect fixed decision order: Correctness > User-visible behavior > Availability > Performance > Maintainability > Style.
+- Explicitly note selected trade-offs and avoid proposing opposite advice without new evidence.
 </OUTPUT_RULES>
 
 <PR_DIFF>
@@ -408,8 +451,8 @@ async function githubRequest(path, options = {}) {
   return response.json();
 }
 
-function formatReviewBody({ provider, model, mode, prContext, summary, skippedCount }) {
-  let body = `AI inline review using ${provider} (${model}). Mode: ${mode}.\n\n${prContext || ""}`;
+function formatReviewBody({ provider, model, mode, policy, prContext, summary, skippedCount }) {
+  let body = `AI inline review using ${provider} (${model}). Mode: ${mode}. Policy: ${policy}.\n\n${prContext || ""}`;
 
   if (summary) {
     body += `\n\n## Inline review summary\n${summary}`;
@@ -449,6 +492,7 @@ async function createFallbackComment(body) {
 async function main() {
   const reviewComment = process.env.REVIEW_COMMENT || "";
   const contextOnly = isContextOnlyReview(reviewComment);
+  const policy = detectReviewPolicy(reviewComment);
   const mode = detectMode(reviewComment);
   const { provider, model } = resolveModelSelection(reviewComment);
   const skillFiles = loadSkillFiles();
@@ -473,13 +517,14 @@ async function main() {
 
   if (contextOnly) {
     await createFallbackComment(
-      `## 🤖 AI Review Context\n\nAI review context using ${provider} (${model}). Mode: ${mode}.\n\n${prContext}`,
+      `## 🤖 AI Review Context\n\nAI review context using ${provider} (${model}). Mode: ${mode}. Policy: ${policy}.\n\n${prContext}`,
     );
     return;
   }
 
   const prompt = buildPrompt({
     mode,
+    policy,
     generalSkill,
     specificSkill,
     prContext,
@@ -495,13 +540,17 @@ async function main() {
 
   const generatedComments = Array.isArray(parsed.comments) ? parsed.comments : [];
 
+  const strictPolicy = policy === "strict";
   const validComments = [];
+  const seenRootCauses = new Set();
   let skippedCount = 0;
 
   for (const comment of generatedComments.slice(0, MAX_INLINE_COMMENTS)) {
     const path = String(comment.path || "");
     const line = Number(comment.line);
     const severity = String(comment.severity || "Medium");
+    const category = normalizeCategory(comment.category);
+    const rootCause = normalizeRootCause(comment.rootCause, `${path}:${line}:${comment.body || ""}`);
     const body = String(comment.body || "").trim();
 
     if (!path || !line || !body || !isAllowedLine(allowedLines, path, line)) {
@@ -509,11 +558,32 @@ async function main() {
       continue;
     }
 
+    const hasRequiredFields =
+      /repro\s*:/i.test(body) &&
+      /impact\s*:/i.test(body) &&
+      /minimal\s*fix\s*:/i.test(body) &&
+      /acceptance\s*:/i.test(body);
+
+    if (strictPolicy && (!hasRequiredFields || !ALLOWED_CATEGORIES.has(category))) {
+      skippedCount += 1;
+      continue;
+    }
+
+    if (strictPolicy && seenRootCauses.has(rootCause)) {
+      skippedCount += 1;
+      continue;
+    }
+    if (strictPolicy) {
+      seenRootCauses.add(rootCause);
+    }
+
     validComments.push({
       path,
       line,
       side: "RIGHT",
-      body: `**${severity}**: ${body}`,
+      body: strictPolicy
+        ? `**${severity} | ${category} | root:${rootCause}**\n${body}`
+        : `**${severity}**: ${body}`,
     });
   }
 
@@ -521,6 +591,7 @@ async function main() {
     provider,
     model,
     mode,
+    policy,
     prContext,
     summary: parsed.summary,
     skippedCount,
