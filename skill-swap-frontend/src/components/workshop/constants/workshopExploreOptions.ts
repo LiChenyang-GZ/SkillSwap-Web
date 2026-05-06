@@ -1,0 +1,1 @@
+export const WORKSHOP_ALL_CATEGORIES_OPTION = 'all';
