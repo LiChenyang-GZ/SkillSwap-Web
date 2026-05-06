@@ -84,6 +84,7 @@ export function AdminReviewScreen() {
             isSaving={mutations.isSaving}
             selectedWorkshop={query.selectedWorkshop}
             selectedHasDetail={query.selectedHasDetail}
+            selectedDetailError={query.selectedDetailError}
             formData={form.formData}
             rejectComment={form.rejectComment}
             localImagePreviewUrl={form.localImagePreviewUrl}

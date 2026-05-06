@@ -185,7 +185,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<UserAccount> findAdmins() {
-        return userRepository.findAll().stream()
+        return userRepository.findAdminCandidates().stream()
                 .filter(user -> isAdminRole(user.getRole()))
                 .collect(Collectors.toList());
     }

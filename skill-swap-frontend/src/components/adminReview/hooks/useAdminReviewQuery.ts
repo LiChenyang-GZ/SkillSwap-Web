@@ -23,6 +23,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
+  const [detailLoadErrors, setDetailLoadErrors] = useState<Record<string, string | undefined>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<AdminReviewStatusFilter>(ADMIN_REVIEW_DEFAULT_STATUS_FILTER);
   const [currentPage, setCurrentPageState] = useState(1);
@@ -55,6 +56,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   const pagedWorkshops = sortedWorkshops.slice(start, start + pageSize);
   const selectedWorkshop = sortedWorkshops.find((workshop) => workshop.id === selectedId) || null;
   const selectedHasDetail = selectedWorkshop ? !!loadedDetailIds[selectedWorkshop.id] : false;
+  const selectedDetailError = selectedWorkshop ? detailLoadErrors[selectedWorkshop.id] ?? null : null;
 
   const loadWorkshopDetail = async (workshopId: string, force = false) => {
     if (!sessionToken || !workshopId) return;
@@ -62,6 +64,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
     if (detailInFlightRef.current.has(workshopId)) return;
 
     detailInFlightRef.current.add(workshopId);
+    setDetailLoadErrors((prev) => ({ ...prev, [workshopId]: undefined }));
     setIsDetailLoading(true);
 
     try {
@@ -70,6 +73,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
       setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
     } catch (error) {
       console.error('Failed to load workshop details:', error);
+      setDetailLoadErrors((prev) => ({ ...prev, [workshopId]: 'Failed to load workshop details.' }));
       toast.error('Failed to load workshop details.');
     } finally {
       detailInFlightRef.current.delete(workshopId);
@@ -97,6 +101,15 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
         data.forEach((workshop) => {
           if (previous[workshop.id]) {
             next[workshop.id] = true;
+          }
+        });
+        return next;
+      });
+      setDetailLoadErrors((previous) => {
+        const next: Record<string, string | undefined> = {};
+        data.forEach((workshop) => {
+          if (previous[workshop.id]) {
+            next[workshop.id] = previous[workshop.id];
           }
         });
         return next;
@@ -143,6 +156,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
       setWorkshops([]);
       setSelectedId(null);
       setLoadedDetailIds({});
+      setDetailLoadErrors({});
       return;
     }
     refreshWorkshops();
@@ -208,6 +222,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
     sortedWorkshops,
     selectedWorkshop,
     selectedHasDetail,
+    selectedDetailError,
     refreshWorkshops,
     loadWorkshopDetail,
     goToPrevPage: () => setCurrentPageState((prev) => Math.max(1, prev - 1)),

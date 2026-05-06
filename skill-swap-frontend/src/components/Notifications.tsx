@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { notificationAPI, workshopAPI } from "../lib/api";
 import type { NotificationItem } from "../types/notification";
 import { useApp } from "../contexts/AppContext";
@@ -20,7 +20,7 @@ export function Notifications() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const isMountedRef = useRef(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   const sortedNotifications = useMemo(() => {
     return [...notifications].sort((a, b) => {
@@ -30,62 +30,63 @@ export function Notifications() {
     });
   }, [notifications]);
 
-  const loadNotifications = async () => {
-    if (!isAuthenticated) {
-      if (isMountedRef.current) {
-        setNotifications([]);
-        setErrorMessage(null);
-        setIsLoading(false);
-      }
-      return;
-    }
+  useEffect(() => {
+    let isCancelled = false;
 
-    if (!sessionToken) {
-      if (isMountedRef.current) {
-        setNotifications([]);
-        setErrorMessage("Please sign in again to view your notifications.");
-        setIsLoading(false);
+    const loadNotifications = async () => {
+      if (!isAuthenticated) {
+        if (!isCancelled) {
+          setNotifications([]);
+          setErrorMessage(null);
+          setIsLoading(false);
+        }
+        return;
       }
-      return;
-    }
 
-    if (isMountedRef.current) {
-      setIsLoading(true);
-      setErrorMessage(null);
-    }
-
-    try {
-      const data = await notificationAPI.getAll(sessionToken);
-      if (isMountedRef.current) {
-        setNotifications(data);
-      }
-    } catch (error) {
-      console.warn("Failed to load notifications", error);
-      const status = (error as Error & { status?: number }).status;
-      if (isMountedRef.current) {
-        if (status === 401) {
+      if (!sessionToken) {
+        if (!isCancelled) {
+          setNotifications([]);
           setErrorMessage("Please sign in again to view your notifications.");
-        } else if (status === 403) {
-          setErrorMessage("You do not have permission to view notifications.");
-        } else {
-          setErrorMessage("Failed to load notifications. Please try again.");
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      if (!isCancelled) {
+        setIsLoading(true);
+        setErrorMessage(null);
+      }
+
+      try {
+        const data = await notificationAPI.getAll(sessionToken);
+        if (!isCancelled) {
+          setNotifications(data);
+        }
+      } catch (error) {
+        console.warn("Failed to load notifications", error);
+        const status = (error as Error & { status?: number }).status;
+        if (!isCancelled) {
+          if (status === 401) {
+            setErrorMessage("Please sign in again to view your notifications.");
+          } else if (status === 403) {
+            setErrorMessage("You do not have permission to view notifications.");
+          } else {
+            setErrorMessage("Failed to load notifications. Please try again.");
+          }
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
         }
       }
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
-    }
-  };
+    };
 
-  useEffect(() => {
-    isMountedRef.current = true;
     void loadNotifications();
 
     return () => {
-      isMountedRef.current = false;
+      isCancelled = true;
     };
-  }, [isAuthenticated, sessionToken]);
+  }, [isAuthenticated, sessionToken, reloadNonce]);
 
   const handleMarkRead = async (notificationId: string) => {
     try {
@@ -205,7 +206,7 @@ export function Notifications() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  void loadNotifications();
+                  setReloadNonce((prev) => prev + 1);
                 }}
               >
                 Retry

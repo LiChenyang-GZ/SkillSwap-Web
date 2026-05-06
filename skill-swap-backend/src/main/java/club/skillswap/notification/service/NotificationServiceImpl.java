@@ -115,7 +115,7 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRead(false);
 
         notificationRepository.save(notification);
-        log.info("Notification created. recipientId={}, type={}, workshopId={}", recipientId, type, workshopId);
+        log.debug("Notification created. recipientId={}, type={}, workshopId={}", recipientId, type, workshopId);
     }
 
     private NotificationResponseDto mapToDto(Notification notification) {

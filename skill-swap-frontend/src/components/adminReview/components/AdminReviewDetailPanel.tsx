@@ -29,6 +29,7 @@ interface AdminReviewDetailPanelProps {
   isSaving: boolean;
   selectedWorkshop: Workshop | null;
   selectedHasDetail: boolean;
+  selectedDetailError: string | null;
   formData: WorkshopFormState;
   rejectComment: string;
   localImagePreviewUrl: string | null;
@@ -51,6 +52,7 @@ export function AdminReviewDetailPanel({
   isSaving,
   selectedWorkshop,
   selectedHasDetail,
+  selectedDetailError,
   formData,
   rejectComment,
   localImagePreviewUrl,
@@ -81,10 +83,14 @@ export function AdminReviewDetailPanel({
           <div className="text-sm text-muted-foreground">Select a submission to review.</div>
         ) : !selectedHasDetail ? (
           <div className="text-sm text-muted-foreground space-y-3">
-            <div className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Loading detailed submission...
-            </div>
+            {selectedDetailError ? (
+              <div>{selectedDetailError}</div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Loading detailed submission...
+              </div>
+            )}
             <Button variant="outline" size="sm" onClick={onRetryLoadDetails}>
               Retry loading details
             </Button>

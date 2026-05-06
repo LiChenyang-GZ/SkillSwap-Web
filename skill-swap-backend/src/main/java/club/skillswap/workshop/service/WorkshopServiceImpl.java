@@ -975,7 +975,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         List<UserAccount> admins = userService.findAdmins();
-        log.info("notifyAdminsForWorkshop: workshopId={}, facilitatorId={}, adminCount={}, type={}",
+        log.debug("notifyAdminsForWorkshop: workshopId={}, facilitatorId={}, adminCount={}, type={}",
                 workshop.getId(),
                 facilitator != null ? facilitator.getId() : null,
                 admins.size(),
