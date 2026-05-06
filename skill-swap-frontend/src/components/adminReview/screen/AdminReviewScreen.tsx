@@ -25,6 +25,8 @@ export function AdminReviewScreen() {
     setPendingImageFile: form.setPendingImageFile,
     clearLocalImagePreview: form.clearLocalImagePreview,
     rejectComment: form.rejectComment,
+    setValidationState: form.setValidationState,
+    clearValidationState: form.clearValidationState,
     setWorkshops: query.setWorkshops,
     refreshWorkshops: query.refreshWorkshops,
   });
@@ -86,6 +88,7 @@ export function AdminReviewScreen() {
             selectedHasDetail={query.selectedHasDetail}
             selectedDetailError={query.selectedDetailError}
             formData={form.formData}
+            formError={form.formError}
             rejectComment={form.rejectComment}
             localImagePreviewUrl={form.localImagePreviewUrl}
             imageFileInputRef={form.imageFileInputRef}
@@ -96,6 +99,7 @@ export function AdminReviewScreen() {
               }
             }}
             onInputChange={form.handleInputChange}
+            getFieldError={form.getFieldError}
             onRejectCommentChange={form.setRejectComment}
             onImageFileSelection={form.handleImageFileSelection}
             onSave={mutations.handleSave}

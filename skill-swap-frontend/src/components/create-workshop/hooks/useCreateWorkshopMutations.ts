@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useApp } from '../../contexts/AppContext';
-import { toWorkshopUpsertPayload } from './dto';
-import type { CreateWorkshopFormValues } from './schema';
+import { CREATE_WORKSHOP_TOAST_CREATING } from '../constants/createWorkshopStatusConstants';
+import { useApp } from '../../../contexts/AppContext';
+import type { CreateWorkshopFormValues } from '../models/createWorkshopFormModel';
+import { toWorkshopUpsertPayload } from '../utils/createWorkshopMapper';
 
-export function useCreateWorkshopSubmit() {
+export function useCreateWorkshopMutations() {
   const { createWorkshop, setCurrentPage } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -12,7 +13,7 @@ export function useCreateWorkshopSubmit() {
     if (isSubmitting) return false;
 
     setIsSubmitting(true);
-    const loadingToastId = toast.loading('Creating workshop...');
+    const loadingToastId = toast.loading(CREATE_WORKSHOP_TOAST_CREATING);
 
     try {
       const payload = toWorkshopUpsertPayload(values);

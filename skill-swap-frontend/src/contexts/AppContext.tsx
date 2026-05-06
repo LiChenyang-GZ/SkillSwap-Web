@@ -12,6 +12,7 @@ import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 import type { CreditTransaction } from "../types/creditTransaction";
 import { notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
+import { createWorkshopService } from "../shared/service/workshop/createWorkshopService";
 import { toast } from "sonner";
 
 interface AppContextType {
@@ -886,9 +887,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // 调用后端 API 创建 workshop
+      // 仅迁移 create-workshop 页面使用的创建接口到领域 service。
       try {
-        await workshopAPI.create(workshopData, tokenToUse);
+        await createWorkshopService.create(workshopData, tokenToUse);
       } catch (error) {
         const status = (error as Error & { status?: number }).status;
         if (status !== 401) throw error;
@@ -898,7 +899,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           throw error;
         }
         tokenToUse = refreshedToken;
-        await workshopAPI.create(workshopData, tokenToUse);
+        await createWorkshopService.create(workshopData, tokenToUse);
       }
       
       toast.success("Workshop created successfully!");

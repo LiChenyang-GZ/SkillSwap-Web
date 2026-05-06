@@ -6,7 +6,9 @@ import type { WorkshopUpsertPayload } from '../../../lib/api';
 import type { Workshop } from '../../../types/workshop';
 import { adminWorkshopService } from '../../../shared/service/workshop/adminWorkshopService';
 import { WorkshopFormState } from '../models/adminReviewFormModel';
+import type { AdminReviewFieldErrors } from '../models/adminReviewValidationModel';
 import { normalizeAttendCloseAtForApi, normalizeContactNumber } from '../utils/adminReviewUtils';
+import { validateAdminReviewWorkshopForm } from '../utils/adminReviewValidation';
 
 interface UseAdminReviewMutationsParams {
   sessionToken: string | null;
@@ -18,6 +20,8 @@ interface UseAdminReviewMutationsParams {
   setPendingImageFile: (file: File | null) => void;
   clearLocalImagePreview: () => void;
   rejectComment: string;
+  setValidationState: (errors: AdminReviewFieldErrors, formError: string | null) => void;
+  clearValidationState: () => void;
   setWorkshops: Dispatch<SetStateAction<Workshop[]>>;
   refreshWorkshops: () => void;
 }
@@ -32,16 +36,45 @@ export function useAdminReviewMutations({
   setPendingImageFile,
   clearLocalImagePreview,
   rejectComment,
+  setValidationState,
+  clearValidationState,
   setWorkshops,
   refreshWorkshops,
 }: UseAdminReviewMutationsParams) {
   const [isSaving, setIsSaving] = useState(false);
 
+  const parseErrorMessage = (error: unknown, fallback: string) => {
+    if (!(error instanceof Error)) return fallback;
+    const raw = String(error.message || '').trim();
+    if (!raw) return fallback;
+
+    try {
+      const parsed = JSON.parse(raw);
+      const parsedMessage = parsed?.message || parsed?.error;
+      if (typeof parsedMessage === 'string' && parsedMessage.trim()) {
+        return parsedMessage.trim();
+      }
+    } catch {
+      // Keep raw message when it is not JSON.
+    }
+
+    return raw;
+  };
+
   const handleSave = async () => {
     if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
+
+    const validationResult = validateAdminReviewWorkshopForm(formData);
+    if (!validationResult.isValid) {
+      setValidationState(validationResult.fieldErrors, validationResult.formError);
+      toast.error(validationResult.formError || 'Please review the highlighted fields before saving.');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
+      clearValidationState();
       const payload: WorkshopUpsertPayload = {
         hostName: formData.hostName,
         title: formData.title,
@@ -83,7 +116,7 @@ export function useAdminReviewMutations({
       toast.success('Workshop updated successfully.');
     } catch (error) {
       console.error('Failed to update workshop:', error);
-      toast.error('Failed to update workshop.');
+      toast.error(parseErrorMessage(error, 'Failed to update workshop.'));
     } finally {
       setIsSaving(false);
     }
