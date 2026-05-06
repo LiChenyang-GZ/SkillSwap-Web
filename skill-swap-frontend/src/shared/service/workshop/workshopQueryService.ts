@@ -12,7 +12,6 @@ const createAbortError = (): Error & { name: string } => {
 };
 
 interface DetailTaskEntry {
-  controller: AbortController;
   task: Promise<Workshop | null>;
 }
 
@@ -107,15 +106,13 @@ export const workshopQueryService = {
       return withCallerAbort<Workshop | null>(existingEntry, signal);
     }
 
-    const controller = new AbortController();
     const entry: DetailTaskEntry = {
-      controller,
       task: Promise.resolve(null),
     };
 
     const task = (async () => {
       try {
-        const data = await apiCall<any>(`/api/v1/workshops/${backendId}`, { signal: controller.signal }, token);
+        const data = await apiCall<any>(`/api/v1/workshops/${backendId}`, {}, token);
         return enrichWorkshop(data);
       } catch (error) {
         if (isAbortError(error)) {

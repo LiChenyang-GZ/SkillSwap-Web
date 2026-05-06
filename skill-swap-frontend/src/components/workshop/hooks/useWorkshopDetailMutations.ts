@@ -24,18 +24,24 @@ export function useWorkshopDetailMutations({
 
   const handleAttend = async () => {
     await attendWorkshop(workshopId);
-    if (onMembershipChanged) {
-      await onMembershipChanged({ resetOnFailure: true });
+    try {
+      if (onMembershipChanged) {
+        await onMembershipChanged({ resetOnFailure: true });
+      }
+    } finally {
+      onWorkshopChanged?.();
     }
-    onWorkshopChanged?.();
   };
 
   const handleCancel = async () => {
     await cancelWorkshopAttendance(workshopId);
-    if (onMembershipChanged) {
-      await onMembershipChanged({ resetOnFailure: true });
+    try {
+      if (onMembershipChanged) {
+        await onMembershipChanged({ resetOnFailure: true });
+      }
+    } finally {
+      onWorkshopChanged?.();
     }
-    onWorkshopChanged?.();
   };
 
   const handleRequestApproval = async () => {

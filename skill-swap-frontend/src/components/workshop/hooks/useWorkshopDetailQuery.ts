@@ -28,11 +28,16 @@ export function useWorkshopDetailQuery({
   const lastFetchKeyRef = useRef<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const hasLocalSnapshotRef = useRef(false);
+  const upsertWorkshopRef = useRef(upsertWorkshop);
   const normalizedWorkshopId = toBackendWorkshopId(workshopId);
   const detailFetchKey = `${sessionToken ?? 'anon'}:${normalizedWorkshopId}`;
   const refreshWorkshop = useCallback(() => {
     setRefreshNonce((previous) => previous + 1);
   }, []);
+
+  useEffect(() => {
+    upsertWorkshopRef.current = upsertWorkshop;
+  }, [upsertWorkshop]);
 
   useEffect(() => {
     const found = workshops.find((item) => toBackendWorkshopId(String(item.id)) === normalizedWorkshopId);
@@ -78,7 +83,7 @@ export function useWorkshopDetailQuery({
         if (!controller.signal.aborted) {
           if (latest) {
             setWorkshop(latest);
-            upsertWorkshop(latest);
+            upsertWorkshopRef.current(latest);
             setErrorStatus(null);
           } else {
             setWorkshop(null);
@@ -106,7 +111,7 @@ export function useWorkshopDetailQuery({
     return () => {
       controllerRef.current?.abort();
     };
-  }, [detailFetchKey, normalizedWorkshopId, refreshNonce, sessionToken, upsertWorkshop, workshopId]);
+  }, [detailFetchKey, normalizedWorkshopId, refreshNonce, sessionToken, workshopId]);
 
   return {
     workshop,
