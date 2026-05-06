@@ -1,4 +1,4 @@
-import { Check, Download, Globe, MapPin, RefreshCw, Upload, Users, X } from 'lucide-react';
+import { AlertCircle, Check, Download, Globe, MapPin, RefreshCw, Upload, Users, X } from 'lucide-react';
 import type { RefObject } from 'react';
 import type { Workshop } from '../../../types/workshop';
 import { workshopCategories } from '../../../constants/workshop';
@@ -31,12 +31,14 @@ interface AdminReviewDetailPanelProps {
   selectedHasDetail: boolean;
   selectedDetailError: string | null;
   formData: WorkshopFormState;
+  formError: string | null;
   rejectComment: string;
   localImagePreviewUrl: string | null;
   imageFileInputRef: RefObject<HTMLInputElement>;
   isDirty: boolean;
   onRetryLoadDetails: () => void;
   onInputChange: (field: keyof WorkshopFormState, value: string | boolean) => void;
+  getFieldError: (field: keyof WorkshopFormState) => string | null;
   onRejectCommentChange: (value: string) => void;
   onImageFileSelection: (file: File | null) => void;
   onSave: () => void;
@@ -54,12 +56,14 @@ export function AdminReviewDetailPanel({
   selectedHasDetail,
   selectedDetailError,
   formData,
+  formError,
   rejectComment,
   localImagePreviewUrl,
   imageFileInputRef,
   isDirty,
   onRetryLoadDetails,
   onInputChange,
+  getFieldError,
   onRejectCommentChange,
   onImageFileSelection,
   onSave,
@@ -68,6 +72,7 @@ export function AdminReviewDetailPanel({
   onApprove,
   onExportParticipantsExcel,
 }: AdminReviewDetailPanelProps) {
+  const invalidClassName = 'border-destructive focus-visible:ring-destructive';
   const normalizedStatus = selectedWorkshop ? normalizeAdminWorkshopStatus(selectedWorkshop.status) : null;
   const hasStarted = selectedWorkshop ? hasWorkshopStarted(selectedWorkshop) : false;
   const canApprove = normalizedStatus === 'pending' && !hasStarted;
@@ -93,6 +98,15 @@ export function AdminReviewDetailPanel({
     normalizedStatus !== null && normalizedStatus !== ADMIN_REVIEW_REJECTION_NOTE_HIDDEN_STATUS;
   const participants = selectedWorkshop?.participants ?? [];
   const participantCount = participants.length || selectedWorkshop?.currentParticipants || 0;
+  const hostNameError = getFieldError('hostName');
+  const titleError = getFieldError('title');
+  const categoryError = getFieldError('category');
+  const contactNumberError = getFieldError('contactNumber');
+  const durationError = getFieldError('duration');
+  const maxParticipantsError = getFieldError('maxParticipants');
+  const dateError = getFieldError('date');
+  const timeError = getFieldError('time');
+  const weekNumberError = getFieldError('weekNumber');
 
   return (
     <Card className="lg:col-span-2">
@@ -126,6 +140,12 @@ export function AdminReviewDetailPanel({
         ) : (
           <div className="space-y-6">
             <>
+                  {formError && (
+                    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 mt-0.5" />
+                      <span>{formError}</span>
+                    </div>
+                  )}
                   <div className="space-y-3">
                     <Label htmlFor="workshopImageUpload">Workshop Cover Image</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-[220px_1fr] gap-4 items-start">
@@ -176,16 +196,36 @@ export function AdminReviewDetailPanel({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="hostName">Host Name</Label>
-                      <Input id="hostName" value={formData.hostName} onChange={(e) => onInputChange('hostName', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="hostName"
+                        value={formData.hostName}
+                        onChange={(e) => onInputChange('hostName', e.target.value)}
+                        className={`mt-1${hostNameError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(hostNameError)}
+                        disabled={!canEdit}
+                      />
+                      {hostNameError && <p className="mt-1 text-xs text-destructive">{hostNameError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="title">Workshop Name / Skill Taught</Label>
-                      <Input id="title" value={formData.title} onChange={(e) => onInputChange('title', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => onInputChange('title', e.target.value)}
+                        className={`mt-1${titleError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(titleError)}
+                        disabled={!canEdit}
+                      />
+                      {titleError && <p className="mt-1 text-xs text-destructive">{titleError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="category">Category</Label>
                       <Select value={formData.category} onValueChange={(value: string) => onInputChange('category', value)} modal={false}>
-                        <SelectTrigger className="mt-1" disabled={!canEdit}>
+                        <SelectTrigger
+                          className={`mt-1${categoryError ? ` ${invalidClassName}` : ''}`}
+                          aria-invalid={Boolean(categoryError)}
+                          disabled={!canEdit}
+                        >
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -196,26 +236,75 @@ export function AdminReviewDetailPanel({
                           ))}
                         </SelectContent>
                       </Select>
+                      {categoryError && <p className="mt-1 text-xs text-destructive">{categoryError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="contactNumber">Contact Number</Label>
-                      <Input id="contactNumber" value={formData.contactNumber} onChange={(e) => onInputChange('contactNumber', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="contactNumber"
+                        value={formData.contactNumber}
+                        onChange={(e) => onInputChange('contactNumber', e.target.value)}
+                        className={`mt-1${contactNumberError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(contactNumberError)}
+                        disabled={!canEdit}
+                      />
+                      {contactNumberError && (
+                        <p className="mt-1 text-xs text-destructive">{contactNumberError}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="duration">Duration (minutes)</Label>
-                      <Input id="duration" type="number" value={formData.duration} onChange={(e) => onInputChange('duration', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="duration"
+                        type="number"
+                        value={formData.duration}
+                        onChange={(e) => onInputChange('duration', e.target.value)}
+                        className={`mt-1${durationError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(durationError)}
+                        disabled={!canEdit}
+                      />
+                      {durationError && <p className="mt-1 text-xs text-destructive">{durationError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="maxParticipants">Max Participants (optional)</Label>
-                      <Input id="maxParticipants" type="number" value={formData.maxParticipants} onChange={(e) => onInputChange('maxParticipants', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="maxParticipants"
+                        type="number"
+                        value={formData.maxParticipants}
+                        onChange={(e) => onInputChange('maxParticipants', e.target.value)}
+                        className={`mt-1${maxParticipantsError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(maxParticipantsError)}
+                        disabled={!canEdit}
+                      />
+                      {maxParticipantsError && (
+                        <p className="mt-1 text-xs text-destructive">{maxParticipantsError}</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="date">Date</Label>
-                      <Input id="date" type="date" value={formData.date} onChange={(e) => onInputChange('date', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="date"
+                        type="date"
+                        value={formData.date}
+                        onChange={(e) => onInputChange('date', e.target.value)}
+                        className={`mt-1${dateError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(dateError)}
+                        disabled={!canEdit}
+                      />
+                      {dateError && <p className="mt-1 text-xs text-destructive">{dateError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="time">Time</Label>
-                      <Input id="time" type="time" value={formData.time} onChange={(e) => onInputChange('time', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="time"
+                        type="time"
+                        value={formData.time}
+                        onChange={(e) => onInputChange('time', e.target.value)}
+                        className={`mt-1${timeError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(timeError)}
+                        disabled={!canEdit}
+                      />
+                      {timeError && <p className="mt-1 text-xs text-destructive">{timeError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="attendCloseAt">Attend Close Time</Label>
@@ -223,7 +312,17 @@ export function AdminReviewDetailPanel({
                     </div>
                     <div>
                       <Label htmlFor="weekNumber">Week #</Label>
-                      <Input id="weekNumber" type="number" min={1} value={formData.weekNumber} onChange={(e) => onInputChange('weekNumber', e.target.value)} className="mt-1" disabled={!canEdit} />
+                      <Input
+                        id="weekNumber"
+                        type="number"
+                        min={1}
+                        value={formData.weekNumber}
+                        onChange={(e) => onInputChange('weekNumber', e.target.value)}
+                        className={`mt-1${weekNumberError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(weekNumberError)}
+                        disabled={!canEdit}
+                      />
+                      {weekNumberError && <p className="mt-1 text-xs text-destructive">{weekNumberError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="memberResponsible">Member Responsible</Label>

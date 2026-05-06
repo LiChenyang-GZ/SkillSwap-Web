@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { CREATE_WORKSHOP_VALIDATION_ERROR_MESSAGE } from '../constants/createWorkshopStatusConstants';
+import { CREATE_WORKSHOP_VALIDATION_FIELD_ORDER } from '../constants/createWorkshopUiConstants';
+import type { CreateWorkshopFormField, CreateWorkshopFormValues } from '../models/createWorkshopFormModel';
+import type { CreateWorkshopFieldErrors, CreateWorkshopValidationResult } from '../models/createWorkshopValidationModel';
 
 const nonEmptyString = (message: string) =>
   z.string().refine((value) => value.trim().length > 0, { message });
@@ -8,7 +12,7 @@ const positiveIntegerString = (value: string): boolean => {
   return Number.isInteger(parsed) && parsed > 0;
 };
 
-export const createWorkshopFormSchema = z.object({
+const createWorkshopFormSchema = z.object({
   hostName: nonEmptyString('Host name is required.'),
   title: nonEmptyString('Workshop name/skill taught is required.'),
   category: nonEmptyString('Category is required.'),
@@ -39,26 +43,6 @@ export const createWorkshopFormSchema = z.object({
   }),
 });
 
-export type CreateWorkshopFormValues = z.infer<typeof createWorkshopFormSchema>;
-export type CreateWorkshopFormField = keyof CreateWorkshopFormValues;
-
-export const defaultCreateWorkshopFormValues: CreateWorkshopFormValues = {
-  hostName: '',
-  title: '',
-  category: '',
-  contactNumber: '',
-  date: '',
-  time: '',
-  duration: '',
-  maxParticipants: '',
-  isOnline: false,
-  materialsProvided: '',
-  materialsNeededFromClub: '',
-  venueRequirements: '',
-  otherImportantInfo: '',
-  detailsConfirmed: false,
-};
-
 export function normalizeAustralianContactNumber(value: string): string {
   return value.replace(/\D/g, '');
 }
@@ -67,9 +51,7 @@ function hasText(value: string | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-export function isCreateWorkshopFormSubmittable(
-  values: Partial<CreateWorkshopFormValues> | undefined
-): boolean {
+export function isCreateWorkshopFormSubmittable(values: Partial<CreateWorkshopFormValues> | undefined): boolean {
   return Boolean(
     hasText(values?.hostName) &&
       hasText(values?.title) &&
@@ -80,4 +62,38 @@ export function isCreateWorkshopFormSubmittable(
       hasText(values?.duration) &&
       values?.detailsConfirmed === true
   );
+}
+
+export function validateCreateWorkshopValues(values: CreateWorkshopFormValues): CreateWorkshopValidationResult {
+  const parsed = createWorkshopFormSchema.safeParse(values);
+  if (parsed.success) {
+    return {
+      isValid: true,
+      fieldErrors: {},
+      formError: null,
+      firstInvalidField: null,
+    };
+  }
+
+  const fieldErrors: CreateWorkshopFieldErrors = {};
+  for (const issue of parsed.error.issues) {
+    const fieldName = issue.path[0];
+    if (typeof fieldName !== 'string') continue;
+
+    const field = fieldName as CreateWorkshopFormField;
+    if (!fieldErrors[field]) {
+      fieldErrors[field] = issue.message;
+    }
+  }
+
+  const firstInvalidField = CREATE_WORKSHOP_VALIDATION_FIELD_ORDER.find((field) => Boolean(fieldErrors[field])) ?? null;
+  const formError =
+    (firstInvalidField && fieldErrors[firstInvalidField]) || CREATE_WORKSHOP_VALIDATION_ERROR_MESSAGE;
+
+  return {
+    isValid: false,
+    fieldErrors,
+    formError,
+    firstInvalidField,
+  };
 }

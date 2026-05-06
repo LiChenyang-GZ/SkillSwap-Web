@@ -48,20 +48,20 @@ export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const fullNavItems = navItems;
 
-  const preloadCreateWorkshopPage = useCallback(() => {
-    void import('./create-workshop/CreateWorkshopPage');
+  const preloadCreateWorkshopScreen = useCallback(() => {
+    void import('./create-workshop/screen/CreateWorkshopScreen');
   }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     const timer = window.setTimeout(() => {
-      preloadCreateWorkshopPage();
+      preloadCreateWorkshopScreen();
     }, 1200);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [isAuthenticated, preloadCreateWorkshopPage]);
+  }, [isAuthenticated, preloadCreateWorkshopScreen]);
 
   return (
     <>
@@ -127,8 +127,8 @@ export function Navigation() {
                     Dashboard
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onMouseEnter={preloadCreateWorkshopPage}
-                    onFocus={preloadCreateWorkshopPage}
+                    onMouseEnter={preloadCreateWorkshopScreen}
+                    onFocus={preloadCreateWorkshopScreen}
                     onClick={() => setCurrentPage('create')}
                   >
                     <Plus className="w-4 h-4" />
@@ -259,7 +259,7 @@ export function Navigation() {
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        preloadCreateWorkshopPage();
+                        preloadCreateWorkshopScreen();
                         setCurrentPage('create');
                         setIsMobileMenuOpen(false);
                       }}

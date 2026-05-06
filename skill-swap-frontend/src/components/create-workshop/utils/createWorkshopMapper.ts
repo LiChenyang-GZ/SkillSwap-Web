@@ -1,5 +1,6 @@
-import type { WorkshopUpsertPayload } from '../../lib/api';
-import { normalizeAustralianContactNumber, type CreateWorkshopFormValues } from './schema';
+import type { WorkshopUpsertPayload } from '../../../lib/api';
+import type { CreateWorkshopFormValues } from '../models/createWorkshopFormModel';
+import { normalizeAustralianContactNumber } from './createWorkshopValidation';
 
 export function toWorkshopUpsertPayload(values: CreateWorkshopFormValues): WorkshopUpsertPayload {
   const maxParticipants = values.maxParticipants.trim();

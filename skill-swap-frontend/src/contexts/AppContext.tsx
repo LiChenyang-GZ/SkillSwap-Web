@@ -8,10 +8,12 @@ import {
   ReactNode,
 } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
+import type { WorkshopUpsertPayload } from "../lib/api";
 import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 import type { CreditTransaction } from "../types/creditTransaction";
 import { notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
+import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
 import { toast } from "sonner";
 
 interface AppContextType {
@@ -31,7 +33,7 @@ interface AppContextType {
   toggleDarkMode: () => void;
   attendWorkshop: (workshopId: string) => Promise<void>;
   cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
-  createWorkshop: (workshopData: any) => Promise<void>;
+  createWorkshop: (workshopData: WorkshopUpsertPayload) => Promise<boolean>;
   deleteWorkshop: (workshopId: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -176,6 +178,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return nextToken ?? null;
   }, [getToken]);
+
+  const createWorkshop = useCreateWorkshopAction({
+    isAuthenticated,
+    user,
+    sessionToken,
+    refreshSessionToken,
+  });
 
   const buildIdentityFallback = (backendUser: User): User => {
     const primaryEmail =
@@ -870,42 +879,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Failed to leave workshop:", error);
       toast.error("Failed to leave workshop: " + (error instanceof Error ? error.message : "Unknown error"));
-    }
-  };
-
-  const createWorkshop = async (workshopData: any) => {
-    if (!isAuthenticated || !user) {
-      toast.error("Please sign in to create workshops");
-      return;
-    }
-    
-    try {
-      let tokenToUse = sessionToken ?? (await refreshSessionToken());
-      if (!tokenToUse) {
-        toast.error("Please sign in to create workshops");
-        return;
-      }
-
-      // 调用后端 API 创建 workshop
-      try {
-        await workshopAPI.create(workshopData, tokenToUse);
-      } catch (error) {
-        const status = (error as Error & { status?: number }).status;
-        if (status !== 401) throw error;
-
-        const refreshedToken = await refreshSessionToken();
-        if (!refreshedToken || refreshedToken === tokenToUse) {
-          throw error;
-        }
-        tokenToUse = refreshedToken;
-        await workshopAPI.create(workshopData, tokenToUse);
-      }
-      
-      toast.success("Workshop created successfully!");
-      setCurrentPage("dashboard");
-    } catch (error) {
-      console.error("Failed to create workshop:", error);
-      toast.error("Failed to create workshop: " + (error instanceof Error ? error.message : "Unknown error"));
     }
   };
 

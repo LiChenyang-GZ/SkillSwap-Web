@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Workshop } from '../../../types/workshop';
 import { WorkshopFormState, emptyWorkshopForm } from '../models/adminReviewFormModel';
+import type { AdminReviewFieldErrors } from '../models/adminReviewValidationModel';
 import { buildWorkshopFormState, normalizeFormState } from '../utils/adminReviewUtils';
 
 interface UseAdminReviewFormStateParams {
@@ -12,6 +13,8 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [localImagePreviewUrl, setLocalImagePreviewUrl] = useState<string | null>(null);
   const [rejectComment, setRejectComment] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<AdminReviewFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty = useMemo(() => {
@@ -21,14 +24,14 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
     return JSON.stringify(baseline) !== JSON.stringify(current);
   }, [selectedWorkshop, formData]);
 
-  const clearLocalImagePreview = () => {
+  const clearLocalImagePreview = useCallback(() => {
     setLocalImagePreviewUrl((previousUrl) => {
       if (previousUrl) {
         URL.revokeObjectURL(previousUrl);
       }
       return null;
     });
-  };
+  }, []);
 
   useEffect(() => {
     if (!selectedWorkshop) {
@@ -36,6 +39,8 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
       setPendingImageFile(null);
       clearLocalImagePreview();
       setRejectComment('');
+      setFieldErrors({});
+      setFormError(null);
       return;
     }
 
@@ -43,22 +48,31 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
     clearLocalImagePreview();
     setFormData(buildWorkshopFormState(selectedWorkshop));
     setRejectComment(selectedWorkshop.rejectionNote || '');
-  }, [selectedWorkshop]);
+    setFieldErrors({});
+    setFormError(null);
+  }, [selectedWorkshop, clearLocalImagePreview]);
 
   useEffect(() => {
     return () => {
       clearLocalImagePreview();
     };
-  }, []);
+  }, [clearLocalImagePreview]);
 
-  const handleInputChange = (field: keyof WorkshopFormState, value: string | boolean) => {
+  const handleInputChange = useCallback((field: keyof WorkshopFormState, value: string | boolean) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }));
-  };
+    setFormError(null);
+    setFieldErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  }, []);
 
-  const handleImageFileSelection = (file: File | null) => {
+  const handleImageFileSelection = useCallback((file: File | null) => {
     if (!file) return;
 
     clearLocalImagePreview();
@@ -69,10 +83,27 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
       ...prev,
       image: previewUrl,
     }));
-  };
+  }, [clearLocalImagePreview]);
+
+  const setValidationState = useCallback((errors: AdminReviewFieldErrors, nextFormError: string | null) => {
+    setFieldErrors(errors);
+    setFormError(nextFormError);
+  }, []);
+
+  const clearValidationState = useCallback(() => {
+    setFieldErrors({});
+    setFormError(null);
+  }, []);
+
+  const getFieldError = useCallback(
+    (field: keyof WorkshopFormState) => fieldErrors[field] ?? null,
+    [fieldErrors]
+  );
 
   return {
     formData,
+    fieldErrors,
+    formError,
     pendingImageFile,
     setPendingImageFile,
     localImagePreviewUrl,
@@ -81,6 +112,9 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
     imageFileInputRef,
     isDirty,
     clearLocalImagePreview,
+    setValidationState,
+    clearValidationState,
+    getFieldError,
     handleInputChange,
     handleImageFileSelection,
   };
