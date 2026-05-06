@@ -18,8 +18,9 @@ export function useWorkshopDetailQuery({
 }: UseWorkshopDetailQueryParams) {
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const lastFetchedIdRef = useRef<string | null>(null);
+  const lastFetchKeyRef = useRef<string | null>(null);
   const normalizedWorkshopId = toBackendWorkshopId(workshopId);
+  const detailFetchKey = `${sessionToken ?? 'anon'}:${normalizedWorkshopId}`;
 
   useEffect(() => {
     const found = workshops.find((item) => toBackendWorkshopId(String(item.id)) === normalizedWorkshopId);
@@ -42,11 +43,11 @@ export function useWorkshopDetailQuery({
       workshop !== null && toBackendWorkshopId(String(workshop.id)) === normalizedWorkshopId;
 
     const loadWorkshop = async (force = false) => {
-      if (!force && lastFetchedIdRef.current === normalizedWorkshopId) {
+      if (!force && lastFetchKeyRef.current === detailFetchKey) {
         return;
       }
 
-      lastFetchedIdRef.current = normalizedWorkshopId;
+      lastFetchKeyRef.current = detailFetchKey;
       if (!hasLocalSnapshot) {
         setIsLoading(true);
       }
@@ -70,8 +71,13 @@ export function useWorkshopDetailQuery({
 
     return () => {
       isMounted = false;
+      // React StrictMode mounts/unmounts effects twice in dev.
+      // Reset the key so the remount pass can still attach to the in-flight request.
+      if (lastFetchKeyRef.current === detailFetchKey) {
+        lastFetchKeyRef.current = null;
+      }
     };
-  }, [normalizedWorkshopId, sessionToken, upsertWorkshop, workshop?.id, workshopId]);
+  }, [detailFetchKey, normalizedWorkshopId, sessionToken, upsertWorkshop, workshop?.id, workshopId]);
 
   return {
     workshop,

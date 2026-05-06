@@ -35,11 +35,11 @@ export function ExploreWorkshopCard({ workshop, onOpenWorkshop }: ExploreWorksho
         </div>
 
         <div className="p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">{workshop.category}</Badge>
-              <Badge variant="secondary">{getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}</Badge>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Badge variant="secondary" className="max-w-full">
+              {workshop.category}
+            </Badge>
+            <Badge variant="secondary">{getUserWorkshopStatusLabel(workshop) ?? 'Upcoming'}</Badge>
             <Badge variant="secondary">{getWorkshopAccessLabel(workshop)}</Badge>
           </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { WORKSHOP_ALL_CATEGORIES_OPTION } from '../constants/workshopExploreOptions';
 import type { WorkshopExploreFilters } from '../models/workshopExploreFilterModel';
 
@@ -11,10 +11,13 @@ export function useWorkshopExploreSelection() {
     setSelectedCategory(WORKSHOP_ALL_CATEGORIES_OPTION);
   };
 
-  const filters: WorkshopExploreFilters = {
-    searchQuery,
-    selectedCategory,
-  };
+  const filters: WorkshopExploreFilters = useMemo(
+    () => ({
+      searchQuery,
+      selectedCategory,
+    }),
+    [searchQuery, selectedCategory]
+  );
 
   return {
     filters,

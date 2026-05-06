@@ -10,10 +10,11 @@ export function filterExploreWorkshops(
   const query = filters.searchQuery.toLowerCase();
 
   return workshops.filter((workshop) => {
+    const facilitatorName = String(workshop.facilitator?.name || '').toLowerCase();
     const matchesSearch =
       workshop.title.toLowerCase().includes(query) ||
       workshop.description.toLowerCase().includes(query) ||
-      workshop.facilitator?.name?.toLowerCase().includes(query);
+      facilitatorName.includes(query);
 
     const matchesCategory =
       filters.selectedCategory === WORKSHOP_ALL_CATEGORIES_OPTION ||

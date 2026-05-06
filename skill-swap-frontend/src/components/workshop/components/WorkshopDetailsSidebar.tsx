@@ -10,6 +10,20 @@ interface WorkshopDetailsSidebarProps {
 
 export function WorkshopDetailsSidebar({ workshop, attendCloseAt }: WorkshopDetailsSidebarProps) {
   const durationLabel = formatWorkshopDuration(workshop.duration);
+  const locationLabel = (() => {
+    if (typeof workshop.location === 'string') {
+      return workshop.location.trim() || 'To be confirmed by admin';
+    }
+
+    if (Array.isArray(workshop.location)) {
+      const firstValidLocation = workshop.location.find(
+        (item) => typeof item === 'string' && item.trim().length > 0
+      );
+      return firstValidLocation || 'To be confirmed by admin';
+    }
+
+    return 'To be confirmed by admin';
+  })();
 
   return (
     <div className="bg-muted rounded-lg p-6 space-y-6">
@@ -73,11 +87,7 @@ export function WorkshopDetailsSidebar({ workshop, attendCloseAt }: WorkshopDeta
           ) : (
             <>
               <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
-              <span className="text-base">
-                {typeof workshop.location === 'string' && workshop.location.trim()
-                  ? workshop.location
-                  : 'To be confirmed by admin'}
-              </span>
+              <span className="text-base">{locationLabel}</span>
             </>
           )}
         </div>
