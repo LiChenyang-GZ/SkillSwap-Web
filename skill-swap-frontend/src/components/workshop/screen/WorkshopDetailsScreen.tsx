@@ -36,9 +36,11 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     sessionToken,
     upsertWorkshop,
   });
+  const shouldRefreshMembershipFromApi = !Array.isArray(query.workshop?.participants);
   const attendanceMembership = useWorkshopAttendanceMembership({
     workshopId,
     sessionToken,
+    enabled: shouldRefreshMembershipFromApi,
   });
   const selection = useWorkshopDetailSelection({
     workshop: query.workshop,
@@ -53,6 +55,7 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     cancelWorkshopAttendance,
     setCurrentPage,
     onMembershipChanged: attendanceMembership.refreshMembership,
+    onWorkshopChanged: query.refreshWorkshop,
   });
 
   if (query.isLoading) {

@@ -8,6 +8,7 @@ interface UseWorkshopDetailMutationsParams {
   cancelWorkshopAttendance: (id: string) => Promise<void>;
   setCurrentPage: (page: string) => void;
   onMembershipChanged?: () => Promise<void>;
+  onWorkshopChanged?: () => void;
 }
 
 export function useWorkshopDetailMutations({
@@ -17,6 +18,7 @@ export function useWorkshopDetailMutations({
   cancelWorkshopAttendance,
   setCurrentPage,
   onMembershipChanged,
+  onWorkshopChanged,
 }: UseWorkshopDetailMutationsParams) {
   const goBackToExplore = () => setCurrentPage('explore');
 
@@ -25,6 +27,7 @@ export function useWorkshopDetailMutations({
     if (onMembershipChanged) {
       await onMembershipChanged();
     }
+    onWorkshopChanged?.();
   };
 
   const handleCancel = async () => {
@@ -32,6 +35,7 @@ export function useWorkshopDetailMutations({
     if (onMembershipChanged) {
       await onMembershipChanged();
     }
+    onWorkshopChanged?.();
   };
 
   const handleRequestApproval = async () => {

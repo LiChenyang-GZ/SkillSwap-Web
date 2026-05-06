@@ -5,16 +5,25 @@ import { workshopQueryService } from '../../../shared/service/workshop/workshopQ
 interface UseWorkshopAttendanceMembershipParams {
   workshopId: string;
   sessionToken: string | null;
+  enabled?: boolean;
 }
 
 export function useWorkshopAttendanceMembership({
   workshopId,
   sessionToken,
+  enabled = true,
 }: UseWorkshopAttendanceMembershipParams) {
   const [isAttendingByMembership, setIsAttendingByMembership] = useState(false);
   const controllerRef = useRef<AbortController | null>(null);
 
   const refreshMembership = useCallback(async () => {
+    if (!enabled) {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      setIsAttendingByMembership(false);
+      return;
+    }
+
     if (!sessionToken) {
       controllerRef.current?.abort();
       controllerRef.current = null;
@@ -44,7 +53,7 @@ export function useWorkshopAttendanceMembership({
       }
       // Keep previous membership state on transient errors.
     }
-  }, [sessionToken, workshopId]);
+  }, [enabled, sessionToken, workshopId]);
 
   useEffect(() => {
     void refreshMembership();

@@ -5,6 +5,38 @@ const isAbortError = (error: unknown): boolean => {
   return (error as { name?: string })?.name === 'AbortError';
 };
 
+const createAbortError = (): Error & { name: string } => {
+  const error = new Error('The operation was aborted.') as Error & { name: string };
+  error.name = 'AbortError';
+  return error;
+};
+
+const withCallerAbort = async <T>(task: Promise<T>, signal?: AbortSignal): Promise<T> => {
+  if (!signal) {
+    return task;
+  }
+
+  if (signal.aborted) {
+    throw createAbortError();
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(createAbortError());
+    };
+
+    signal.addEventListener('abort', onAbort, { once: true });
+    task
+      .then((value) => resolve(value))
+      .catch((error) => reject(error))
+      .finally(() => {
+        signal.removeEventListener('abort', onAbort);
+      });
+  });
+};
+
+const workshopDetailInFlight = new Map<string, Promise<Workshop | null>>();
+
 export const workshopQueryService = {
   getAll: async (signal?: AbortSignal): Promise<Workshop[]> => {
     try {
@@ -59,28 +91,39 @@ export const workshopQueryService = {
   },
 
   getById: async (id: string, token?: string | null, signal?: AbortSignal): Promise<Workshop | null> => {
-    try {
-      const data = await apiCall<any>(
-        `/api/v1/workshops/${toBackendWorkshopId(id)}`,
-        { signal },
-        token
-      );
-      return enrichWorkshop(data);
-    } catch (error) {
-      if (isAbortError(error)) {
-        throw error;
-      }
-      const status = (error as { status?: number })?.status;
-      if (status === 404) {
-        return null;
-      }
-      console.warn('Failed to fetch workshop detail', {
-        workshopId: id,
-        backendId: toBackendWorkshopId(id),
-        status: status ?? null,
-        error,
-      });
-      throw error;
+    const backendId = toBackendWorkshopId(id);
+    const cacheKey = `${token ?? 'anon'}:${backendId}`;
+    const existingTask = workshopDetailInFlight.get(cacheKey);
+    if (existingTask) {
+      return withCallerAbort(existingTask, signal);
     }
+
+    const task = (async () => {
+      try {
+        const data = await apiCall<any>(`/api/v1/workshops/${backendId}`, {}, token);
+        return enrichWorkshop(data);
+      } catch (error) {
+        if (isAbortError(error)) {
+          throw error;
+        }
+        const status = (error as { status?: number })?.status;
+        if (status === 404) {
+          return null;
+        }
+
+        console.warn('Failed to fetch workshop detail', {
+          workshopId: id,
+          backendId,
+          status: status ?? null,
+          error,
+        });
+        throw error;
+      } finally {
+        workshopDetailInFlight.delete(cacheKey);
+      }
+    })();
+
+    workshopDetailInFlight.set(cacheKey, task);
+    return withCallerAbort(task, signal);
   },
 };
