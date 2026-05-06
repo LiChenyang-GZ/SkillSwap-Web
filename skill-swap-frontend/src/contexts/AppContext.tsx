@@ -12,8 +12,9 @@ import type { WorkshopUpsertPayload } from "../lib/api";
 import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 import type { CreditTransaction } from "../types/creditTransaction";
-import { notificationAPI, resolveAssetUrl } from "../lib/api";
+import { resolveAssetUrl } from "../lib/api";
 import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
+import { notificationQueryService } from "../shared/service/notification/notificationQueryService";
 import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
 import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
 import { toast } from "sonner";
@@ -607,7 +608,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const task = (async () => {
       try {
-        const count = await notificationAPI.getUnreadCount(sessionToken);
+        const count = await notificationQueryService.getUnreadCount(sessionToken);
         setNotificationsUnreadCount(count);
       } catch (error) {
         console.warn("Failed to fetch notification count", error);
