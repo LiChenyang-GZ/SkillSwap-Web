@@ -22,7 +22,9 @@ const AdminReview = React.lazy(() =>
   import('./components/adminReview/screen/AdminReviewScreen').then((m) => ({ default: m.AdminReviewScreen }))
 );
 const MemoryStudio = React.lazy(() => import('./components/MemoryStudio.tsx').then((m) => ({ default: m.MemoryStudio })));
-const Notifications = React.lazy(() => import('./components/Notifications').then((m) => ({ default: m.Notifications })));
+const Notifications = React.lazy(() =>
+  import('./components/notifications/screen/NotificationsScreen').then((m) => ({ default: m.NotificationsScreen }))
+);
 
 function AppContent() {
   const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData } = useApp();

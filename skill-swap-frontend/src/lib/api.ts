@@ -1,7 +1,6 @@
 // lib/api.ts
 
 import type { MemoryEntry } from '@/types/memory';
-import type { NotificationItem } from '@/types/notification';
 import type { Workshop } from '@/types/workshop';
 import type { User } from '@/types/user';
 import { supabase } from '../utils/supabase/supabase';
@@ -369,52 +368,6 @@ export const transactionAPI = {
 
   add: async (_tx: any) => {
     throw new Error('transactionAPI.add requires a backend endpoint and is not implemented.');
-  },
-};
-
-// ----------------------
-// NOTIFICATION API
-// ----------------------
-export const notificationAPI = {
-  getAll: async (token?: string | null): Promise<NotificationItem[]> => {
-    const data = await apiCall<NotificationItem[]>("/api/v1/notifications", {}, token);
-    return data.map((item: any) => ({
-      id: String(item.id),
-      userId: item.userId || item.recipientId,
-      type: item.type,
-      title: item.title,
-      message: item.message,
-      timestamp: item.timestamp || item.createdAt,
-      read: item.read ?? item.isRead ?? false,
-      workshopId: item.workshopId ?? null,
-    }));
-  },
-
-  getUnreadCount: async (token?: string | null): Promise<number> => {
-    const data = await apiCall<{ count: number }>("/api/v1/notifications/unread-count", {}, token);
-    return data.count;
-  },
-
-  markRead: async (notificationId: string, token?: string | null): Promise<NotificationItem> => {
-    const data = await apiCall<NotificationItem>(
-      `/api/v1/notifications/${notificationId}/read`,
-      { method: "POST" },
-      token
-    );
-    return {
-      id: String((data as any).id),
-      userId: (data as any).userId || (data as any).recipientId,
-      type: (data as any).type,
-      title: (data as any).title,
-      message: (data as any).message,
-      timestamp: (data as any).timestamp || (data as any).createdAt,
-      read: (data as any).read ?? (data as any).isRead ?? false,
-      workshopId: (data as any).workshopId ?? null,
-    };
-  },
-
-  markAllRead: async (token?: string | null): Promise<void> => {
-    await apiCall<void>("/api/v1/notifications/read-all", { method: "POST" }, token);
   },
 };
 
