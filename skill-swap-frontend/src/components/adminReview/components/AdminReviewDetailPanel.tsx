@@ -84,16 +84,18 @@ export function AdminReviewDetailPanel({
         ) : !selectedHasDetail ? (
           <div className="text-sm text-muted-foreground space-y-3">
             {selectedDetailError ? (
-              <div>{selectedDetailError}</div>
+              <>
+                <div>{selectedDetailError}</div>
+                <Button variant="outline" size="sm" onClick={onRetryLoadDetails}>
+                  Retry loading details
+                </Button>
+              </>
             ) : (
               <div className="flex items-center gap-2">
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 Loading detailed submission...
               </div>
             )}
-            <Button variant="outline" size="sm" onClick={onRetryLoadDetails}>
-              Retry loading details
-            </Button>
           </div>
         ) : (
           <div className="space-y-6">

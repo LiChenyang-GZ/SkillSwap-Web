@@ -69,6 +69,9 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
 
     try {
       const detail = await withAuthRetry((token) => adminWorkshopService.getById(workshopId, token));
+      if (!detail || typeof detail.id !== 'string' || detail.id.length === 0 || detail.id !== workshopId) {
+        throw new Error('Workshop detail response is invalid.');
+      }
       setWorkshops((prev) => prev.map((workshop) => (workshop.id === detail.id ? { ...workshop, ...detail } : workshop)));
       setLoadedDetailIds((prev) => ({ ...prev, [workshopId]: true }));
     } catch (error) {
@@ -137,8 +140,10 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
         setErrorMessage('Session expired. Please sign in again.');
       } else if (status === 403) {
         setErrorMessage('Admin access required.');
+      } else if (status === 404) {
+        setErrorMessage('Workshop data not found.');
       } else {
-        setErrorMessage('Admin access required or failed to load workshops.');
+        setErrorMessage('Failed to load workshops. Please try again.');
       }
       setWorkshops([]);
     } finally {
@@ -157,9 +162,15 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
       setSelectedId(null);
       setLoadedDetailIds({});
       setDetailLoadErrors({});
+    }
+  }, [hasSession]);
+
+  useEffect(() => {
+    if (!hasSession) {
       return;
     }
-    refreshWorkshops();
+    const mode = statusFilter === 'pending' ? 'pending' : 'all';
+    void loadWorkshops(mode);
   }, [hasSession, statusFilter]);
 
   useEffect(() => {

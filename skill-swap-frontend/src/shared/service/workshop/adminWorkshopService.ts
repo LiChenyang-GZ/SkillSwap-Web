@@ -1,4 +1,5 @@
-import { apiCall, enrichWorkshop, toBackendWorkshopId, WorkshopUpsertPayload } from '../../../lib/api';
+import { apiCall, enrichWorkshop, toBackendWorkshopId } from '../../../lib/api';
+import type { WorkshopUpsertPayload } from '../../../lib/api';
 import type { Workshop } from '../../../types/workshop';
 
 export const adminWorkshopService = {
@@ -11,7 +12,7 @@ export const adminWorkshopService = {
     return data.map(enrichWorkshop);
   },
   getById: async (id: string, token?: string | null): Promise<Workshop> => {
-    const data = await apiCall<any>(`/api/v1/workshops/${toBackendWorkshopId(id)}`, {}, token);
+    const data = await apiCall<any>(`/api/v1/admin/workshops/${toBackendWorkshopId(id)}`, {}, token);
     return enrichWorkshop(data);
   },
   update: async (workshopId: string, payload: WorkshopUpsertPayload, token?: string | null): Promise<Workshop> => {

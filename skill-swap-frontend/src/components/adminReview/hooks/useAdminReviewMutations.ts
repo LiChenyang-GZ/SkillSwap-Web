@@ -106,9 +106,7 @@ export function useAdminReviewMutations({
             : workshop
         )
       );
-      setTimeout(() => {
-        refreshWorkshops();
-      }, 0);
+      refreshWorkshops();
     } catch (error) {
       console.error('Failed to approve workshop:', error);
       toast.error('Failed to approve workshop.');
@@ -137,9 +135,7 @@ export function useAdminReviewMutations({
             : workshop
         )
       );
-      setTimeout(() => {
-        refreshWorkshops();
-      }, 0);
+      refreshWorkshops();
     } catch (error) {
       console.error('Failed to reject workshop:', error);
       toast.error('Failed to reject workshop.');
@@ -165,9 +161,7 @@ export function useAdminReviewMutations({
             : workshop
         )
       );
-      setTimeout(() => {
-        refreshWorkshops();
-      }, 0);
+      refreshWorkshops();
     } catch (error) {
       console.error('Failed to cancel workshop:', error);
       toast.error('Failed to cancel workshop.');

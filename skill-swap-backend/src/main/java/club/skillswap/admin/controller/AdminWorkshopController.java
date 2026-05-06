@@ -39,6 +39,13 @@ public class AdminWorkshopController {
         return ResponseEntity.ok(workshopService.getPendingWorkshops(authentication));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<WorkshopResponseDto> getWorkshopById(
+            @PathVariable Long id,
+            Authentication authentication) {
+        return ResponseEntity.ok(workshopService.getWorkshopById(id, authentication));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<WorkshopResponseDto> updatePendingWorkshop(
             @PathVariable Long id,
