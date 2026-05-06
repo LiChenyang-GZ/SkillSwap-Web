@@ -73,9 +73,6 @@ export function AdminReviewDetailPanel({
   onExportParticipantsExcel,
 }: AdminReviewDetailPanelProps) {
   const invalidClassName = 'border-destructive focus-visible:ring-destructive';
-  const getFieldClassName = (field: keyof WorkshopFormState) =>
-    `mt-1${getFieldError(field) ? ` ${invalidClassName}` : ''}`;
-
   const normalizedStatus = selectedWorkshop ? normalizeAdminWorkshopStatus(selectedWorkshop.status) : null;
   const hasStarted = selectedWorkshop ? hasWorkshopStarted(selectedWorkshop) : false;
   const canApprove = normalizedStatus === 'pending' && !hasStarted;
@@ -101,6 +98,15 @@ export function AdminReviewDetailPanel({
     normalizedStatus !== null && normalizedStatus !== ADMIN_REVIEW_REJECTION_NOTE_HIDDEN_STATUS;
   const participants = selectedWorkshop?.participants ?? [];
   const participantCount = participants.length || selectedWorkshop?.currentParticipants || 0;
+  const hostNameError = getFieldError('hostName');
+  const titleError = getFieldError('title');
+  const categoryError = getFieldError('category');
+  const contactNumberError = getFieldError('contactNumber');
+  const durationError = getFieldError('duration');
+  const maxParticipantsError = getFieldError('maxParticipants');
+  const dateError = getFieldError('date');
+  const timeError = getFieldError('time');
+  const weekNumberError = getFieldError('weekNumber');
 
   return (
     <Card className="lg:col-span-2">
@@ -194,11 +200,11 @@ export function AdminReviewDetailPanel({
                         id="hostName"
                         value={formData.hostName}
                         onChange={(e) => onInputChange('hostName', e.target.value)}
-                        className={getFieldClassName('hostName')}
-                        aria-invalid={Boolean(getFieldError('hostName'))}
+                        className={`mt-1${hostNameError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(hostNameError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('hostName') && <p className="mt-1 text-xs text-destructive">{getFieldError('hostName')}</p>}
+                      {hostNameError && <p className="mt-1 text-xs text-destructive">{hostNameError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="title">Workshop Name / Skill Taught</Label>
@@ -206,18 +212,18 @@ export function AdminReviewDetailPanel({
                         id="title"
                         value={formData.title}
                         onChange={(e) => onInputChange('title', e.target.value)}
-                        className={getFieldClassName('title')}
-                        aria-invalid={Boolean(getFieldError('title'))}
+                        className={`mt-1${titleError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(titleError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('title') && <p className="mt-1 text-xs text-destructive">{getFieldError('title')}</p>}
+                      {titleError && <p className="mt-1 text-xs text-destructive">{titleError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="category">Category</Label>
                       <Select value={formData.category} onValueChange={(value: string) => onInputChange('category', value)} modal={false}>
                         <SelectTrigger
-                          className={getFieldClassName('category')}
-                          aria-invalid={Boolean(getFieldError('category'))}
+                          className={`mt-1${categoryError ? ` ${invalidClassName}` : ''}`}
+                          aria-invalid={Boolean(categoryError)}
                           disabled={!canEdit}
                         >
                           <SelectValue placeholder="Select category" />
@@ -230,7 +236,7 @@ export function AdminReviewDetailPanel({
                           ))}
                         </SelectContent>
                       </Select>
-                      {getFieldError('category') && <p className="mt-1 text-xs text-destructive">{getFieldError('category')}</p>}
+                      {categoryError && <p className="mt-1 text-xs text-destructive">{categoryError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="contactNumber">Contact Number</Label>
@@ -238,12 +244,12 @@ export function AdminReviewDetailPanel({
                         id="contactNumber"
                         value={formData.contactNumber}
                         onChange={(e) => onInputChange('contactNumber', e.target.value)}
-                        className={getFieldClassName('contactNumber')}
-                        aria-invalid={Boolean(getFieldError('contactNumber'))}
+                        className={`mt-1${contactNumberError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(contactNumberError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('contactNumber') && (
-                        <p className="mt-1 text-xs text-destructive">{getFieldError('contactNumber')}</p>
+                      {contactNumberError && (
+                        <p className="mt-1 text-xs text-destructive">{contactNumberError}</p>
                       )}
                     </div>
                     <div>
@@ -253,11 +259,11 @@ export function AdminReviewDetailPanel({
                         type="number"
                         value={formData.duration}
                         onChange={(e) => onInputChange('duration', e.target.value)}
-                        className={getFieldClassName('duration')}
-                        aria-invalid={Boolean(getFieldError('duration'))}
+                        className={`mt-1${durationError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(durationError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('duration') && <p className="mt-1 text-xs text-destructive">{getFieldError('duration')}</p>}
+                      {durationError && <p className="mt-1 text-xs text-destructive">{durationError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="maxParticipants">Max Participants (optional)</Label>
@@ -266,12 +272,12 @@ export function AdminReviewDetailPanel({
                         type="number"
                         value={formData.maxParticipants}
                         onChange={(e) => onInputChange('maxParticipants', e.target.value)}
-                        className={getFieldClassName('maxParticipants')}
-                        aria-invalid={Boolean(getFieldError('maxParticipants'))}
+                        className={`mt-1${maxParticipantsError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(maxParticipantsError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('maxParticipants') && (
-                        <p className="mt-1 text-xs text-destructive">{getFieldError('maxParticipants')}</p>
+                      {maxParticipantsError && (
+                        <p className="mt-1 text-xs text-destructive">{maxParticipantsError}</p>
                       )}
                     </div>
                     <div>
@@ -281,11 +287,11 @@ export function AdminReviewDetailPanel({
                         type="date"
                         value={formData.date}
                         onChange={(e) => onInputChange('date', e.target.value)}
-                        className={getFieldClassName('date')}
-                        aria-invalid={Boolean(getFieldError('date'))}
+                        className={`mt-1${dateError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(dateError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('date') && <p className="mt-1 text-xs text-destructive">{getFieldError('date')}</p>}
+                      {dateError && <p className="mt-1 text-xs text-destructive">{dateError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="time">Time</Label>
@@ -294,11 +300,11 @@ export function AdminReviewDetailPanel({
                         type="time"
                         value={formData.time}
                         onChange={(e) => onInputChange('time', e.target.value)}
-                        className={getFieldClassName('time')}
-                        aria-invalid={Boolean(getFieldError('time'))}
+                        className={`mt-1${timeError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(timeError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('time') && <p className="mt-1 text-xs text-destructive">{getFieldError('time')}</p>}
+                      {timeError && <p className="mt-1 text-xs text-destructive">{timeError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="attendCloseAt">Attend Close Time</Label>
@@ -312,11 +318,11 @@ export function AdminReviewDetailPanel({
                         min={1}
                         value={formData.weekNumber}
                         onChange={(e) => onInputChange('weekNumber', e.target.value)}
-                        className={getFieldClassName('weekNumber')}
-                        aria-invalid={Boolean(getFieldError('weekNumber'))}
+                        className={`mt-1${weekNumberError ? ` ${invalidClassName}` : ''}`}
+                        aria-invalid={Boolean(weekNumberError)}
                         disabled={!canEdit}
                       />
-                      {getFieldError('weekNumber') && <p className="mt-1 text-xs text-destructive">{getFieldError('weekNumber')}</p>}
+                      {weekNumberError && <p className="mt-1 text-xs text-destructive">{weekNumberError}</p>}
                     </div>
                     <div>
                       <Label htmlFor="memberResponsible">Member Responsible</Label>

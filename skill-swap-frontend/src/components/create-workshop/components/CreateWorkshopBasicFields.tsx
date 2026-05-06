@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Switch } from '../../../components/ui/switch';
-import { CREATE_WORKSHOP_CATEGORY_OPTIONS } from '../constants/createWorkshopOptionsConstants';
+import { workshopCategories } from '../../../constants/workshop';
 import type { CreateWorkshopFormField, CreateWorkshopFormValues } from '../models/createWorkshopFormModel';
 
 interface CreateWorkshopBasicFieldsProps {
@@ -61,7 +61,7 @@ export function CreateWorkshopBasicFields({
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              {CREATE_WORKSHOP_CATEGORY_OPTIONS.map((category) => (
+              {workshopCategories.map((category) => (
                 <SelectItem key={category} value={category}>
                   {category}
                 </SelectItem>

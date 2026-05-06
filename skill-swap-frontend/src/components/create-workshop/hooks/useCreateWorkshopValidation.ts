@@ -12,11 +12,8 @@ interface UseCreateWorkshopValidationParams {
 export function useCreateWorkshopValidation({ values, hasSubmitted }: UseCreateWorkshopValidationParams) {
   const validationResult = useMemo(() => validateCreateWorkshopValues(values), [values]);
   const canSubmit = useMemo(() => isCreateWorkshopFormSubmittable(values), [values]);
-
-  const fieldErrors: CreateWorkshopFieldErrors = hasSubmitted ? validationResult.fieldErrors : {};
-  const error = hasSubmitted ? validationResult.formError : null;
-
-  const getFieldError = (field: CreateWorkshopFormField): string | null => fieldErrors[field] ?? null;
+  const getFieldError = (field: CreateWorkshopFormField): string | null =>
+    (hasSubmitted ? validationResult.fieldErrors[field] : undefined) ?? null;
 
   const getFieldClassName = (field: CreateWorkshopFormField) => {
     const fieldError = getFieldError(field);
@@ -26,8 +23,8 @@ export function useCreateWorkshopValidation({ values, hasSubmitted }: UseCreateW
   return {
     validationResult,
     canSubmit,
-    fieldErrors,
-    error,
+    fieldErrors: (hasSubmitted ? validationResult.fieldErrors : {}) as CreateWorkshopFieldErrors,
+    error: hasSubmitted ? validationResult.formError : null,
     invalidClassName: CREATE_WORKSHOP_INVALID_FIELD_CLASS_NAME,
     getFieldError,
     getFieldClassName,

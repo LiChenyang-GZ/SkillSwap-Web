@@ -63,6 +63,7 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
       ...prev,
       [field]: value,
     }));
+    setFormError(null);
     setFieldErrors((previous) => {
       if (!previous[field]) return previous;
       const next = { ...previous };
