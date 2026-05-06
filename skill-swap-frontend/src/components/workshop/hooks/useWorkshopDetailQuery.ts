@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Workshop } from '../../../types/workshop';
-import { workshopDiscoveryService } from '../../../shared/service/workshop/workshopDiscoveryService';
 import { toBackendWorkshopId } from '../../../lib/api';
+import { workshopQueryService } from '../../../shared/service/workshop/workshopQueryService';
 
 interface UseWorkshopDetailQueryParams {
   workshopId: string;
@@ -19,6 +19,7 @@ export function useWorkshopDetailQuery({
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const lastFetchKeyRef = useRef<string | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
   const normalizedWorkshopId = toBackendWorkshopId(workshopId);
   const detailFetchKey = `${sessionToken ?? 'anon'}:${normalizedWorkshopId}`;
 
@@ -38,7 +39,6 @@ export function useWorkshopDetailQuery({
   }, [normalizedWorkshopId, workshops]);
 
   useEffect(() => {
-    let isMounted = true;
     const hasLocalSnapshot =
       workshop !== null && toBackendWorkshopId(String(workshop.id)) === normalizedWorkshopId;
 
@@ -52,16 +52,22 @@ export function useWorkshopDetailQuery({
         setIsLoading(true);
       }
 
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+
       try {
-        const latest = await workshopDiscoveryService.getById(workshopId, sessionToken);
-        if (latest && isMounted) {
+        const latest = await workshopQueryService.getById(workshopId, sessionToken, controller.signal);
+        if (!controller.signal.aborted && latest) {
           setWorkshop(latest);
           upsertWorkshop(latest);
         }
       } catch (error) {
-        console.warn('Failed to refresh workshop details', error);
+        if ((error as { name?: string })?.name !== 'AbortError') {
+          console.warn('Failed to refresh workshop details', error);
+        }
       } finally {
-        if (isMounted) {
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -70,14 +76,14 @@ export function useWorkshopDetailQuery({
     void loadWorkshop();
 
     return () => {
-      isMounted = false;
+      controllerRef.current?.abort();
       // React StrictMode mounts/unmounts effects twice in dev.
       // Reset the key so the remount pass can still attach to the in-flight request.
       if (lastFetchKeyRef.current === detailFetchKey) {
         lastFetchKeyRef.current = null;
       }
     };
-  }, [detailFetchKey, normalizedWorkshopId, sessionToken, upsertWorkshop, workshop?.id, workshopId]);
+  }, [detailFetchKey, normalizedWorkshopId, sessionToken, upsertWorkshop, workshopId]);
 
   return {
     workshop,

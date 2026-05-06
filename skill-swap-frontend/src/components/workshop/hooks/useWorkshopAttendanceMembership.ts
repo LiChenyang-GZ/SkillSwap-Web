@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { workshopDiscoveryService } from '../../../shared/service/workshop/workshopDiscoveryService';
 import { toBackendWorkshopId } from '../../../lib/api';
+import { workshopQueryService } from '../../../shared/service/workshop/workshopQueryService';
 
 interface UseWorkshopAttendanceMembershipParams {
   workshopId: string;
@@ -12,46 +12,43 @@ export function useWorkshopAttendanceMembership({
   sessionToken,
 }: UseWorkshopAttendanceMembershipParams) {
   const [isAttendingByMembership, setIsAttendingByMembership] = useState(false);
-  const latestRequestIdRef = useRef(0);
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const controllerRef = useRef<AbortController | null>(null);
 
   const refreshMembership = useCallback(async () => {
-    const requestId = latestRequestIdRef.current + 1;
-    latestRequestIdRef.current = requestId;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
 
     if (!sessionToken) {
-      if (isMountedRef.current && requestId === latestRequestIdRef.current) {
-        setIsAttendingByMembership(false);
-      }
+      setIsAttendingByMembership(false);
       return;
     }
 
     try {
-      const attendingWorkshops = await workshopDiscoveryService.getAttending(sessionToken);
+      const attendingWorkshops = await workshopQueryService.getAttending(
+        sessionToken,
+        controller.signal
+      );
       const normalizedWorkshopId = toBackendWorkshopId(workshopId);
       const isAttending = attendingWorkshops.some(
         (workshop) => toBackendWorkshopId(String(workshop.id)) === normalizedWorkshopId
       );
-      if (isMountedRef.current && requestId === latestRequestIdRef.current) {
+      if (!controller.signal.aborted) {
         setIsAttendingByMembership(isAttending);
       }
     } catch (error) {
-      console.warn('Failed to load attending membership', error);
-      if (isMountedRef.current && requestId === latestRequestIdRef.current) {
-        setIsAttendingByMembership(false);
+      if ((error as { name?: string })?.name !== 'AbortError') {
+        console.warn('Failed to load attending membership', error);
       }
+      // Keep previous membership state on transient errors.
     }
   }, [sessionToken, workshopId]);
 
   useEffect(() => {
     void refreshMembership();
+    return () => {
+      controllerRef.current?.abort();
+    };
   }, [refreshMembership]);
 
   return {

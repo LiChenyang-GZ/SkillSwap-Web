@@ -9,7 +9,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { toast } from 'sonner';
-import { workshopAPI } from '../lib/api';
+import { workshopMutationService } from '../shared/service/workshop/workshopMutationService';
 import { 
   Calendar, 
   Users, 
@@ -217,7 +217,7 @@ export function Dashboard() {
 
     setHidingWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
     try {
-      await workshopAPI.hideHostingWorkshop(workshopId, sessionToken);
+      await workshopMutationService.hideHostingWorkshop(workshopId, sessionToken);
       setHiddenHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
       toast.success('Removed from hosting list.');
     } catch (error) {

@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { workshopDiscoveryService } from '../../../shared/service/workshop/workshopDiscoveryService';
+import { workshopMutationService } from '../../../shared/service/workshop/workshopMutationService';
 
 interface UseWorkshopDetailMutationsParams {
   workshopId: string;
@@ -41,7 +41,7 @@ export function useWorkshopDetailMutations({
     }
 
     try {
-      await workshopDiscoveryService.requestApproval(workshopId, sessionToken);
+      await workshopMutationService.requestApproval(workshopId, sessionToken);
       toast.success('Approval request sent to admins');
     } catch (error) {
       console.error('Failed to request approval', error);

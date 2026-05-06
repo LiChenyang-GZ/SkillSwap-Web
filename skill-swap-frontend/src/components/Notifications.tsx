@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { notificationAPI, workshopAPI } from "../lib/api";
+import { notificationAPI } from "../lib/api";
 import type { NotificationItem } from "../types/notification";
 import { useApp } from "../contexts/AppContext";
+import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
 import { Button } from "./ui/button";
 import { Bell, CheckCheck } from "lucide-react";
 import {
@@ -116,7 +117,7 @@ export function Notifications() {
 
   const openWorkshopFromNotification = (workshopId: string) => {
     if (sessionToken) {
-      void workshopAPI.getById(workshopId, sessionToken).then((latest) => {
+      void workshopQueryService.getById(workshopId, sessionToken).then((latest) => {
         if (latest) {
           upsertWorkshop(latest);
         }
