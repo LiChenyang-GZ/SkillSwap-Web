@@ -56,6 +56,7 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     cancelWorkshopAttendance,
     setCurrentPage,
     onMembershipChanged: attendanceMembership.refreshMembership,
+    onMembershipOptimisticChange: attendanceMembership.setMembershipOptimistic,
     onWorkshopChanged: query.refreshWorkshop,
   });
 
