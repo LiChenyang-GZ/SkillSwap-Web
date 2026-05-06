@@ -5,14 +5,18 @@ import { Toaster } from './components/ui/sonner';
 
 const HeroPage = React.lazy(() => import('./components/Hero').then((m) => ({ default: m.HeroPage })));
 const HomePage = React.lazy(() => import('./components/HomePage').then((m) => ({ default: m.HomePage })));
-const ExploreWorkshops = React.lazy(() => import('./components/workshop/ExploreWorkshopsPage').then((m) => ({ default: m.ExploreWorkshops })));
+const ExploreWorkshops = React.lazy(() =>
+  import('./components/workshop/screen/ExploreWorkshopsScreen').then((m) => ({ default: m.ExploreWorkshopsScreen }))
+);
 const Memory = React.lazy(() => import('./components/Memory').then((m) => ({ default: m.Memory })));
 const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
 const CreateWorkshop = React.lazy(() =>
   import('./components/create-workshop/screen/CreateWorkshopScreen').then((m) => ({ default: m.CreateWorkshopScreen }))
 );
 const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
-const WorkshopDetails = React.lazy(() => import('./components/workshop/WorkshopDetailsPage').then((m) => ({ default: m.WorkshopDetails })));
+const WorkshopDetails = React.lazy(() =>
+  import('./components/workshop/screen/WorkshopDetailsScreen').then((m) => ({ default: m.WorkshopDetailsScreen }))
+);
 const MemoryDetail = React.lazy(() => import('./components/MemoryDetail.tsx').then((m) => ({ default: m.MemoryDetail })));
 const AdminReview = React.lazy(() =>
   import('./components/adminReview/screen/AdminReviewScreen').then((m) => ({ default: m.AdminReviewScreen }))

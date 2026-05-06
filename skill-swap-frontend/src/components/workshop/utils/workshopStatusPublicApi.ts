@@ -2,8 +2,6 @@ export {
   normalizeAdminWorkshopStatus,
   resolveUserWorkshopStatus,
   isUserWorkshopVisible,
-  type AdminWorkshopStatus,
-  type UserWorkshopStatus,
 } from './workshopStatusRules';
 
 export {
@@ -13,5 +11,6 @@ export {
   isUserWorkshopUpcoming,
   isUserWorkshopUpcomingOrOngoing,
   isWorkshopOpenForRegistration,
-  type WorkshopBadgeVariant,
 } from './workshopStatusLabels';
+
+export type { AdminWorkshopStatus, UserWorkshopStatus, WorkshopBadgeVariant } from '../models/workshopStatusModel';

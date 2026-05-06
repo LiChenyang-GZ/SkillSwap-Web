@@ -1,7 +1,6 @@
-import type { Workshop } from '../../types/workshop';
+import type { Workshop } from '../../../types/workshop';
+import type { WorkshopBadgeVariant } from '../models/workshopStatusModel';
 import { resolveUserWorkshopStatus } from './workshopStatusRules';
-
-export type WorkshopBadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
 
 export function getUserWorkshopStatusLabel(workshop: Workshop, now?: Date): string | null {
   const status = resolveUserWorkshopStatus(workshop, now);

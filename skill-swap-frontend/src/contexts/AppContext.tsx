@@ -12,8 +12,10 @@ import type { WorkshopUpsertPayload } from "../lib/api";
 import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 import type { CreditTransaction } from "../types/creditTransaction";
-import { notificationAPI, resolveAssetUrl, workshopAPI } from "../lib/api";
+import { notificationAPI, resolveAssetUrl } from "../lib/api";
 import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
+import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
+import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
 import { toast } from "sonner";
 
 interface AppContextType {
@@ -289,9 +291,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchVisibleWorkshops = useCallback(async () => {
     if (isAuthenticated && sessionToken) {
       const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
-        workshopAPI.getPublic(),
-        workshopAPI.getMine(sessionToken),
-        workshopAPI.getAttending(sessionToken),
+        workshopQueryService.getPublic(),
+        workshopQueryService.getMine(sessionToken),
+        workshopQueryService.getAttending(sessionToken),
       ]);
       const merged = new Map<string, Workshop>();
       [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
@@ -300,18 +302,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return Array.from(merged.values());
     }
 
-    return workshopAPI.getPublic();
+    return workshopQueryService.getPublic();
   }, [isAuthenticated, sessionToken]);
 
   const fetchPublicWorkshops = useCallback(async () => {
-    return workshopAPI.getPublic();
+    return workshopQueryService.getPublic();
   }, []);
 
   const fetchMineWorkshops = useCallback(async () => {
     if (!isAuthenticated || !sessionToken) {
       return [];
     }
-    return workshopAPI.getMine(sessionToken);
+    return workshopQueryService.getMine(sessionToken);
   }, [isAuthenticated, sessionToken]);
 
   const fetchDashboardWorkshops = useCallback(async () => {
@@ -320,8 +322,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const [myWorkshops, attendingWorkshops] = await Promise.all([
-      workshopAPI.getMine(sessionToken),
-      workshopAPI.getAttending(sessionToken),
+      workshopQueryService.getMine(sessionToken),
+      workshopQueryService.getAttending(sessionToken),
     ]);
 
     const merged = new Map<string, Workshop>();
@@ -494,7 +496,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       : "";
 
     return {
-      id: userProfile.id,
+      id: String(userProfile.id),
       email: userProfile.email,
       username: userProfile.username,
       avatarUrl,
@@ -817,7 +819,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
       
       // 调用后端 API，传递 JWT token
-      await workshopAPI.join(workshopId, sessionToken);
+      await workshopMutationService.join(workshopId, sessionToken);
       
       // 积分系统已停用：不再扣减本地余额。
       // const updatedUser = {
@@ -860,7 +862,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       
       // 调用后端 API，传递 JWT token
-      await workshopAPI.leave(workshopId, sessionToken);
+      await workshopMutationService.leave(workshopId, sessionToken);
       
       // 积分系统已停用：不再返还本地余额。
       // const updatedUser = {
@@ -890,7 +892,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     try {
       // 调用后端 API 删除 workshop，传递 JWT token
-      await workshopAPI.delete(workshopId, sessionToken);
+      await workshopMutationService.delete(workshopId, sessionToken);
 
       // 删除成功后，从本地状态中移除该 workshop（处理 ID 类型不一致）
       setWorkshops((prev) => 

@@ -11,7 +11,7 @@ import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { Textarea } from '../../../components/ui/textarea';
-import { normalizeAdminWorkshopStatus } from '../../workshop/workshopStatusRules';
+import { normalizeAdminWorkshopStatus } from '../../workshop/utils/workshopStatusRules';
 import {
   ADMIN_REVIEW_CANCELLABLE_STATUSES,
   ADMIN_REVIEW_NON_EDITABLE_STATUSES,

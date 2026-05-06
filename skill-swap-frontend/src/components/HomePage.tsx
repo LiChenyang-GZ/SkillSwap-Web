@@ -14,7 +14,7 @@ import {
   BookOpen,
   Target
 } from 'lucide-react';
-import { getWorkshopAccessLabel, isUserWorkshopUpcoming } from './workshop/workshopStatusPublicApi';
+import { getWorkshopAccessLabel, isUserWorkshopUpcoming } from './workshop/utils/workshopStatusPublicApi';
 
 export function HomePage() {
   const { user, workshops, setCurrentPage } = useApp();
