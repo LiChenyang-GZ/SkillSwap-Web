@@ -462,23 +462,6 @@ export const workshopAPI = {
     );
   },
 
-  // 创建工作坊（后端仅返回 success message）
-  create: async (workshopData: WorkshopUpsertPayload, token: string): Promise<void> => {
-    try {
-      await apiCall<{ message: string }>(
-        "/api/v1/workshops",
-        {
-          method: "POST",
-          body: JSON.stringify(workshopData),
-        },
-        token
-      );
-    } catch (error) {
-      console.error('Failed to create workshop:', error);
-      throw error;
-    }
-  },
-
   // 加入工作坊
   join: async (workshopId: string, token?: string | null): Promise<void> => {
     try {

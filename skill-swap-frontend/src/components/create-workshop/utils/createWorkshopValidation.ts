@@ -87,10 +87,13 @@ export function validateCreateWorkshopValues(values: CreateWorkshopFormValues): 
   }
 
   const firstInvalidField = CREATE_WORKSHOP_VALIDATION_FIELD_ORDER.find((field) => Boolean(fieldErrors[field])) ?? null;
+  const formError =
+    (firstInvalidField && fieldErrors[firstInvalidField]) || CREATE_WORKSHOP_VALIDATION_ERROR_MESSAGE;
+
   return {
     isValid: false,
     fieldErrors,
-    formError: CREATE_WORKSHOP_VALIDATION_ERROR_MESSAGE,
+    formError,
     firstInvalidField,
   };
 }

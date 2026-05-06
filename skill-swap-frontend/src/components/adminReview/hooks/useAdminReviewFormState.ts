@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Workshop } from '../../../types/workshop';
 import { WorkshopFormState, emptyWorkshopForm } from '../models/adminReviewFormModel';
 import type { AdminReviewFieldErrors } from '../models/adminReviewValidationModel';
@@ -24,14 +24,14 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
     return JSON.stringify(baseline) !== JSON.stringify(current);
   }, [selectedWorkshop, formData]);
 
-  const clearLocalImagePreview = () => {
+  const clearLocalImagePreview = useCallback(() => {
     setLocalImagePreviewUrl((previousUrl) => {
       if (previousUrl) {
         URL.revokeObjectURL(previousUrl);
       }
       return null;
     });
-  };
+  }, []);
 
   useEffect(() => {
     if (!selectedWorkshop) {
@@ -50,15 +50,15 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
     setRejectComment(selectedWorkshop.rejectionNote || '');
     setFieldErrors({});
     setFormError(null);
-  }, [selectedWorkshop]);
+  }, [selectedWorkshop, clearLocalImagePreview]);
 
   useEffect(() => {
     return () => {
       clearLocalImagePreview();
     };
-  }, []);
+  }, [clearLocalImagePreview]);
 
-  const handleInputChange = (field: keyof WorkshopFormState, value: string | boolean) => {
+  const handleInputChange = useCallback((field: keyof WorkshopFormState, value: string | boolean) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -69,9 +69,9 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
       delete next[field];
       return next;
     });
-  };
+  }, []);
 
-  const handleImageFileSelection = (file: File | null) => {
+  const handleImageFileSelection = useCallback((file: File | null) => {
     if (!file) return;
 
     clearLocalImagePreview();
@@ -82,7 +82,22 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
       ...prev,
       image: previewUrl,
     }));
-  };
+  }, [clearLocalImagePreview]);
+
+  const setValidationState = useCallback((errors: AdminReviewFieldErrors, nextFormError: string | null) => {
+    setFieldErrors(errors);
+    setFormError(nextFormError);
+  }, []);
+
+  const clearValidationState = useCallback(() => {
+    setFieldErrors({});
+    setFormError(null);
+  }, []);
+
+  const getFieldError = useCallback(
+    (field: keyof WorkshopFormState) => fieldErrors[field] ?? null,
+    [fieldErrors]
+  );
 
   return {
     formData,
@@ -96,15 +111,9 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
     imageFileInputRef,
     isDirty,
     clearLocalImagePreview,
-    setValidationState: (errors: AdminReviewFieldErrors, nextFormError: string | null) => {
-      setFieldErrors(errors);
-      setFormError(nextFormError);
-    },
-    clearValidationState: () => {
-      setFieldErrors({});
-      setFormError(null);
-    },
-    getFieldError: (field: keyof WorkshopFormState) => fieldErrors[field] ?? null,
+    setValidationState,
+    clearValidationState,
+    getFieldError,
     handleInputChange,
     handleImageFileSelection,
   };

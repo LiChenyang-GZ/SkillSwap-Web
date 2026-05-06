@@ -30,6 +30,7 @@ export function CreateWorkshopForm() {
 
   return (
     <form ref={form.formRef} onSubmit={handleFormSubmit} className="space-y-6" autoComplete="off">
+      {/* Keep these hidden fields to discourage browser autofill from overwriting workshop form inputs. */}
       <input tabIndex={-1} aria-hidden="true" autoComplete="username" className="hidden" />
       <input tabIndex={-1} aria-hidden="true" type="password" autoComplete="new-password" className="hidden" />
       {validation.error && (
