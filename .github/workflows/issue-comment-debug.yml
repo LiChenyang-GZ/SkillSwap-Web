@@ -7,10 +7,11 @@ on:
 
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 
 jobs:
   debug:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.pull_request != null }}
     runs-on: ubuntu-latest
     steps:
       - name: Print event basics
@@ -22,14 +23,6 @@ jobs:
           echo "workflow_ref=${{ github.workflow_ref }}"
           echo "run_id=${{ github.run_id }}"
 
-      - name: Print comment context
-        if: ${{ github.event_name == 'issue_comment' }}
+      - name: Print full event
         run: |
-          echo "issue_number=${{ github.event.issue.number }}"
-          echo "is_pr=${{ github.event.issue.pull_request != null }}"
-          echo "author_association=${{ github.event.comment.author_association }}"
-          echo "comment_user_type=${{ github.event.comment.user.type }}"
-          echo "comment_id=${{ github.event.comment.id }}"
-          echo "comment_body<<EOF"
-          echo "${{ github.event.comment.body }}"
-          echo "EOF"
+          cat "$GITHUB_EVENT_PATH"
