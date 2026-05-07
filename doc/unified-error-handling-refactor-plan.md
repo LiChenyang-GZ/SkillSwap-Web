@@ -218,3 +218,183 @@ Risk 3: Over-touching AppContext.
 2. PR title format: `refactor(error): phase-X <domain>`.
 3. Include before/after behavior checklist in PR template.
 4. Do not combine unrelated UI refactors in these PRs.
+
+---
+
+## Focus Supplement: Async Error Presentation for `signOut` and Notifications
+
+This section supplements the existing plan and prioritizes two paths that are currently spread across `AppContext` + notifications hooks:
+
+1. `signOut` async failure handling and user-facing fallback.
+2. Notification read paths:
+   - notifications list loading (`getAll`);
+   - unread count background refresh (`getUnreadCount`);
+   - mark read / mark all read mutations.
+
+### Current Behavior Snapshot (Baseline to Preserve Unless Explicitly Changed)
+
+#### A) `signOut` (`src/contexts/AppContext.tsx`)
+
+Current flow:
+
+1. `await clerkSignOut()`
+2. Clear local auth/workshop/admin state
+3. Navigate to `hero`
+4. Show success toast: `"Signed out successfully"`
+
+Current risk:
+
+1. No `try/catch` boundary around `clerkSignOut()`.
+2. If upstream sign-out throws, UI fallback is not explicitly controlled.
+
+#### B) Notifications list load (`useNotificationsQuery`)
+
+Current flow:
+
+1. If unauthenticated: render auth state (no error).
+2. If authenticated but no token: show `NOTIFICATIONS_SESSION_EXPIRED_MESSAGE`.
+3. Load via `notificationQueryService.getAll`.
+4. On failure: map status `401/403` to domain copy, otherwise generic load-failed copy.
+
+Current semantics:
+
+1. Error is inline/list-state error, not toast.
+2. Retry is explicit (`Retry` button), via `reloadNonce`.
+
+#### C) Notifications unread count (`refreshNotificationsUnreadCount` in `AppContext`)
+
+Current flow:
+
+1. Background refresh when not on notifications page.
+2. If no token: set count to `0`.
+3. On request failure: `console.warn`, no user-facing interruption.
+
+Current semantics:
+
+1. Silent failure (badge may stay stale).
+2. No blocking of current page rendering.
+
+### Target Error Contract for These Flows
+
+Use shared `AppError` model from this plan and keep existing UX semantics.
+
+#### Suggested `source` values
+
+1. `auth.signout`
+2. `notifications.query.list`
+3. `notifications.query.unread_count`
+4. `notifications.mutation.mark_read`
+5. `notifications.mutation.mark_all_read`
+
+#### Suggested UI policy matrix
+
+1. `signOut`
+   - `unauthorized/forbidden`: still clear local session state when safe, keep navigation semantics, show stable guidance toast.
+   - `network/server/unknown`: keep user on current page, show non-destructive failure toast, allow retry.
+2. Notifications list load:
+   - Preserve current inline error copy and retry button behavior.
+   - Keep `401/403` mapping semantics exactly as current product copy.
+3. Unread count refresh:
+   - Preserve silent non-blocking behavior by default.
+   - Add structured logging/telemetry metadata from `AppError` (no new user-visible error by default).
+4. Mark read / mark all read:
+   - Preserve optimistic/local update strategy and non-blocking unread refresh.
+   - Add normalized error classification for observability and future selective toasts.
+
+### Implementation Add-on Plan (Small PR slices)
+
+#### Slice S1: Shared mapper readiness for auth/notification sources
+
+Files:
+
+1. `src/shared/error/models/appErrorModel.ts`
+2. `src/shared/error/utils/mapToAppError.ts`
+3. (optional) `src/shared/error/utils/errorMessageResolver.ts`
+
+Tasks:
+
+1. Ensure mapper supports `status` from `apiCall`-style errors.
+2. Add source tagging helper to avoid repeating literals.
+
+#### Slice S2: `signOut` controlled failure presentation
+
+Primary file:
+
+1. `src/contexts/AppContext.tsx`
+
+Tasks:
+
+1. Wrap sign-out path with normalized error mapping.
+2. Preserve success path semantics exactly.
+3. Define explicit failure branch UX:
+   - toast copy policy
+   - whether to keep page or soft-redirect
+4. Do not refactor unrelated auth bootstrap code in same PR.
+
+#### Slice S3: Notifications query/mutation normalization
+
+Primary files:
+
+1. `src/shared/service/notification/notificationQueryService.ts`
+2. `src/shared/service/notification/notificationMutationService.ts`
+3. `src/components/notifications/hooks/useNotificationsQuery.ts`
+4. `src/components/notifications/hooks/useNotificationsMutations.ts`
+
+Tasks:
+
+1. Services throw `AppError` (with `source`) instead of ad-hoc `Error`.
+2. `useNotificationsQuery` branches on `AppError.kind` (not raw `status` cast).
+3. Preserve `notificationMessages.ts` wording and retry behavior unchanged.
+4. Keep mutation failures non-blocking unless product explicitly changes.
+
+#### Slice S4: Unread count refresh path hardening
+
+Primary file:
+
+1. `src/contexts/AppContext.tsx`
+
+Tasks:
+
+1. Normalize errors from `getUnreadCount`.
+2. Keep silent background behavior as default.
+3. Add a throttled diagnostic hook/log point for repeated failures (no UX change).
+
+### Product-Semantics Guardrails (Important)
+
+1. Do not change existing copy text in:
+   - `NOTIFICATIONS_SESSION_EXPIRED_MESSAGE`
+   - `NOTIFICATIONS_FORBIDDEN_MESSAGE`
+   - `NOTIFICATIONS_LOAD_FAILED_MESSAGE`
+2. Do not change notification retry entry point (`Retry` button contract).
+3. Do not change unread count request timing in this phase.
+4. Do not batch this with navigation or dashboard UI refactors.
+
+### Verification Checklist for This Supplement
+
+#### `signOut`
+
+1. Success path: state cleared, route behavior unchanged, success toast unchanged.
+2. Simulated sign-out failure: user sees stable failure feedback, no partial broken state.
+3. Re-click sign-out after failure still works.
+
+#### Notifications list
+
+1. 200 success: list renders, sorting unaffected.
+2. 401: session-expired copy unchanged.
+3. 403: forbidden copy unchanged.
+4. 5xx/network: generic load-failed copy unchanged.
+5. Retry button still reloads and recovers.
+
+#### Unread count
+
+1. Non-notification pages still trigger background refresh.
+2. Failure remains non-blocking (no new intrusive UI by default).
+3. Badge update works after recovery or after mark-read actions.
+
+### Relationship to Existing `memory-error-handling-plan.md`
+
+This supplement follows the same normalization direction already documented for memory:
+
+1. Distinguish business-empty states from real failures.
+2. Move from raw error parsing to normalized domain error kind checks.
+3. Migrate progressively by domain with behavior parity as top priority.
