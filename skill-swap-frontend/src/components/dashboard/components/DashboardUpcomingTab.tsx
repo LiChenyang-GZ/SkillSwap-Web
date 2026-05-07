@@ -88,7 +88,7 @@ export function DashboardUpcomingTab({
                   </div>
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-6 h-6">
-                      <AvatarImage src={workshop.facilitator?.avatarUrl} />
+                      <AvatarImage src={workshop.facilitator?.avatarUrl} alt={workshop.facilitator?.name || ""} />
                       <AvatarFallback className="text-xs">
                         {workshop.facilitator?.name
                           ?.split(" ")

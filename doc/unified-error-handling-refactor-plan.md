@@ -20,6 +20,31 @@ Out of scope (this phase):
 2. Rewriting all modules in one PR.
 3. Replacing transport stack (`fetch` vs `apiCall`) globally.
 
+## Open Decision: `fetch` vs `apiCall` in domain services
+
+Background:
+
+- Some newer domain services (for example `userProfileService`) currently use direct `fetch`.
+- Existing shared modules still rely on `apiCall` from `src/lib/api.ts`.
+
+Decision policy for the refactor branch:
+
+1. Do not force immediate global migration in one PR.
+2. For each migrated domain, choose one style and keep it internally consistent.
+3. If a domain stays on direct `fetch`, it must still:
+   - normalize errors through the shared error mapper;
+   - preserve existing behavior for empty body / JSON parsing edge cases;
+   - preserve status-derived message semantics.
+4. If a domain migrates to `apiCall`, verify no behavior drift in:
+   - fallback message text;
+   - status handling (`401/403/404/413/5xx`);
+   - body parsing behavior.
+
+Acceptance for this decision:
+
+1. No user-visible behavior regression from transport abstraction choice.
+2. Service-layer error shape remains unified (`AppError`) regardless of transport.
+
 ## Principles
 
 1. Progressive migration by domain, not big-bang.
@@ -193,4 +218,3 @@ Risk 3: Over-touching AppContext.
 2. PR title format: `refactor(error): phase-X <domain>`.
 3. Include before/after behavior checklist in PR template.
 4. Do not combine unrelated UI refactors in these PRs.
-
