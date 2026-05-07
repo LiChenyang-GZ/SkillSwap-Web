@@ -15,6 +15,7 @@ import type { CreditTransaction } from "../types/creditTransaction";
 import { resolveAssetUrl } from "../lib/api";
 import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
 import { notificationQueryService } from "../shared/service/notification/notificationQueryService";
+import { userProfileService } from "../shared/service/user/userProfileService";
 import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
 import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
 import { toast } from "sonner";
@@ -686,37 +687,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast.success("Signed out successfully");
   };
 
-  const parseApiErrorMessage = async (response: Response, fallbackMessage: string): Promise<string> => {
-    const raw = await response.text();
-    let message = raw;
-
-    try {
-      const parsed = JSON.parse(raw);
-      message = parsed?.message || parsed?.error || raw;
-    } catch {
-      // Keep raw response text when not JSON.
-    }
-
-    const normalized = typeof message === "string" ? message.trim() : "";
-    const lower = normalized.toLowerCase();
-
-    if (
-      response.status === 413 ||
-      lower.includes("maximum upload size") ||
-      lower.includes("size exceeds") ||
-      lower.includes("payload too large")
-    ) {
-      return "Image is too large. Please upload an image up to 10MB.";
-    }
-
-    const cleaned = normalized
-      .replace(/^an unexpected error occurred:\s*/i, "")
-      .replace(/\s+caused by:.*/i, "")
-      .trim();
-
-    return cleaned || fallbackMessage;
-  };
-
   const updateCurrentUserProfile = async (updates: {
     username?: string;
     avatarUrl?: string;
@@ -727,22 +697,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("Please sign in again before updating your profile.");
     }
 
-    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-    const response = await fetch(`${base}/api/v1/users/me`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${sessionToken}`,
-      },
-      body: JSON.stringify(updates),
-    });
-
-    if (!response.ok) {
-      const message = await parseApiErrorMessage(response, `Failed to update profile (${response.status}).`);
-      throw new Error(message || `Failed to update profile (${response.status}).`);
-    }
-
-    const profile = await response.json();
+    const profile = await userProfileService.updateCurrentUserProfile<any>(updates, sessionToken);
     const mapped = mapBackendUser(profile);
 
     setUser(mapped);
@@ -763,24 +718,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw new Error("Please sign in again before updating your avatar.");
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-    const response = await fetch(`${base}/api/v1/users/me/avatar`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${sessionToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const message = await parseApiErrorMessage(response, `Failed to upload avatar (${response.status}).`);
-      throw new Error(message || `Failed to upload avatar (${response.status}).`);
-    }
-
-    const profile = await response.json();
+    const profile = await userProfileService.uploadCurrentUserAvatar<any>(file, sessionToken);
     const mapped = mapBackendUser(profile);
 
     setUser(mapped);
