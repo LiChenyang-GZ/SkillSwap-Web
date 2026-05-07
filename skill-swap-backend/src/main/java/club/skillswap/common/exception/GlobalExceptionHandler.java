@@ -174,11 +174,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         String path = request.getRequestURI();
-        if (path != null && path.startsWith("/uploads/")) {
-            log.debug("Legacy local upload asset not found: {}", path);
-        } else {
-            log.debug("Static resource not found: {}", path);
-        }
+        log.debug("Static resource not found: {}", path);
 
         ErrorResponseDto body = new ErrorResponseDto(
                 Instant.now(),

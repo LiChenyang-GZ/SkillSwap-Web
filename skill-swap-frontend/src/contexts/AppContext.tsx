@@ -29,11 +29,10 @@ import { toast } from "sonner";
 import {
   ADMIN_MEMORY_PAGE_ID,
   ADMIN_MEMORY_PATH,
-  MEMORY_ENTRY_PAGE_PREFIX,
   MEMORY_PAGE_ID,
   MEMORY_PATH,
-  MEMORY_PATH_PREFIX,
 } from "../components/memory/constants/memoryRouteConstants";
+import { pageFromMemoryPath, pathFromMemoryPage } from "../components/memory/utils/memoryRoute";
 
 interface AppContextType {
   user: User | null;
@@ -112,9 +111,9 @@ const pageFromPath = (pathname: string) => {
     const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
     return workshopId ? `workshop-${workshopId}` : "explore";
   }
-  if (normalizedPath.startsWith(MEMORY_PATH_PREFIX)) {
-    const slug = decodeURIComponent(normalizedPath.slice(MEMORY_PATH_PREFIX.length));
-    return slug ? `${MEMORY_ENTRY_PAGE_PREFIX}${slug}` : MEMORY_PAGE_ID;
+  const memoryPage = pageFromMemoryPath(normalizedPath);
+  if (memoryPage) {
+    return memoryPage;
   }
   return PATH_TO_PAGE[normalizedPath] || "explore";
 };
@@ -124,9 +123,9 @@ const pathFromPage = (page: string) => {
     const workshopId = page.slice("workshop-".length);
     return `/workshops/${encodeURIComponent(workshopId)}`;
   }
-  if (page.startsWith(MEMORY_ENTRY_PAGE_PREFIX)) {
-    const slug = page.slice(MEMORY_ENTRY_PAGE_PREFIX.length);
-    return `${MEMORY_PATH}/${encodeURIComponent(slug)}`;
+  const memoryPath = pathFromMemoryPage(page);
+  if (memoryPath) {
+    return memoryPath;
   }
   return PAGE_TO_PATH[page] || "/explore";
 };

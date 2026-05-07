@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../../../lib/api";
+import { IMAGE_UPLOAD_TOO_LARGE_MESSAGE } from "../../constants/uploadLimits";
 
 export interface UserProfileUpdatesPayload {
   username?: string;
@@ -27,7 +28,7 @@ const parseApiErrorMessage = async (response: Response, fallbackMessage: string)
     lower.includes("size exceeds") ||
     lower.includes("payload too large")
   ) {
-    return "Image is too large. Please upload an image up to 10MB.";
+    return IMAGE_UPLOAD_TOO_LARGE_MESSAGE;
   }
 
   const cleaned = normalized

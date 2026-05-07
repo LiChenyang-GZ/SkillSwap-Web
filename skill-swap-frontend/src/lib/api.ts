@@ -1,6 +1,5 @@
 // lib/api.ts
 
-import type { MemoryEntry } from '@/types/memory';
 import type { Workshop } from '@/types/workshop';
 import type { User } from '@/types/user';
 
@@ -31,60 +30,12 @@ export interface WorkshopUpsertPayload {
 
 // Backend API configuration
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
-const SUPABASE_STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'skillswap-media';
-
-function encodePath(path: string): string {
-  return path
-    .split('/')
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
-}
-
-function rewriteLegacyUploadUrl(url: string): string {
-  if (!SUPABASE_URL) {
-    return url;
-  }
-
-  let legacyPath = '';
-  let query = '';
-
-  if (url.startsWith('/uploads/')) {
-    const suffix = url.slice('/uploads/'.length);
-    const idx = suffix.indexOf('?');
-    legacyPath = idx >= 0 ? suffix.slice(0, idx) : suffix;
-    query = idx >= 0 ? suffix.slice(idx) : '';
-  } else {
-    try {
-      const parsed = new URL(url);
-      if (!parsed.pathname.startsWith('/uploads/')) {
-        return url;
-      }
-      legacyPath = parsed.pathname.slice('/uploads/'.length);
-      query = parsed.search || '';
-    } catch {
-      return url;
-    }
-  }
-
-  if (!legacyPath) {
-    return url;
-  }
-
-  return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_STORAGE_BUCKET)}/${encodePath(legacyPath)}${query}`;
-}
 
 export function resolveAssetUrl(url?: string): string {
   if (!url) return '';
 
   const trimmed = String(url).trim();
   if (!trimmed) return '';
-
-  const migratedLegacy = rewriteLegacyUploadUrl(trimmed);
-  if (migratedLegacy !== trimmed) {
-    return migratedLegacy;
-  }
 
   if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
@@ -198,37 +149,6 @@ export function enrichWorkshop(workshop: any): Workshop {
   };
 }
 
-function enrichMemory(entry: any): MemoryEntry {
-  const normalizeMemoryUrl = (value?: string): string => {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-
-    const unquoted = raw.replace(/^['\"]|['\"]$/g, '');
-    const markdownImage = unquoted.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
-    const resolved = markdownImage?.[1]?.trim() || unquoted;
-    return resolveAssetUrl(resolved);
-  };
-
-  const rawMediaUrls = Array.isArray(entry.mediaUrls) ? entry.mediaUrls : [];
-  return {
-    id: String(entry.id),
-    title: entry.title || '',
-    slug: entry.slug || '',
-    coverUrl: normalizeMemoryUrl(entry.coverUrl || ''),
-    content: entry.content || '',
-    mediaUrls: rawMediaUrls.map((url: string) => normalizeMemoryUrl(url)).filter(Boolean),
-    status: (entry.status || 'draft') as MemoryEntry['status'],
-    publishedAt: entry.publishedAt,
-    createdAt: entry.createdAt,
-    updatedAt: entry.updatedAt,
-    createdBy: entry.createdBy,
-    updatedBy: entry.updatedBy,
-    editLockOwnerId: entry.editLockOwnerId || entry.editLockOwner || entry.edit_lock_owner,
-    editLockOwnerName: entry.editLockOwnerName || entry.edit_lock_owner_name,
-    editLockExpiresAt: entry.editLockExpiresAt || entry.edit_lock_expires_at,
-  };
-}
-
 export function toBackendWorkshopId(workshopId: string): string {
   // 兼容 mock id: workshop-1 -> 1
   const match = /^workshop-(\d+)$/.exec(workshopId);
@@ -312,103 +232,5 @@ export const transactionAPI = {
 
   add: async (_tx: any) => {
     throw new Error('transactionAPI.add requires a backend endpoint and is not implemented.');
-  },
-};
-
-// ----------------------
-// MEMORY API
-// ----------------------
-export const memoryAPI = {
-  getPublic: async (): Promise<MemoryEntry[]> => {
-    const data = await apiCall<any[]>('/api/v1/memories');
-    return data.map(enrichMemory);
-  },
-
-  getBySlug: async (slug: string): Promise<MemoryEntry | null> => {
-    try {
-      const data = await apiCall<any>(`/api/v1/memories/${encodeURIComponent(slug)}`);
-      return enrichMemory(data);
-    } catch {
-      return null;
-    }
-  },
-
-  getAllForAdmin: async (token?: string | null): Promise<MemoryEntry[]> => {
-    const data = await apiCall<any[]>('/api/v1/admin/memories', {}, token);
-    return data.map(enrichMemory);
-  },
-
-  createByAdmin: async (payload: Partial<MemoryEntry>, token?: string | null): Promise<MemoryEntry> => {
-    const data = await apiCall<any>(
-      '/api/v1/admin/memories',
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      },
-      token
-    );
-    return enrichMemory(data);
-  },
-
-  updateByAdmin: async (id: string, payload: Partial<MemoryEntry>, token?: string | null): Promise<MemoryEntry> => {
-    const data = await apiCall<any>(
-      `/api/v1/admin/memories/${id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      },
-      token
-    );
-    return enrichMemory(data);
-  },
-
-  deleteByAdmin: async (id: string, token?: string | null): Promise<void> => {
-    await apiCall<void>(
-      `/api/v1/admin/memories/${id}`,
-      {
-        method: 'DELETE',
-      },
-      token
-    );
-  },
-
-  acquireLockByAdmin: async (id: string, token?: string | null): Promise<MemoryEntry> => {
-    const data = await apiCall<any>(
-      `/api/v1/admin/memories/${id}/lock`,
-      {
-        method: 'POST',
-      },
-      token
-    );
-    return enrichMemory(data);
-  },
-
-  releaseLockByAdmin: async (id: string, token?: string | null): Promise<void> => {
-    await apiCall<void>(
-      `/api/v1/admin/memories/${id}/lock`,
-      {
-        method: 'DELETE',
-      },
-      token
-    );
-  },
-
-  uploadMediaByAdmin: async (file: File, token?: string | null): Promise<{ url: string; path: string }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await apiCall<{ url: string; path: string }>(
-      '/api/v1/admin/memories/media',
-      {
-        method: 'POST',
-        body: formData,
-      },
-      token
-    );
-
-    return {
-      ...response,
-      url: resolveAssetUrl(response.url || response.path),
-    };
   },
 };
