@@ -12,7 +12,9 @@ const ExploreWorkshops = React.lazy(() =>
 const Memory = React.lazy(() =>
   import('./components/memory/screen/MemoryScreen').then((m) => ({ default: m.MemoryScreen }))
 );
-const Dashboard = React.lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
+const Dashboard = React.lazy(() =>
+  import('./components/dashboard/screen/DashboardScreen').then((m) => ({ default: m.DashboardScreen }))
+);
 const CreateWorkshop = React.lazy(() =>
   import('./components/create-workshop/screen/CreateWorkshopScreen').then((m) => ({ default: m.CreateWorkshopScreen }))
 );
