@@ -1,0 +1,35 @@
+name: Issue Comment Debug
+
+on:
+  issue_comment:
+    types: [created, edited, deleted]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.pull_request != null }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print event basics
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "action=${{ github.event.action }}"
+          echo "actor=${{ github.actor }}"
+          echo "repo=${{ github.repository }}"
+          echo "workflow_ref=${{ github.workflow_ref }}"
+          echo "run_id=${{ github.run_id }}"
+
+      - name: Print comment context
+        if: ${{ github.event_name == 'issue_comment' }}
+        run: |
+          echo "issue_number=${{ github.event.issue.number }}"
+          echo "is_pr=${{ github.event.issue.pull_request != null }}"
+          echo "author_association=${{ github.event.comment.author_association }}"
+          echo "comment_user_type=${{ github.event.comment.user.type }}"
+          echo "comment_id=${{ github.event.comment.id }}"
+          echo "comment_body<<EOF"
+          echo "${{ github.event.comment.body }}"
+          echo "EOF"
