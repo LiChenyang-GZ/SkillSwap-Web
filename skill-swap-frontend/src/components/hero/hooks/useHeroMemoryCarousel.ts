@@ -6,6 +6,10 @@ export const useHeroMemoryCarousel = (entries: MemoryEntry[]) => {
   const [carouselStartIndex, setCarouselStartIndex] = useState(0);
 
   const featuredMemories = useMemo(() => sortPublishedMemories(entries), [entries]);
+  const featuredMemoryOrderSignature = useMemo(
+    () => featuredMemories.map((entry) => entry.id).join("|"),
+    [featuredMemories]
+  );
   const hasCarouselControls = featuredMemories.length > 3;
 
   useEffect(() => {
@@ -18,6 +22,10 @@ export const useHeroMemoryCarousel = (entries: MemoryEntry[]) => {
       setCarouselStartIndex(0);
     }
   }, [carouselStartIndex, featuredMemories.length]);
+
+  useEffect(() => {
+    setCarouselStartIndex(0);
+  }, [featuredMemoryOrderSignature]);
 
   const visibleMemories = useMemo(() => {
     if (featuredMemories.length <= 3) {
