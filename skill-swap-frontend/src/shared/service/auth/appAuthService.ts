@@ -89,6 +89,8 @@ const OAUTH_ERROR_MARKERS = [
   "oauth_callback_error",
   "oauth_error",
   "failed",
+  "failure",
+  "error",
   "access_denied",
 ];
 
@@ -119,6 +121,18 @@ export const detectClerkAuthError = (search: string, hash: string) => {
   // For generic OAuth failures, require an error-ish key or an explicit oauth marker.
   const hasOauthError = textToMatch.some((text) => OAUTH_ERROR_MARKERS.some((marker) => text.includes(marker)));
   if (hasErrorKey && hasOauthError) {
+    return GENERIC_OAUTH_ERROR_MESSAGE;
+  }
+
+  // Legacy fallback: some Clerk redirects only expose raw OAuth markers in query/hash.
+  const hasLegacyOauthSignal =
+    raw.includes("oauth_callback_error") ||
+    raw.includes("oauth_error") ||
+    raw.includes("oauth=failed") ||
+    raw.includes("oauth_failed") ||
+    raw.includes("oauth_failure") ||
+    (raw.includes("oauth") && (raw.includes("failed") || raw.includes("access_denied")));
+  if (hasLegacyOauthSignal) {
     return GENERIC_OAUTH_ERROR_MESSAGE;
   }
 
@@ -177,7 +191,7 @@ export function mapBackendUser(userProfile: any): User {
 }
 
 export const syncFallbackUsername = async (token: string, username: string) => {
-  await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -185,4 +199,9 @@ export const syncFallbackUsername = async (token: string, username: string) => {
     },
     body: JSON.stringify({ username }),
   });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Sync fallback username failed (${response.status}): ${text}`);
+  }
 };
