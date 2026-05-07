@@ -1,3 +1,5 @@
+import { IMAGE_UPLOAD_MAX_BYTES } from "../../../shared/constants/uploadLimits";
+
 export const DASHBOARD_SUPPORTED_AVATAR_IMAGE_TYPES = new Set([
   "image/png",
   "image/jpeg",
@@ -7,5 +9,5 @@ export const DASHBOARD_SUPPORTED_AVATAR_IMAGE_TYPES = new Set([
   "image/svg+xml",
 ]);
 
-export const DASHBOARD_AVATAR_MAX_BYTES = 10 * 1024 * 1024;
+export const DASHBOARD_AVATAR_MAX_BYTES = IMAGE_UPLOAD_MAX_BYTES;
 

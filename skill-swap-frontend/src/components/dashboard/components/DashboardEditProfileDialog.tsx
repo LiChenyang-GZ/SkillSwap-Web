@@ -6,6 +6,7 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import type { User } from "../../../types/user";
 import { DASHBOARD_PROFILE_NAME_MAX_LENGTH } from "../constants/dashboardUiConstants";
+import { IMAGE_UPLOAD_MAX_LABEL } from "../../../shared/constants/uploadLimits";
 
 interface DashboardEditProfileDialogProps {
   user: User;
@@ -75,7 +76,7 @@ export function DashboardEditProfileDialog({
                 <Button type="button" variant="outline" disabled={isSavingProfile} onClick={() => avatarFileInputRef.current?.click()}>
                   Choose Avatar
                 </Button>
-                <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP, up to 10MB.</p>
+                <p className="text-xs text-muted-foreground mt-1">PNG/JPG/WEBP, up to {IMAGE_UPLOAD_MAX_LABEL}.</p>
                 {pendingAvatarFile && <p className="text-xs text-foreground mt-1">Selected: {pendingAvatarFile.name}</p>}
               </div>
             </div>
