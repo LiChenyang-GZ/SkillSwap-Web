@@ -6,12 +6,14 @@ import type { MemoryEditorMode } from "../models/memoryFormModel";
 import type { MemoryUploadQueueItem } from "../models/memoryActionModel";
 import { MEMORY_EMPTY_DOC } from "../constants/memoryUiConstants";
 import { parseMemoryDocument } from "../utils/memoryDocument";
+import { getMemoryErrorMessage, getMemoryErrorStatus } from "../utils/memoryError";
 
 interface UseMemoryStudioEditorParams {
   sessionToken: string | null;
 }
 
 export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorParams) {
+  const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
   const [documentText, setDocumentText] = useState<string>(MEMORY_EMPTY_DOC);
   const [mode, setMode] = useState<MemoryEditorMode>("split");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -89,6 +91,10 @@ export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorPar
       toast.error("Only image files are supported.");
       return;
     }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      toast.error("Image is too large. Please upload an image up to 10 MB.");
+      return;
+    }
 
     setIsUploadingImage(true);
     try {
@@ -99,7 +105,18 @@ export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorPar
       toast.success("Image uploaded and inserted.");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to upload image.");
+      const status = getMemoryErrorStatus(error);
+      const message = getMemoryErrorMessage(error) || "";
+      const isSizeLimitError =
+        status === 413 ||
+        /payload too large|image is too large|maximum upload size|size exceeds|too large/i.test(message);
+
+      if (isSizeLimitError) {
+        toast.error("Image is too large. Please upload an image up to 10 MB.");
+        return;
+      }
+
+      toast.error(message || "Failed to upload image.");
     } finally {
       setIsUploadingImage(false);
     }

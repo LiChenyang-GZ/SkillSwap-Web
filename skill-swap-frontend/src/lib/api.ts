@@ -31,60 +31,12 @@ export interface WorkshopUpsertPayload {
 
 // Backend API configuration
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
-const SUPABASE_STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_STORAGE_BUCKET || 'skillswap-media';
-
-function encodePath(path: string): string {
-  return path
-    .split('/')
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join('/');
-}
-
-function rewriteLegacyUploadUrl(url: string): string {
-  if (!SUPABASE_URL) {
-    return url;
-  }
-
-  let legacyPath = '';
-  let query = '';
-
-  if (url.startsWith('/uploads/')) {
-    const suffix = url.slice('/uploads/'.length);
-    const idx = suffix.indexOf('?');
-    legacyPath = idx >= 0 ? suffix.slice(0, idx) : suffix;
-    query = idx >= 0 ? suffix.slice(idx) : '';
-  } else {
-    try {
-      const parsed = new URL(url);
-      if (!parsed.pathname.startsWith('/uploads/')) {
-        return url;
-      }
-      legacyPath = parsed.pathname.slice('/uploads/'.length);
-      query = parsed.search || '';
-    } catch {
-      return url;
-    }
-  }
-
-  if (!legacyPath) {
-    return url;
-  }
-
-  return `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_STORAGE_BUCKET)}/${encodePath(legacyPath)}${query}`;
-}
 
 export function resolveAssetUrl(url?: string): string {
   if (!url) return '';
 
   const trimmed = String(url).trim();
   if (!trimmed) return '';
-
-  const migratedLegacy = rewriteLegacyUploadUrl(trimmed);
-  if (migratedLegacy !== trimmed) {
-    return migratedLegacy;
-  }
 
   if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
