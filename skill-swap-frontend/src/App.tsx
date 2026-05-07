@@ -4,7 +4,7 @@ import { NavigationScreen } from './components/navigation/screen/NavigationScree
 import { Toaster } from './components/ui/sonner';
 import { MEMORY_ENTRY_PAGE_PREFIX } from './components/memory/constants/memoryRouteConstants';
 
-const HeroPage = React.lazy(() => import('./components/Hero').then((m) => ({ default: m.HeroPage })));
+const HeroScreen = React.lazy(() => import('./components/hero/screen/HeroScreen').then((m) => ({ default: m.HeroScreen })));
 const HomePage = React.lazy(() => import('./components/archive/HomePage').then((m) => ({ default: m.HomePage })));
 const ExploreWorkshops = React.lazy(() =>
   import('./components/workshop/screen/ExploreWorkshopsScreen').then((m) => ({ default: m.ExploreWorkshopsScreen }))
@@ -113,7 +113,7 @@ function AppContent() {
 
     switch (currentPage) {
       case 'hero':
-        return <HeroPage />;
+        return <HeroScreen />;
       case 'home':
         return <HomePage />;
       case 'explore':
@@ -145,7 +145,7 @@ function AppContent() {
         </div>;
       default:
         // Show Hero page for non-authenticated users, Explore page for authenticated users
-        return isAuthenticated ? <ExploreWorkshops /> : <HeroPage />;
+        return isAuthenticated ? <ExploreWorkshops /> : <HeroScreen />;
     }
   };
 
