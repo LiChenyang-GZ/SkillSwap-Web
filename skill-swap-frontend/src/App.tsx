@@ -18,7 +18,7 @@ const Dashboard = React.lazy(() =>
 const CreateWorkshop = React.lazy(() =>
   import('./components/create-workshop/screen/CreateWorkshopScreen').then((m) => ({ default: m.CreateWorkshopScreen }))
 );
-const AuthPage = React.lazy(() => import('./components/AuthPage').then((m) => ({ default: m.AuthPage })));
+const AuthScreen = React.lazy(() => import('./components/auth/screen/AuthScreen').then((m) => ({ default: m.AuthScreen })));
 const WorkshopDetails = React.lazy(() =>
   import('./components/workshop/screen/WorkshopDetailsScreen').then((m) => ({ default: m.WorkshopDetailsScreen }))
 );
@@ -127,7 +127,7 @@ function AppContent() {
       case 'create':
         return <CreateWorkshop />;
       case 'auth':
-        return <AuthPage />;
+        return <AuthScreen />;
       case 'memory':
         return <Memory />;
       case 'adminReview':
