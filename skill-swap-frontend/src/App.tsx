@@ -5,7 +5,7 @@ import { Toaster } from './components/ui/sonner';
 import { MEMORY_ENTRY_PAGE_PREFIX } from './components/memory/constants/memoryRouteConstants';
 
 const HeroPage = React.lazy(() => import('./components/Hero').then((m) => ({ default: m.HeroPage })));
-const HomePage = React.lazy(() => import('./components/HomePage').then((m) => ({ default: m.HomePage })));
+const HomePage = React.lazy(() => import('./components/archive/HomePage').then((m) => ({ default: m.HomePage })));
 const ExploreWorkshops = React.lazy(() =>
   import('./components/workshop/screen/ExploreWorkshopsScreen').then((m) => ({ default: m.ExploreWorkshopsScreen }))
 );
