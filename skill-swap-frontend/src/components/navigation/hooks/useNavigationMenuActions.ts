@@ -36,9 +36,13 @@ export function useNavigationMenuActions({
     closeMobileMenu();
   }, [closeMobileMenu, preloadCreateWorkshopScreen, setCurrentPage]);
 
-  const signOutAndCloseMobile = useCallback(() => {
-    void signOut();
-    closeMobileMenu();
+  const signOutAndCloseMobile = useCallback(async () => {
+    try {
+      await signOut();
+      closeMobileMenu();
+    } catch {
+      // Keep mobile menu open when sign-out fails so user retains an immediate retry path.
+    }
   }, [closeMobileMenu, signOut]);
 
   return {

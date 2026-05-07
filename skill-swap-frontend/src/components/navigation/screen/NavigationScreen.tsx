@@ -1,17 +1,23 @@
 import { NAVIGATION_ITEMS } from "../constants/navigationItems";
-import { useNavigationAuthState } from "../hooks/useNavigationAuthState";
 import { useNavigationCreateWorkshopPreload } from "../hooks/useNavigationCreateWorkshopPreload";
+import { useNavigationContextState } from "../hooks/useNavigationContextState";
 import { useNavigationMenuActions } from "../hooks/useNavigationMenuActions";
-import { useNavigationPageState } from "../hooks/useNavigationPageState";
 import { useNavigationResponsiveState } from "../hooks/useNavigationResponsiveState";
-import { useNavigationThemeState } from "../hooks/useNavigationThemeState";
 import { NavigationDesktopNav } from "../components/NavigationDesktopNav";
 import { NavigationMobileNav } from "../components/NavigationMobileNav";
 
 export function NavigationScreen() {
-  const { currentPage, setCurrentPage } = useNavigationPageState();
-  const { isDarkMode, toggleDarkMode } = useNavigationThemeState();
-  const { user, isAuthenticated, isAdmin, notificationsUnreadCount, signOut } = useNavigationAuthState();
+  const {
+    currentPage,
+    setCurrentPage,
+    isDarkMode,
+    toggleDarkMode,
+    user,
+    isAuthenticated,
+    isAdmin,
+    notificationsUnreadCount,
+    signOut,
+  } = useNavigationContextState();
   const { isMobileMenuOpen, closeMobileMenu, toggleMobileMenu } = useNavigationResponsiveState();
   const { preloadCreateWorkshopScreen } = useNavigationCreateWorkshopPreload(isAuthenticated);
   const { navigateToPage, navigateToPageAndCloseMobile, navigateToCreateAndCloseMobile, signOutAndCloseMobile } =

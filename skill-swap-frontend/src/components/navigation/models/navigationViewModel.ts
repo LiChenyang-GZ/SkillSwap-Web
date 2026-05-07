@@ -22,7 +22,7 @@ export interface NavigationUserMenuProps {
   isAuthenticated: boolean;
   notificationsUnreadCount: number;
   onNavigate: (page: string) => void;
-  onSignOut: () => void;
+  onSignOut: () => Promise<void>;
   onPreloadCreate: () => void;
 }
 
@@ -36,7 +36,7 @@ export interface NavigationDesktopNavProps {
   isAuthenticated: boolean;
   notificationsUnreadCount: number;
   onNavigate: (page: string) => void;
-  onSignOut: () => void;
+  onSignOut: () => Promise<void>;
   onPreloadCreate: () => void;
 }
 
@@ -53,5 +53,5 @@ export interface NavigationMobileNavProps {
   onToggleMobileMenu: () => void;
   onNavigateAndCloseMobile: (page: string) => void;
   onNavigateToCreateAndCloseMobile: () => void;
-  onSignOutAndCloseMobile: () => void;
+  onSignOutAndCloseMobile: () => Promise<void>;
 }
