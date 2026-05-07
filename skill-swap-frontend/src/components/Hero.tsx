@@ -1,31 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "../contexts/AppContext";
-import { memoryAPI } from "../lib/api";
-import type { MemoryEntry } from "../types/memory";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Archive, ArrowRight, ChevronLeft, ChevronRight, Loader2, Users } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-
-const fallbackCover = "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80";
-
-function pickCover(entry: MemoryEntry): string {
-  const raw = (entry.coverUrl || entry.mediaUrls[0] || "").trim();
-  if (!raw) return fallbackCover;
-
-  const unquoted = raw.replace(/^['\"]|['\"]$/g, "");
-  const markdownImage = unquoted.match(/^!\[[^\]]*\]\(([^)]+)\)$/);
-  if (markdownImage?.[1]) {
-    return markdownImage[1].trim() || fallbackCover;
-  }
-
-  return unquoted;
-}
+import { useMemoryPublicQuery } from "./memory/hooks/useMemoryPublicQuery";
+import { pickMemoryCover } from "./memory/utils/memoryCover";
+import { sortPublishedMemories } from "./memory/utils/memorySort";
 
 export function HeroPage() {
   const { setCurrentPage, workshops } = useApp();
-  const [entries, setEntries] = useState<MemoryEntry[]>([]);
-  const [isLoadingMemories, setIsLoadingMemories] = useState(true);
+  const { entries, isLoading: isLoadingMemories } = useMemoryPublicQuery();
   const [carouselStartIndex, setCarouselStartIndex] = useState(0);
 
   const stats = {
@@ -34,30 +19,8 @@ export function HeroPage() {
     workshops: workshops.length || 100,
   };
 
-  useEffect(() => {
-    const loadMemories = async () => {
-      setIsLoadingMemories(true);
-      try {
-        const data = await memoryAPI.getPublic();
-        setEntries(data);
-      } catch (error) {
-        console.error("Failed to load memories:", error);
-        setEntries([]);
-      } finally {
-        setIsLoadingMemories(false);
-      }
-    };
-
-    void loadMemories();
-  }, []);
-
   const featuredMemories = useMemo(
-    () =>
-      [...entries].sort((a, b) => {
-        const aTime = new Date(a.publishedAt || a.updatedAt || a.createdAt || 0).getTime();
-        const bTime = new Date(b.publishedAt || b.updatedAt || b.createdAt || 0).getTime();
-        return bTime - aTime;
-      }),
+    () => sortPublishedMemories(entries),
     [entries]
   );
 
@@ -212,7 +175,7 @@ export function HeroPage() {
                     >
                       <div className="relative aspect-[4/5] overflow-hidden">
                         <ImageWithFallback
-                          src={pickCover(entry)}
+                          src={pickMemoryCover(entry)}
                           alt={entry.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
