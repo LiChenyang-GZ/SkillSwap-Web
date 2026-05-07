@@ -3,8 +3,6 @@
 import type { MemoryEntry } from '@/types/memory';
 import type { Workshop } from '@/types/workshop';
 import type { User } from '@/types/user';
-import { supabase } from '../utils/supabase/supabase';
-import { getAuthRedirectUrl } from './authRedirect';
 
 export interface WorkshopUpsertPayload {
   hostName: string;
@@ -281,60 +279,6 @@ export async function apiCall<T>(
     return raw as T;
   }
 }
-
-// ----------------------
-// AUTH API
-// ----------------------
-export const authAPI = {
-  // Real Google OAuth (works as sign-in & sign-up automatically)
-  signInWithGoogle: async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: getAuthRedirectUrl() },
-    });
-    if (error) throw error;
-    return data;
-  },
-
-  // Magic link authentication
-  signInWithMagicLink: async (email: string) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: getAuthRedirectUrl(),
-      },
-    });
-    if (error) throw error;
-    return data;
-  },
-
-  // Sign out
-  signOut: async () => {
-    // 清除 Supabase 会话
-    await supabase.auth.signOut();
-  },
-
-  // Get current Supabase session + JWT
-  getSession: async () => {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-
-    const session = data.session;
-    return {
-      session, // full session object
-      accessToken: session?.access_token ?? null, // 🔑 JWT token
-      user: session?.user ?? null, // basic user info
-    };
-  },
-
-  getUser: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session?.user) {
-      return null;
-    }
-    return data.session.user;
-  },
-};
 
 // ----------------------
 // USER API

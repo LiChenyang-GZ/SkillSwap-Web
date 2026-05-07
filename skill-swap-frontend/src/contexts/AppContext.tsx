@@ -12,8 +12,15 @@ import type { WorkshopUpsertPayload } from "../lib/api";
 import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 import type { CreditTransaction } from "../types/creditTransaction";
-import { resolveAssetUrl } from "../lib/api";
 import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
+import {
+  buildIdentityFallback,
+  decodeJwtPayload,
+  detectClerkAuthError,
+  fetchBackendProfile,
+  mapBackendUser,
+  syncFallbackUsername,
+} from "../shared/service/auth/appAuthService";
 import { notificationQueryService } from "../shared/service/notification/notificationQueryService";
 import { userProfileService } from "../shared/service/user/userProfileService";
 import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
@@ -47,7 +54,6 @@ interface AppContextType {
   cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
   createWorkshop: (workshopData: WorkshopUpsertPayload) => Promise<boolean>;
   deleteWorkshop: (workshopId: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateCurrentUserProfile: (updates: {
     username?: string;
@@ -160,29 +166,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const hasBackendProfileRef = useRef(false);
   const recentProfileCacheRef = useRef<{ subject: string | null; user: User; at: number } | null>(null);
 
-  const decodeJwtPayload = (token: string | null) => {
-    if (!token) return null;
-    try {
-      const payload = token.split(".")[1];
-      if (!payload) return null;
-      const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
-      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=");
-      return JSON.parse(atob(padded));
-    } catch (error) {
-      console.warn("Failed to decode JWT payload", error);
-      return null;
-    }
-  };
-
-  const normalizeWhitespace = (value: string) => value.trim().replace(/\s+/g, " ");
-
-  const isGeneratedUsername = (value: string | null | undefined) => {
-    if (!value) return true;
-    const candidate = value.trim();
-    if (!candidate) return true;
-    return /^user([_\s-]|$)/i.test(candidate);
-  };
-
   const refreshSessionToken = useCallback(async () => {
     const nextToken = await getToken({ template: "signupTemplate" });
     if (nextToken) {
@@ -197,36 +180,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     sessionToken,
     refreshSessionToken,
   });
-
-  const buildIdentityFallback = (backendUser: User): User => {
-    const primaryEmail =
-      clerkUser?.primaryEmailAddress?.emailAddress?.trim() ||
-      clerkUser?.emailAddresses?.[0]?.emailAddress?.trim() ||
-      "";
-
-    const fullNameCandidate = normalizeWhitespace(
-      clerkUser?.fullName ||
-        [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") ||
-        ""
-    );
-
-    const usernameCandidate =
-      (fullNameCandidate && !/^user([_\s-]|$)/i.test(fullNameCandidate) ? fullNameCandidate : "") ||
-      clerkUser?.username?.trim() ||
-      (primaryEmail.includes("@") ? primaryEmail.split("@")[0] : "");
-
-    const nextEmail = backendUser.email?.trim() || primaryEmail || "";
-    const nextUsername = isGeneratedUsername(backendUser.username)
-      ? (usernameCandidate || backendUser.username)
-      : backendUser.username;
-
-    return {
-      ...backendUser,
-      email: nextEmail,
-      username: nextUsername,
-    };
-  };
-
 
   const fetchBackendUser = useCallback(async (accessToken: string): Promise<User> => {
     const payload = decodeJwtPayload(accessToken) as { sub?: string } | null;
@@ -369,25 +322,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentPage(targetPage);
     };
 
-    const detectClerkAuthError = () => {
-      const raw = `${window.location.search} ${window.location.hash}`.toLowerCase();
-      const hasExternalAccountNotFound = raw.includes("external_account_not_found");
-      const hasOauthError = raw.includes("oauth") && (raw.includes("error") || raw.includes("failed"));
-      if (!hasExternalAccountNotFound && !hasOauthError) {
-        return null;
-      }
-      if (hasExternalAccountNotFound) {
-        return "This Google account is not linked yet. Please click Sign Up once to create and link your account, then use Sign In.";
-      }
-      return "Third-party sign-in did not complete. Please try again. If this is your first time with Google, click Sign Up first.";
-    };
-
     bootstrapAuthInProgressRef.current = true;
     void (async () => {
       try {
         if (!isSignedIn) {
           const currentPageFromPath = pageFromPath(window.location.pathname);
-          const authErrorMessage = detectClerkAuthError();
+          const authErrorMessage = detectClerkAuthError(window.location.search, window.location.hash);
           if (authErrorMessage) {
             sessionStorage.setItem("skill_swap_auth_error", authErrorMessage);
             clearAuthState("auth");
@@ -411,7 +351,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         try {
           const mapped = await fetchBackendUser(token);
-          const hydrated = buildIdentityFallback(mapped);
+          const hydrated = buildIdentityFallback(mapped, clerkUser);
           setUser(hydrated);
           setIsAuthenticated(true);
           setSessionToken(token);
@@ -421,14 +361,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (hydrated.username && hydrated.username !== mapped.username) {
             // Best effort: persist a friendlier username back to backend.
             try {
-              await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"}/api/v1/users/me`, {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ username: hydrated.username }),
-              });
+              await syncFallbackUsername(token, hydrated.username);
             } catch (syncError) {
               console.warn("Failed to sync fallback username to backend", syncError);
             }
@@ -449,79 +382,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     })();
   }, [clerkLoaded, isSignedIn, getToken, fetchBackendUser, clerkUser]);
-
-  // --------------------------
-  // Helpers
-  // --------------------------
-  // 历史保留：Supabase user 映射函数当前未被调用。
-  // const mapSupabaseUser = (sbUser: any): User => ({
-  //   ...mockUser, // fallback defaults
-  //   id: sbUser.id,
-  //   email: sbUser.email ?? "",
-  //   username: sbUser.user_metadata?.full_name ?? sbUser.email?.split("@")[0],
-  //   avatarUrl: sbUser.user_metadata?.avatar_url ?? mockUser.avatarUrl,
-  // });
-
-  async function fetchBackendProfile(accessToken: string) {
-    // 统一用一个 endpoint（建议你用后端的 /me）
-    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-    // ✅ 这里请改成你后端真实的 endpoint：
-    // 你之前 controller 是 /me，就用 `${base}/me`
-    // 你现在代码用的是 /api/users/current
-    const url = `${base}/api/v1/users/me`;
-
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Fetch profile failed (${res.status}): ${text}`);
-    }
-
-    return res.json();
-  }
-
-  function mapBackendUser(userProfile: any): User {
-    const rawAvatar =
-      userProfile.avatarUrl ||
-      userProfile.avatar_url ||
-      userProfile.avatar ||
-      "";
-    const resolvedAvatar = resolveAssetUrl(rawAvatar);
-    const avatarVersion =
-      userProfile.updatedAt ||
-      userProfile.updated_at ||
-      userProfile.avatarUpdatedAt ||
-      userProfile.avatar_updated_at ||
-      "";
-
-    const avatarUrl = resolvedAvatar
-      ? (avatarVersion
-          ? `${resolvedAvatar}${resolvedAvatar.includes("?") ? "&" : "?"}v=${encodeURIComponent(String(avatarVersion))}`
-          : resolvedAvatar)
-      : "";
-
-    return {
-      id: String(userProfile.id),
-      email: userProfile.email,
-      username: userProfile.username,
-      avatarUrl,
-      bio: userProfile.bio || "",
-      // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
-      // creditBalance: userProfile.creditBalance ?? 100,
-      creditBalance: userProfile.creditBalance ?? 0,
-      skills: userProfile.skills || [],
-      totalWorkshopsHosted: userProfile.totalWorkshopsHosted || 0,
-      totalWorkshopsAttended: userProfile.totalWorkshopsAttended || 0,
-      rating: userProfile.rating || 0,
-      reviewCount: userProfile.reviewCount || 0,
-      createdAt: userProfile.createdAt || new Date().toISOString(),
-    };
-  }
 
   // --------------------------
   // Cache
@@ -665,13 +525,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // --------------------------
   // Auth Actions
   // --------------------------
-  const signIn = async (email: string, password: string) => {
-    // Clerk 登录/注册由 AuthPage 承载，这里仅保留接口兼容。
-    console.debug("signIn called (delegated to Clerk)", { email, passwordLen: password?.length });
-    setCurrentPage("auth");
-    toast.info("Please sign in on the auth page.");
-  };
-
   const signOut = async () => {
     await clerkSignOut();
     setUser(null);
@@ -881,7 +734,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         cancelWorkshopAttendance,
         createWorkshop,
         deleteWorkshop,
-        signIn,
         signOut,
         updateCurrentUserProfile,
         uploadCurrentUserAvatar,
