@@ -64,17 +64,65 @@ export const buildIdentityFallback = (backendUser: User, clerkUser: ClerkUserLik
   };
 };
 
+const EXTERNAL_ACCOUNT_ERROR_MESSAGE =
+  "This Google account is not linked yet. Please click Sign Up once to create and link your account, then use Sign In.";
+const GENERIC_OAUTH_ERROR_MESSAGE =
+  "Third-party sign-in did not complete. Please try again. If this is your first time with Google, click Sign Up first.";
+
+const parseLocationParams = (part: string) => {
+  const trimmed = part.trim();
+  if (!trimmed) return new URLSearchParams();
+  const normalized = trimmed.startsWith("?") || trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
+  return new URLSearchParams(normalized);
+};
+
+const EXTERNAL_ACCOUNT_MARKERS = [
+  "external_account_not_found",
+  "account_not_linked",
+  "account is not linked yet",
+  "external account was not found",
+];
+
+const OAUTH_ERROR_MARKERS = [
+  "oauth",
+  "oauth_callback",
+  "oauth_callback_error",
+  "oauth_error",
+  "failed",
+  "access_denied",
+];
+
 export const detectClerkAuthError = (search: string, hash: string) => {
+  const searchParams = parseLocationParams(search);
+  const hashParams = parseLocationParams(hash);
+  const entries = [...searchParams.entries(), ...hashParams.entries()].map(([key, value]) => [
+    key.toLowerCase(),
+    value.toLowerCase(),
+  ]);
+
   const raw = `${search} ${hash}`.toLowerCase();
-  const hasExternalAccountNotFound = raw.includes("external_account_not_found");
-  const hasOauthError = raw.includes("oauth") && (raw.includes("error") || raw.includes("failed"));
-  if (!hasExternalAccountNotFound && !hasOauthError) {
-    return null;
-  }
+
+  const paramKeys = entries.map(([key]) => key);
+  const paramValues = entries.map(([, value]) => value);
+  const hasErrorKey = paramKeys.some((key) => key.includes("error") || key.includes("status") || key.includes("code"));
+
+  const textToMatch = [...paramValues, raw];
+
+  const hasExternalAccountNotFound = textToMatch.some((text) =>
+    EXTERNAL_ACCOUNT_MARKERS.some((marker) => text.includes(marker))
+  );
+
   if (hasExternalAccountNotFound) {
-    return "This Google account is not linked yet. Please click Sign Up once to create and link your account, then use Sign In.";
+    return EXTERNAL_ACCOUNT_ERROR_MESSAGE;
   }
-  return "Third-party sign-in did not complete. Please try again. If this is your first time with Google, click Sign Up first.";
+
+  // For generic OAuth failures, require an error-ish key or an explicit oauth marker.
+  const hasOauthError = textToMatch.some((text) => OAUTH_ERROR_MARKERS.some((marker) => text.includes(marker)));
+  if (hasErrorKey && hasOauthError) {
+    return GENERIC_OAUTH_ERROR_MESSAGE;
+  }
+
+  return null;
 };
 
 export async function fetchBackendProfile(accessToken: string) {

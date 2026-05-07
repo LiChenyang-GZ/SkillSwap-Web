@@ -384,18 +384,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [clerkLoaded, isSignedIn, getToken, fetchBackendUser, clerkUser]);
 
   // --------------------------
-  // Helpers
-  // --------------------------
-  // 历史保留：Supabase user 映射函数当前未被调用。
-  // const mapSupabaseUser = (sbUser: any): User => ({
-  //   ...mockUser, // fallback defaults
-  //   id: sbUser.id,
-  //   email: sbUser.email ?? "",
-  //   username: sbUser.user_metadata?.full_name ?? sbUser.email?.split("@")[0],
-  //   avatarUrl: sbUser.user_metadata?.avatar_url ?? mockUser.avatarUrl,
-  // });
-
-  // --------------------------
   // Cache
   // --------------------------
   const clearCache = () => {
