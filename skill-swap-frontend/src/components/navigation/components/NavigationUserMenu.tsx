@@ -32,9 +32,9 @@ export function NavigationUserMenu({
   }
 
   return (
-    <DropdownMenu modal={false}>
+      <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center space-x-2">
+        <button type="button" aria-label={`Open user menu for ${user.username}`} className="flex items-center space-x-2">
           <Avatar className="w-8 h-8">
             <AvatarImage src={user.avatarUrl} alt={user.username} />
             <AvatarFallback>{getUserInitials(user.username)}</AvatarFallback>
