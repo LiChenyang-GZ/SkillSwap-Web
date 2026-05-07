@@ -75,6 +75,7 @@ export function MemoryStudioScreen() {
     isCreatingNew,
     onPatchEntry: applyEntryPatch,
   });
+  const { clearLockState, setLockMessage } = locking;
 
   const baseDocumentText = useMemo(
     () => (selectedEntry ? buildMemoryDocumentFromEntry(selectedEntry) : MEMORY_EMPTY_DOC),
@@ -92,12 +93,12 @@ export function MemoryStudioScreen() {
 
   useEffect(() => {
     if (!hasSession) {
-      locking.clearLockState();
-      setEntries([]);
+      clearLockState();
+      setEntries((previous) => (previous.length === 0 ? previous : []));
       resetSelectionState();
       resetDocument();
     }
-  }, [hasSession, locking, resetDocument, resetSelectionState, setEntries]);
+  }, [clearLockState, hasSession, resetDocument, resetSelectionState, setEntries]);
 
   const mutations = useMemoryStudioMutations({
     sessionToken,
@@ -126,7 +127,7 @@ export function MemoryStudioScreen() {
 
   const handleRefresh = async () => {
     setEntryPage(1);
-    locking.setLockMessage(null);
+    setLockMessage(null);
     await loadEntries();
   };
 
