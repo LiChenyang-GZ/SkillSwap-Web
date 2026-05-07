@@ -1,6 +1,8 @@
 export const getUserInitials = (username: string) => {
   return username
-    .split(" ")
-    .map((namePart) => namePart[0])
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((namePart) => namePart.charAt(0))
     .join("");
 };
