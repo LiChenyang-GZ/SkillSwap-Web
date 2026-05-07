@@ -1,9 +1,9 @@
-import { useApp } from '../contexts/AppContext';
-import type { Workshop } from '../types/workshop';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { useApp } from '../../contexts/AppContext';
+import type { Workshop } from '../../types/workshop';
+import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   Calendar,
   TrendingUp,
@@ -14,7 +14,7 @@ import {
   BookOpen,
   Target
 } from 'lucide-react';
-import { getWorkshopAccessLabel, isUserWorkshopUpcoming } from './workshop/utils/workshopStatusPublicApi';
+import { getWorkshopAccessLabel, isUserWorkshopUpcoming } from '../workshop/utils/workshopStatusPublicApi';
 
 export function HomePage() {
   const { user, workshops, setCurrentPage } = useApp();
