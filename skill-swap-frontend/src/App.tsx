@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
-import { Navigation } from './components/Navigation';
+import { NavigationScreen } from './components/navigation/screen/NavigationScreen';
 import { Toaster } from './components/ui/sonner';
 import { MEMORY_ENTRY_PAGE_PREFIX } from './components/memory/constants/memoryRouteConstants';
 
@@ -154,7 +154,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      {showNavigation && <Navigation />}
+      {showNavigation && <NavigationScreen />}
       <main>
         <React.Suspense
           fallback={
