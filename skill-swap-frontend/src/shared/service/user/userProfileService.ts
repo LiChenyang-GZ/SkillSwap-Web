@@ -45,7 +45,17 @@ const authenticatedFetch = async <T>(url: string, options: RequestInit, fallback
     const message = await parseApiErrorMessage(response, fallbackWithStatus);
     throw new Error(message || fallbackWithStatus);
   }
-  return response.json() as Promise<T>;
+
+  const raw = await response.text();
+  if (!raw) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return raw as T;
+  }
 };
 
 export const userProfileService = {

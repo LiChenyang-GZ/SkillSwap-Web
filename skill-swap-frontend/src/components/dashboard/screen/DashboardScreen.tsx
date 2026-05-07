@@ -14,32 +14,49 @@ import { useDashboardPagination } from "../hooks/useDashboardPagination";
 import { useDashboardProfileForm } from "../hooks/useDashboardProfileForm";
 import { useDashboardWorkshopView } from "../hooks/useDashboardWorkshopView";
 import { isHostedByCurrentUser } from "../utils/dashboardWorkshopUtils";
+import type { User } from "../../../types/user";
+import type { Workshop } from "../../../types/workshop";
 
-export function DashboardScreen() {
-  const {
-    user,
-    workshops,
-    sessionToken,
-    setCurrentPage,
-    cancelWorkshopAttendance,
-    updateCurrentUserProfile,
-    uploadCurrentUserAvatar,
-  } = useApp();
+interface DashboardAuthenticatedScreenProps {
+  user: User;
+  workshops: Workshop[];
+  sessionToken: string | null;
+  setCurrentPage: (page: string) => void;
+  cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
+  updateCurrentUserProfile: (updates: {
+    username?: string;
+    avatarUrl?: string;
+    bio?: string;
+    skills?: string[];
+  }) => Promise<User>;
+  uploadCurrentUserAvatar: (file: File) => Promise<User>;
+}
+
+function DashboardAuthenticatedScreen({
+  user,
+  workshops,
+  sessionToken,
+  setCurrentPage,
+  cancelWorkshopAttendance,
+  updateCurrentUserProfile,
+  uploadCurrentUserAvatar,
+}: DashboardAuthenticatedScreenProps) {
+  const nonNullableUser: User | null = user;
 
   const profileForm = useDashboardProfileForm({
-    user,
+    user: nonNullableUser,
     updateCurrentUserProfile,
     uploadCurrentUserAvatar,
   });
 
   const hostingMutations = useDashboardHostingMutations({
     sessionToken,
-    user,
+    user: nonNullableUser,
     workshops,
   });
 
   const workshopViewWithHostingFilter = useDashboardWorkshopView({
-    user,
+    user: nonNullableUser,
     workshops,
     hiddenHostedWorkshopIds: hostingMutations.hiddenHostedWorkshopIds,
   });
@@ -49,10 +66,6 @@ export function DashboardScreen() {
     sortedAttendedWorkshops: workshopViewWithHostingFilter.sortedAttendedWorkshops,
     sortedHostingWorkshops: workshopViewWithHostingFilter.sortedHostingWorkshops,
   });
-
-  if (!user) {
-    return <DashboardAuthState />;
-  }
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">
@@ -88,7 +101,7 @@ export function DashboardScreen() {
                   onOpenWorkshop={(workshopId) => setCurrentPage(`workshop-${workshopId}`)}
                   onCancelWorkshopAttendance={cancelWorkshopAttendance}
                   onExploreWorkshops={() => setCurrentPage("explore")}
-                  isHostedByCurrentUser={(workshop) => isHostedByCurrentUser(workshop, user)}
+                  isHostedByCurrentUser={(workshop) => isHostedByCurrentUser(workshop, nonNullableUser)}
                 />
               </TabsContent>
 
@@ -138,5 +151,33 @@ export function DashboardScreen() {
         onSave={profileForm.handleSaveProfile}
       />
     </div>
+  );
+}
+
+export function DashboardScreen() {
+  const {
+    user,
+    workshops,
+    sessionToken,
+    setCurrentPage,
+    cancelWorkshopAttendance,
+    updateCurrentUserProfile,
+    uploadCurrentUserAvatar,
+  } = useApp();
+
+  if (!user) {
+    return <DashboardAuthState />;
+  }
+
+  return (
+    <DashboardAuthenticatedScreen
+      user={user}
+      workshops={workshops}
+      sessionToken={sessionToken}
+      setCurrentPage={setCurrentPage}
+      cancelWorkshopAttendance={cancelWorkshopAttendance}
+      updateCurrentUserProfile={updateCurrentUserProfile}
+      uploadCurrentUserAvatar={uploadCurrentUserAvatar}
+    />
   );
 }
