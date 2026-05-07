@@ -41,8 +41,9 @@ const parseApiErrorMessage = async (response: Response, fallbackMessage: string)
 const authenticatedFetch = async <T>(url: string, options: RequestInit, fallbackMessage: string): Promise<T> => {
   const response = await fetch(url, options);
   if (!response.ok) {
-    const message = await parseApiErrorMessage(response, fallbackMessage);
-    throw new Error(message || fallbackMessage);
+    const fallbackWithStatus = `${fallbackMessage} (${response.status}).`;
+    const message = await parseApiErrorMessage(response, fallbackWithStatus);
+    throw new Error(message || fallbackWithStatus);
   }
   return response.json() as Promise<T>;
 };
@@ -83,4 +84,3 @@ export const userProfileService = {
     );
   },
 };
-
