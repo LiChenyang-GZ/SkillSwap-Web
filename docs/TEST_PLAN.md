@@ -119,6 +119,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 
 - 2026-05-16: `TEST_PLAN.md` narrowed to SkillSwap-specific roadmap content and references `.codex/skills/test-skill/SKILL.md` for general testing methodology. Reason: avoid duplicating cross-project methodology.
 - 2026-05-16: Skill file path chosen as `.codex/skills/test-skill/SKILL.md` (Codex's convention directory). Reason: SkillSwap currently uses Codex as its primary coding agent. If other AI tools are adopted later, the skill content can be copied to their respective convention directories (`.claude/skills/`, etc.).
+- 2026-05-16: Backend test plan placed at `docs/TEST_PLAN.md`. Reason: keep the SkillSwap-specific backend testing roadmap discoverable at a stable top-level docs path for every future test PR.
 - 2026-05-16: Test profile activated via Gradle system property rather than `@ActiveProfiles` on every test class. Reason: one-time configuration, impossible to forget on future tests.
 - 2026-05-16: Proposed dbSmokeTest mitigation: `@Profile("!test")` on the existing bean. Production code change pending PR #1 approval. Reason: smallest likely behavior-preserving change; production and dev would keep the smoke check.
 - 2026-05-16: PR #1 must explicitly load a test-only `JwtDecoder` configuration if full Spring context startup creates the production bean. Reason: test startup must not depend on Clerk/Supabase JWKS URLs.
