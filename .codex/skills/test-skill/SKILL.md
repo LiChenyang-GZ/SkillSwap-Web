@@ -82,6 +82,22 @@ happens in plan mode before implementation begins.
   readability. Always include a `because:` / `as:` clause for
   non-obvious assertions — it documents the rule.
 
+## Step 4.5 — Test file organization
+
+- **One test file per class under test.** UserService.java →
+  UserServiceTest.java, not "one file per test scenario".
+- **Multiple @Test methods per test file**, one per scenario.
+- **Mirror the production package structure under src/test/**
+  (Java) or place .test.tsx next to the component (TypeScript).
+- **Test files only split by functional area when they exceed
+  ~500 lines.** Don't pre-split.
+- **Integration tests** testing multi-class flows are named
+  after the flow (WorkshopJoinFlowTest), not a single class.
+- **One PR may touch multiple test files** if the PR's scope
+  naturally includes multiple classes under test. The rule
+  "one PR = one cohesive slice" doesn't mean "one PR = one
+  test file".
+
 ## Step 5 — Behavior preservation
 
 Tests must reflect ACTUAL current behavior, not assumed or
