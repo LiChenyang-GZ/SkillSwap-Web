@@ -56,6 +56,9 @@ dependencies {
 	
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
+	testImplementation 'org.testcontainers:jdbc'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
   implementation 'org.apache.commons:commons-lang3:3.12.0'
@@ -109,6 +112,7 @@ tasks.named('test') {
   def envMap = loadDotEnv()
   environment envMap
   envMap.each { k, v -> systemProperty k, v }
+  systemProperty "spring.profiles.active", "test"
 }
 
 def flywayEnv = loadDotEnv()
