@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.scheduling.annotation.EnableAsync;
 
@@ -24,6 +25,7 @@ public class SkillSwapBackendApplication {
 	}
 
 	// 鍚姩鍚庢墽琛屼竴鏉＄畝鍗?SQL锛岄獙璇佽繛鎺ユ槸鍚?OK
+    @Profile("!test")
     @Bean
     public org.springframework.boot.CommandLineRunner dbSmokeTest(DataSource ds) {
         return args -> {

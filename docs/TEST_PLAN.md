@@ -71,14 +71,23 @@ This document covers only what is specific to SkillSwap:
 - [x] Create this roadmap
 
 ### PR #1 -- Test infrastructure
-- [ ] Gradle test profile activation
-- [ ] `application-test.properties` with no real external URLs
-- [ ] dbSmokeTest mitigation: proposed approach is `@Profile("!test")` on the existing bean in `SkillSwapBackendApplication`. This production code change requires explicit approval before PR #1 implementation begins. Codex must propose the exact diff in plan mode first and wait for approval before modifying production code.
-- [ ] If full Spring context startup creates a `JwtDecoder` bean from `WebSecurityConfiguration`, provide a test-only `@TestConfiguration` that supplies a stub `JwtDecoder`. The test-only `JwtDecoder` configuration must be explicitly loaded -- either as a static nested `@TestConfiguration` on the test class that needs it, or imported via `@Import(TestJwtConfig.class)`. A standalone `@TestConfiguration` class in test sources is NOT auto-loaded by Spring; if not imported, `contextLoads` will still try to use the production `JwtDecoder`.
-- [ ] `TestFixtures` skeleton with `UserAccount` builder only
-- [ ] `gradle-test.log` handled
-- [ ] `contextLoads` remains green and makes no real calls
+- [x] Gradle test profile activation
+- [x] `application-test.properties` with no real external URLs
+- [x] dbSmokeTest mitigation: proposed approach is `@Profile("!test")` on the existing bean in `SkillSwapBackendApplication`. This production code change requires explicit approval before PR #1 implementation begins. Codex must propose the exact diff in plan mode first and wait for approval before modifying production code.
+- [x] If full Spring context startup creates a `JwtDecoder` bean from `WebSecurityConfiguration`, provide a test-only `@TestConfiguration` that supplies a stub `JwtDecoder`. The test-only `JwtDecoder` configuration must be explicitly loaded -- either as a static nested `@TestConfiguration` on the test class that needs it, or imported via `@Import(TestJwtConfig.class)`. A standalone `@TestConfiguration` class in test sources is NOT auto-loaded by Spring; if not imported, `contextLoads` will still try to use the production `JwtDecoder`.
+- [x] `TestFixtures` skeleton with `UserAccount` builder only
+- [x] `gradle-test.log` handled
+- [x] `contextLoads` remains green and makes no real calls
 - Exit: `./gradlew test` green; `spring.profiles.active=test` verified by an assertion in a test method, e.g. inject `Environment` and assert `getActiveProfiles()` contains `test`. Log inspection alone is insufficient.
+
+**Implementation notes (added on completion):**
+- Gradle test profile activation: applied via `tasks.named('test') { systemProperty "spring.profiles.active", "test" }`
+- `application-test.properties`: created with Testcontainers PostgreSQL datasource, `.invalid` TLD external URLs, `ddl-auto=create-drop`, dummy credentials
+- dbSmokeTest mitigation: applied `@Profile("!test")` to the existing bean in `SkillSwapBackendApplication` (one import + one annotation, no other production changes)
+- JwtDecoder replacement: used Spring 6.2 `@TestBean(name = "jwtDecoder", methodName = "testJwtDecoder", enforceOverride = true)` instead of `@TestConfiguration` loading -- this was the chosen path because the project resolved to Spring Boot 3.5.6 / `spring-test` 6.2.11
+- TestFixtures: created with `UserAccount` valid-by-default builder only
+- `gradle-test.log`: confirmed already covered by existing `*.log` ignore rules in both root and backend `.gitignore`
+- Local verification: `./gradlew test` BUILD SUCCESSFUL in 49s on Docker Desktop 4.43.1 (Windows)
 
 ### PR #2 -- user service unit tests, round 1
 - [ ] creates current user from a new JWT with default member role and verified email
@@ -114,6 +123,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - Review `AzureBlobStorageService` / `SupabaseStorageService` for testability; both currently create clients internally.
 - Consider centralizing authenticated user ID resolution, currently repeated across services/controllers.
 - Consider synchronous async executor test configuration when notification integration tests begin.
+- Add a GitHub Actions workflow running `./gradlew test` on `ubuntu-latest` for backend PRs. Docker is pre-installed on the `ubuntu-latest` runner image, so Testcontainers will work without extra setup. Current state: no backend test CI job exists; tests run only locally.
 
 ## Decisions Log
 
@@ -128,6 +138,8 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - 2026-05-16: `joinWorkshop` no-facilitator-notification behavior recorded as a product decision, not an inconsistency. Reason: per-join notifications would create low-signal noise.
 - 2026-05-16: Module order proposed as user, notification, memory, workshop, then admin/Health/integration/security. Reason: start with low internal dependencies and reusable fixtures, then move toward modules with higher branching, storage, async, and cross-module coupling.
 - 2026-05-16: `UserService` workshop-side read coupling recorded as intentional domain design. Reason: users can be both facilitators and participants, so user-facing profile/stat views naturally aggregate workshop data.
+- 2026-05-16: PR #1 introduces PostgreSQL Testcontainers during infrastructure setup, before repository tests originally scheduled for PR #4. Reasons: Production uses PostgreSQL on Azure; H2 dialect substitution risks false-green tests. Local PostgreSQL would require per-developer setup and suffers from state drift between machines. Testcontainers provides reproducible, isolated, production-equivalent test datasource for both local and CI runs. Project target is industrial production quality; the Docker dependency cost is justified by reproducibility.
+- 2026-05-16: Test schema generated via Hibernate `ddl-auto=create-drop` because no Flyway/Liquibase migrations exist on main. If repository tests in PR #4 reveal entity-to-schema discrepancies (`jsonb` columns, custom `@Type`, etc.), revisit by adding migration files or explicit `columnDefinition` declarations.
 
 ## Open Questions / Pending Decisions
 
