@@ -100,7 +100,7 @@ export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorPar
     try {
       const result = await memoryAdminService.uploadMediaByAdmin(file, sessionToken);
       const fallbackAlt = file.name ? file.name.replace(/\.[^.]+$/, "") : "image";
-      const markdown = `![${fallbackAlt || "image"}](${result.url || result.path})`;
+      const markdown = `<div align="center">\n  <img src="${result.url || result.path}" alt="${fallbackAlt || "image"}" width="250" />\n</div>`;
       insertTextAtRange(markdown, start, end);
       toast.success("Image uploaded and inserted.");
     } catch (error) {

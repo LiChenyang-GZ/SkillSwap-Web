@@ -25,11 +25,12 @@ export function MemoryMarkdownRenderer({
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeRaw, [rehypeSanitize, memoryMarkdownSanitizeSchema]]}
       components={{
-        img: ({ src, alt }) => (
+        img: ({ src, alt, width }) => (
           <img
             src={resolveAssetUrl(src)}
             alt={alt || ""}
             className={imageClassName}
+            style={width ? { maxWidth: /^\d+$/.test(String(width)) ? `${width}px` : String(width) } : undefined}
             loading="lazy"
           />
         ),
