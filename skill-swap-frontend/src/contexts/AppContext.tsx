@@ -164,6 +164,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const bootstrapAuthInProgressRef = useRef(false);
   const hasBackendProfileRef = useRef(false);
   const recentProfileCacheRef = useRef<{ subject: string | null; user: User; at: number } | null>(null);
+  // 区分“用户主动登出”与“session 被动过期”：主动登出已有自己的提示，
+  // 不应再弹“会话过期”。
+  const explicitSignOutRef = useRef(false);
 
   // Clerk 内部已对 getToken() 做缓存与自动刷新：每次调用按需取最新 token，
   // 不再把 token 存进 React state（避免过期后变成陈旧值导致被强制登出）。
@@ -344,6 +347,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (!isSignedIn) {
           const currentPageFromPath = pageFromPath(window.location.pathname);
           const authErrorMessage = detectClerkAuthError(window.location.search, window.location.hash);
+          // 在 clearAuthState 重置 hasBackendProfileRef 之前先捕获这两个标志。
+          const wasLoggedIn = hasBackendProfileRef.current;
+          const wasExplicitSignOut = explicitSignOutRef.current;
+          explicitSignOutRef.current = false;
           if (authErrorMessage) {
             sessionStorage.setItem("skill_swap_auth_error", authErrorMessage);
             clearAuthState("auth");
@@ -351,6 +358,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             clearAuthState("auth");
           } else {
             clearAuthState("hero");
+          }
+          // 仅“之前已登录 + 非用户主动登出 + 非 OAuth 回调错误”才提示会话过期。
+          if (wasLoggedIn && !wasExplicitSignOut && !authErrorMessage) {
+            toast.error("Your session expired. Please sign in again.", {
+              position: "top-center",
+              duration: 6000,
+            });
           }
           setIsLoading(false);
           return;
@@ -540,6 +554,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Auth Actions
   // --------------------------
   const signOut = async () => {
+    explicitSignOutRef.current = true;
     await clerkSignOut();
     setUser(null);
     setWorkshops([]);
