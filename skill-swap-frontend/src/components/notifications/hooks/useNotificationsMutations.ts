@@ -19,6 +19,7 @@ export function useNotificationsMutations({
   const handleMarkRead = async (notificationId: string) => {
     try {
       const token = await getAuthToken();
+      if (!token) return;
       const updated = await notificationMutationService.markRead(notificationId, token);
       replaceNotification(updated);
       void refreshNotificationsUnreadCount();
@@ -33,6 +34,7 @@ export function useNotificationsMutations({
     }
     try {
       const token = await getAuthToken();
+      if (!token) return;
       await notificationMutationService.markAllRead(token);
       markAllReadLocally();
       void refreshNotificationsUnreadCount();

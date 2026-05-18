@@ -250,16 +250,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const fetchVisibleWorkshops = useCallback(async () => {
     if (isAuthenticated) {
       const token = await getAuthToken();
-      const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
-        workshopQueryService.getPublic(),
-        workshopQueryService.getMine(token),
-        workshopQueryService.getAttending(token),
-      ]);
-      const merged = new Map<string, Workshop>();
-      [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
-        merged.set(workshop.id, workshop);
-      });
-      return Array.from(merged.values());
+      // No token (Clerk session momentarily unavailable): skip the auth-only
+      // endpoints and fall back to public results instead of calling them
+      // unauthenticated.
+      if (token) {
+        const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
+          workshopQueryService.getPublic(),
+          workshopQueryService.getMine(token),
+          workshopQueryService.getAttending(token),
+        ]);
+        const merged = new Map<string, Workshop>();
+        [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
+          merged.set(workshop.id, workshop);
+        });
+        return Array.from(merged.values());
+      }
     }
 
     return workshopQueryService.getPublic();
@@ -274,6 +279,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return [];
     }
     const token = await getAuthToken();
+    if (!token) {
+      return [];
+    }
     return workshopQueryService.getMine(token);
   }, [isAuthenticated, getAuthToken]);
 
@@ -283,6 +291,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const token = await getAuthToken();
+    if (!token) {
+      return [];
+    }
     const [myWorkshops, attendingWorkshops] = await Promise.all([
       workshopQueryService.getMine(token),
       workshopQueryService.getAttending(token),

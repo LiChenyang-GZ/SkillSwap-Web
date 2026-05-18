@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { NotificationItem } from "../../../types/notification";
 import { notificationQueryService } from "../../../shared/service/notification/notificationQueryService";
-import {
-  NOTIFICATIONS_SESSION_EXPIRED_MESSAGE,
-} from "../constants/notificationMessages";
 import { sortNotifications } from "../utils/notificationSort";
 import { resolveNotificationErrorMessage } from "../utils/notificationError";
 
@@ -43,9 +40,12 @@ export function useNotificationsQuery({ isAuthenticated, getAuthToken }: UseNoti
       try {
         const token = await getAuthToken();
         if (!token) {
+          // Clerk may briefly have no token while it refreshes the session.
+          // Treat this as transient: keep any prior notifications and just stop
+          // the spinner instead of showing a misleading "session expired" error.
+          // If the session is genuinely gone, isAuthenticated flips and this
+          // effect re-runs through the !isAuthenticated branch and clears cleanly.
           if (!isCancelled) {
-            setNotifications([]);
-            setErrorMessage(NOTIFICATIONS_SESSION_EXPIRED_MESSAGE);
             setIsLoading(false);
           }
           return;
