@@ -23,7 +23,8 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
     workshops,
     user,
     isAdmin,
-    sessionToken,
+    isAuthenticated,
+    getAuthToken,
     attendWorkshop,
     cancelWorkshopAttendance,
     setCurrentPage,
@@ -33,14 +34,16 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
   const query = useWorkshopDetailQuery({
     workshopId,
     workshops,
-    sessionToken,
+    isAuthenticated,
+    getAuthToken,
     upsertWorkshop,
   });
   const shouldRefreshMembershipFromApi =
     Boolean(query.workshop) && !Array.isArray(query.workshop?.participants);
   const attendanceMembership = useWorkshopAttendanceMembership({
     workshopId,
-    sessionToken,
+    isAuthenticated,
+    getAuthToken,
     enabled: shouldRefreshMembershipFromApi,
   });
   const selection = useWorkshopDetailSelection({
@@ -51,7 +54,7 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
   });
   const mutations = useWorkshopDetailMutations({
     workshopId,
-    sessionToken,
+    getAuthToken,
     attendWorkshop,
     cancelWorkshopAttendance,
     setCurrentPage,

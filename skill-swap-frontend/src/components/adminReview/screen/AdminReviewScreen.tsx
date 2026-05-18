@@ -5,19 +5,17 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { AdminReviewDetailPanel } from '../components/AdminReviewDetailPanel';
 import { AdminReviewListPanel } from '../components/AdminReviewListPanel';
 import { AdminReviewToolbar } from '../components/AdminReviewToolbar';
-import { useAuthRetry } from '../hooks/useAuthRetry';
 import { useAdminReviewFormState } from '../hooks/useAdminReviewFormState';
 import { useAdminReviewMutations } from '../hooks/useAdminReviewMutations';
 import { useAdminReviewQuery } from '../hooks/useAdminReviewQuery';
 
 export function AdminReviewScreen() {
-  const { sessionToken, setCurrentPage } = useApp();
-  const withAuthRetry = useAuthRetry(sessionToken);
-  const query = useAdminReviewQuery({ sessionToken, withAuthRetry });
+  const { isAuthenticated, getAuthToken, setCurrentPage } = useApp();
+  const query = useAdminReviewQuery({ isAuthenticated, getAuthToken });
   const form = useAdminReviewFormState({ selectedWorkshop: query.selectedWorkshop });
   const mutations = useAdminReviewMutations({
-    sessionToken,
-    withAuthRetry,
+    isAuthenticated,
+    getAuthToken,
     selectedWorkshop: query.selectedWorkshop,
     selectedHasDetail: query.selectedHasDetail,
     formData: form.formData,
@@ -31,7 +29,7 @@ export function AdminReviewScreen() {
     refreshWorkshops: query.refreshWorkshops,
   });
 
-  if (!sessionToken) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
         <div className="text-center">

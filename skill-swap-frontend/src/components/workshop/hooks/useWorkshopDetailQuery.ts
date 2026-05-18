@@ -11,14 +11,16 @@ const getErrorStatus = (error: unknown): number | null => {
 interface UseWorkshopDetailQueryParams {
   workshopId: string;
   workshops: Workshop[];
-  sessionToken: string | null;
+  isAuthenticated: boolean;
+  getAuthToken: () => Promise<string | null>;
   upsertWorkshop: (workshop: Workshop) => void;
 }
 
 export function useWorkshopDetailQuery({
   workshopId,
   workshops,
-  sessionToken,
+  isAuthenticated,
+  getAuthToken,
   upsertWorkshop,
 }: UseWorkshopDetailQueryParams) {
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
@@ -30,7 +32,7 @@ export function useWorkshopDetailQuery({
   const hasLocalSnapshotRef = useRef(false);
   const upsertWorkshopRef = useRef(upsertWorkshop);
   const normalizedWorkshopId = toBackendWorkshopId(workshopId);
-  const detailFetchKey = `${sessionToken ?? 'anon'}:${normalizedWorkshopId}`;
+  const detailFetchKey = `${isAuthenticated ? 'auth' : 'anon'}:${normalizedWorkshopId}`;
   const refreshWorkshop = useCallback(() => {
     setRefreshNonce((previous) => previous + 1);
   }, []);
@@ -79,7 +81,8 @@ export function useWorkshopDetailQuery({
       controllerRef.current = controller;
 
       try {
-        const latest = await workshopQueryService.getById(workshopId, sessionToken, controller.signal);
+        const token = isAuthenticated ? await getAuthToken() : null;
+        const latest = await workshopQueryService.getById(workshopId, token, controller.signal);
         if (!controller.signal.aborted) {
           if (latest) {
             setWorkshop(latest);
@@ -111,7 +114,7 @@ export function useWorkshopDetailQuery({
     return () => {
       controllerRef.current?.abort();
     };
-  }, [detailFetchKey, normalizedWorkshopId, refreshNonce, sessionToken, workshopId]);
+  }, [detailFetchKey, normalizedWorkshopId, refreshNonce, isAuthenticated, getAuthToken, workshopId]);
 
   return {
     workshop,

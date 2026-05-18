@@ -9,10 +9,10 @@ import { resolveNotificationErrorMessage } from "../utils/notificationError";
 
 interface UseNotificationsQueryParams {
   isAuthenticated: boolean;
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
 }
 
-export function useNotificationsQuery({ isAuthenticated, sessionToken }: UseNotificationsQueryParams) {
+export function useNotificationsQuery({ isAuthenticated, getAuthToken }: UseNotificationsQueryParams) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,22 +35,22 @@ export function useNotificationsQuery({ isAuthenticated, sessionToken }: UseNoti
         return;
       }
 
-      if (!sessionToken) {
-        if (!isCancelled) {
-          setNotifications([]);
-          setErrorMessage(NOTIFICATIONS_SESSION_EXPIRED_MESSAGE);
-          setIsLoading(false);
-        }
-        return;
-      }
-
       if (!isCancelled) {
         setIsLoading(true);
         setErrorMessage(null);
       }
 
       try {
-        const data = await notificationQueryService.getAll(sessionToken);
+        const token = await getAuthToken();
+        if (!token) {
+          if (!isCancelled) {
+            setNotifications([]);
+            setErrorMessage(NOTIFICATIONS_SESSION_EXPIRED_MESSAGE);
+            setIsLoading(false);
+          }
+          return;
+        }
+        const data = await notificationQueryService.getAll(token);
         if (!isCancelled) {
           setNotifications(data);
         }
@@ -76,7 +76,7 @@ export function useNotificationsQuery({ isAuthenticated, sessionToken }: UseNoti
     return () => {
       isCancelled = true;
     };
-  }, [isAuthenticated, sessionToken, reloadNonce]);
+  }, [isAuthenticated, getAuthToken, reloadNonce]);
 
   const replaceNotification = (updatedNotification: NotificationItem) => {
     setNotifications((previous) =>

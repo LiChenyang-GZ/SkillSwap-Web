@@ -34,6 +34,8 @@ import {
 } from "../components/memory/constants/memoryRouteConstants";
 import { pageFromMemoryPath, pathFromMemoryPage } from "../components/memory/utils/memoryRoute";
 
+export type GetAuthToken = () => Promise<string | null>;
+
 interface AppContextType {
   user: User | null;
   workshops: Workshop[];
@@ -46,7 +48,7 @@ interface AppContextType {
   notificationsUnreadCount: number;
   refreshNotificationsUnreadCount: () => Promise<void>;
   isLoading: boolean;
-  sessionToken: string | null;
+  getAuthToken: GetAuthToken;
   setCurrentPage: (page: string, authTab?: "signin" | "signup") => void;
   toggleDarkMode: () => void;
   attendWorkshop: (workshopId: string) => Promise<void>;
@@ -152,32 +154,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [notificationsUnreadCount, setNotificationsUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
-  
+
   // 防止标签页切换时重复初始化
   const initializedRef = useRef(false);
   const refreshInFlightRef = useRef<{ mode: "public" | "mine" | "full" | "dashboard"; task: Promise<void> } | null>(null);
   const notificationsInFlightRef = useRef<Promise<void> | null>(null);
   const profileInFlightRef = useRef<Promise<User> | null>(null);
   const profileInFlightTokenRef = useRef<string | null>(null);
-  const lastAppliedProfileTokenRef = useRef<string | null>(null);
   const bootstrapAuthInProgressRef = useRef(false);
   const hasBackendProfileRef = useRef(false);
   const recentProfileCacheRef = useRef<{ subject: string | null; user: User; at: number } | null>(null);
 
-  const refreshSessionToken = useCallback(async () => {
-    const nextToken = await getToken({ template: "signupTemplate" });
-    if (nextToken) {
-      setSessionToken(nextToken);
-    }
-    return nextToken ?? null;
+  // Clerk 内部已对 getToken() 做缓存与自动刷新：每次调用按需取最新 token，
+  // 不再把 token 存进 React state（避免过期后变成陈旧值导致被强制登出）。
+  const getAuthToken = useCallback((): Promise<string | null> => {
+    return getToken({ template: "signupTemplate" });
   }, [getToken]);
 
   const createWorkshop = useCreateWorkshopAction({
     isAuthenticated,
     user,
-    sessionToken,
-    refreshSessionToken,
+    getAuthToken,
   });
 
   const fetchBackendUser = useCallback(async (accessToken: string): Promise<User> => {
@@ -251,11 +248,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchVisibleWorkshops = useCallback(async () => {
-    if (isAuthenticated && sessionToken) {
+    if (isAuthenticated) {
+      const token = await getAuthToken();
       const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
         workshopQueryService.getPublic(),
-        workshopQueryService.getMine(sessionToken),
-        workshopQueryService.getAttending(sessionToken),
+        workshopQueryService.getMine(token),
+        workshopQueryService.getAttending(token),
       ]);
       const merged = new Map<string, Workshop>();
       [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
@@ -265,27 +263,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     return workshopQueryService.getPublic();
-  }, [isAuthenticated, sessionToken]);
+  }, [isAuthenticated, getAuthToken]);
 
   const fetchPublicWorkshops = useCallback(async () => {
     return workshopQueryService.getPublic();
   }, []);
 
   const fetchMineWorkshops = useCallback(async () => {
-    if (!isAuthenticated || !sessionToken) {
+    if (!isAuthenticated) {
       return [];
     }
-    return workshopQueryService.getMine(sessionToken);
-  }, [isAuthenticated, sessionToken]);
+    const token = await getAuthToken();
+    return workshopQueryService.getMine(token);
+  }, [isAuthenticated, getAuthToken]);
 
   const fetchDashboardWorkshops = useCallback(async () => {
-    if (!isAuthenticated || !sessionToken) {
+    if (!isAuthenticated) {
       return [];
     }
 
+    const token = await getAuthToken();
     const [myWorkshops, attendingWorkshops] = await Promise.all([
-      workshopQueryService.getMine(sessionToken),
-      workshopQueryService.getAttending(sessionToken),
+      workshopQueryService.getMine(token),
+      workshopQueryService.getAttending(token),
     ]);
 
     const merged = new Map<string, Workshop>();
@@ -293,7 +293,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       merged.set(workshop.id, workshop);
     });
     return Array.from(merged.values());
-  }, [isAuthenticated, sessionToken]);
+  }, [isAuthenticated, getAuthToken]);
 
   // --------------------------
   // Auth Initialization
@@ -308,11 +308,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // 初次 bootstrap 成功后，若仍处于登录态：clerkUser 引用在 Clerk 内部刷新
+    // session 时会变化导致本 effect 重跑。此时只更新身份兜底信息，不再走完整
+    // bootstrap（否则会在 token 轮换窗口拿到 null 而误清空登录态）。
+    if (initializedRef.current && hasBackendProfileRef.current && isSignedIn) {
+      setUser((prev) => (prev ? buildIdentityFallback(prev, clerkUser) : prev));
+      return;
+    }
+
     const clearAuthState = (targetPage: "hero" | "auth" = "hero") => {
       setUser(null);
       setIsAuthenticated(false);
-      setSessionToken(null);
-      lastAppliedProfileTokenRef.current = null;
       setWorkshops([]);
       setNotificationsUnreadCount(0);
       setIsAdmin(false);
@@ -339,22 +345,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const token = await getToken({ template: 'signupTemplate' });
+        // 仅在初次 bootstrap 时取一次 token 用于拉取后端 profile。
+        const token = await getToken({ template: "signupTemplate" });
         if (!token) {
           clearAuthState("auth");
           setIsLoading(false);
           return;
         }
 
-        setSessionToken(token);
-
         try {
           const mapped = await fetchBackendUser(token);
           const hydrated = buildIdentityFallback(mapped, clerkUser);
           setUser(hydrated);
           setIsAuthenticated(true);
-          setSessionToken(token);
-          lastAppliedProfileTokenRef.current = token;
           hasBackendProfileRef.current = true;
 
           if (hydrated.username && hydrated.username !== mapped.username) {
@@ -450,7 +453,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       // 积分系统已停用：不再加载 mock 交易历史。
-      // setTransactions(mockTransactions);
       setTransactions([]);
     })();
 
@@ -465,7 +467,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [fetchDashboardWorkshops, fetchMineWorkshops, fetchPublicWorkshops, fetchVisibleWorkshops]);
 
   const refreshNotificationsUnreadCount = useCallback(async () => {
-    if (!sessionToken) {
+    if (!isAuthenticated) {
       setNotificationsUnreadCount(0);
       return;
     }
@@ -476,7 +478,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const task = (async () => {
       try {
-        const count = await notificationQueryService.getUnreadCount(sessionToken);
+        const token = await getAuthToken();
+        if (!token) return;
+        const count = await notificationQueryService.getUnreadCount(token);
         setNotificationsUnreadCount(count);
       } catch (error) {
         console.warn("Failed to fetch notification count", error);
@@ -489,10 +493,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } finally {
       notificationsInFlightRef.current = null;
     }
-  }, [sessionToken]);
+  }, [isAuthenticated, getAuthToken]);
 
   useEffect(() => {
-    if (!sessionToken) {
+    if (!isAuthenticated) {
       setNotificationsUnreadCount(0);
       return;
     }
@@ -507,7 +511,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [currentPage, refreshNotificationsUnreadCount, sessionToken]);
+  }, [currentPage, refreshNotificationsUnreadCount, isAuthenticated]);
 
   const upsertWorkshop = useCallback((workshop: Workshop) => {
     setWorkshops((prev) => {
@@ -530,10 +534,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWorkshops([]);
     setTransactions([]);
     setIsAuthenticated(false);
-    setSessionToken(null);
     setIsAdmin(false);
     hasBackendProfileRef.current = false;
-    lastAppliedProfileTokenRef.current = null;
     recentProfileCacheRef.current = null;
     setCurrentPage("hero");
     toast.success("Signed out successfully");
@@ -545,17 +547,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     bio?: string;
     skills?: string[];
   }): Promise<User> => {
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       throw new Error("Please sign in again before updating your profile.");
     }
 
-    const profile = await userProfileService.updateCurrentUserProfile<any>(updates, sessionToken);
+    const profile = await userProfileService.updateCurrentUserProfile<any>(updates, token);
     const mapped = mapBackendUser(profile);
 
     setUser(mapped);
     localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
 
-    const payload = decodeJwtPayload(sessionToken) as { sub?: string } | null;
+    const payload = decodeJwtPayload(token) as { sub?: string } | null;
     recentProfileCacheRef.current = {
       subject: payload?.sub ?? null,
       user: mapped,
@@ -566,17 +569,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const uploadCurrentUserAvatar = async (file: File): Promise<User> => {
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       throw new Error("Please sign in again before updating your avatar.");
     }
 
-    const profile = await userProfileService.uploadCurrentUserAvatar<any>(file, sessionToken);
+    const profile = await userProfileService.uploadCurrentUserAvatar<any>(file, token);
     const mapped = mapBackendUser(profile);
 
     setUser(mapped);
     localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
 
-    const payload = decodeJwtPayload(sessionToken) as { sub?: string } | null;
+    const payload = decodeJwtPayload(token) as { sub?: string } | null;
     recentProfileCacheRef.current = {
       subject: payload?.sub ?? null,
       user: mapped,
@@ -594,40 +598,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast.error("Please sign in to attend workshops");
       return;
     }
-    
+
     try {
       // 查找要 join 的 workshop
       // 尝试精确匹配，也支持数字ID格式
       let workshop = workshops.find((w) => w.id === workshopId);
-      
+
       // 如果精确匹配失败，尝试转换为数字后再匹配
       if (!workshop && !isNaN(Number(workshopId))) {
         const numId = Number(workshopId);
         workshop = workshops.find((w) => String(w.id) === String(numId) || Number(w.id) === numId);
       }
-      
+
       if (!workshop) {
         throw new Error(`Workshop with ID "${workshopId}" not found in loaded workshops`);
       }
-      
-      // 积分系统已停用：不再依赖 creditCost。
-      // if (workshop.creditCost === undefined || workshop.creditCost === null) {
-      //   throw new Error("Workshop has no credit cost defined");
-      // }
-      //
-      // console.log("✅ Found workshop:", workshop.title, "Credit cost:", workshop.creditCost);
-      
+
       // 调用后端 API，传递 JWT token
-      await workshopMutationService.join(workshopId, sessionToken);
-      
-      // 积分系统已停用：不再扣减本地余额。
-      // const updatedUser = {
-      //   ...user,
-      //   creditBalance: (user.creditBalance || 0) - workshop.creditCost,
-      // };
-      // setUser(updatedUser);
-      // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
-      
+      const token = await getAuthToken();
+      await workshopMutationService.join(workshopId, token);
+
       toast.success(`Joined "${workshop.title}"!`);
 
       // 成功后后台刷新，避免 toast 被全量拉取阻塞。
@@ -652,25 +642,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const cancelWorkshopAttendance = async (workshopId: string) => {
     if (!isAuthenticated || !user) return;
-    
+
     try {
       // 查找要 leave 的 workshop
       const workshop = workshops.find((w) => w.id === workshopId);
       if (!workshop) {
         throw new Error("Workshop not found");
       }
-      
+
       // 调用后端 API，传递 JWT token
-      await workshopMutationService.leave(workshopId, sessionToken);
-      
-      // 积分系统已停用：不再返还本地余额。
-      // const updatedUser = {
-      //   ...user,
-      //   creditBalance: (user.creditBalance || 0) + workshop.creditCost,
-      // };
-      // setUser(updatedUser);
-      // localStorage.setItem("skill-swap-user", JSON.stringify(updatedUser));
-      
+      const token = await getAuthToken();
+      await workshopMutationService.leave(workshopId, token);
+
       toast.success("Workshop attendance cancelled");
 
       // 后台刷新，避免操作反馈被阻塞。
@@ -691,10 +674,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     try {
       // 调用后端 API 删除 workshop，传递 JWT token
-      await workshopMutationService.delete(workshopId, sessionToken);
+      const token = await getAuthToken();
+      await workshopMutationService.delete(workshopId, token);
 
       // 删除成功后，从本地状态中移除该 workshop（处理 ID 类型不一致）
-      setWorkshops((prev) => 
+      setWorkshops((prev) =>
         prev.filter((w) => String(w.id) !== String(workshopId))
       );
 
@@ -720,7 +704,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         notificationsUnreadCount,
         refreshNotificationsUnreadCount,
         isLoading,
-        sessionToken,
+        getAuthToken,
         setCurrentPage,
         toggleDarkMode: () => {
           const newMode = !isDarkMode;

@@ -4,13 +4,15 @@ import { workshopQueryService } from '../../../shared/service/workshop/workshopQ
 
 interface UseWorkshopAttendanceMembershipParams {
   workshopId: string;
-  sessionToken: string | null;
+  isAuthenticated: boolean;
+  getAuthToken: () => Promise<string | null>;
   enabled?: boolean;
 }
 
 export function useWorkshopAttendanceMembership({
   workshopId,
-  sessionToken,
+  isAuthenticated,
+  getAuthToken,
   enabled = true,
 }: UseWorkshopAttendanceMembershipParams) {
   const [isAttendingByMembership, setIsAttendingByMembership] = useState(false);
@@ -27,7 +29,15 @@ export function useWorkshopAttendanceMembership({
       return true;
     }
 
-    if (!sessionToken) {
+    if (!isAuthenticated) {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      setIsAttendingByMembership(false);
+      return true;
+    }
+
+    const token = await getAuthToken();
+    if (!token) {
       controllerRef.current?.abort();
       controllerRef.current = null;
       setIsAttendingByMembership(false);
@@ -40,7 +50,7 @@ export function useWorkshopAttendanceMembership({
 
     try {
       const attendingWorkshops = await workshopQueryService.getAttending(
-        sessionToken,
+        token,
         controller.signal
       );
       const normalizedWorkshopId = toBackendWorkshopId(workshopId);
@@ -58,7 +68,7 @@ export function useWorkshopAttendanceMembership({
       }
       return false;
     }
-  }, [enabled, sessionToken, workshopId]);
+  }, [enabled, isAuthenticated, getAuthToken, workshopId]);
 
   useEffect(() => {
     void refreshMembership();

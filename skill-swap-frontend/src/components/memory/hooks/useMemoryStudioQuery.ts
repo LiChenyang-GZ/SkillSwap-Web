@@ -6,18 +6,19 @@ import { MEMORY_STUDIO_LOAD_FAILED } from "../constants/memoryMessages";
 
 interface UseMemoryStudioQueryParams {
   hasSession: boolean;
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
 }
 
-export function useMemoryStudioQuery({ hasSession, sessionToken }: UseMemoryStudioQueryParams) {
+export function useMemoryStudioQuery({ hasSession, getAuthToken }: UseMemoryStudioQueryParams) {
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const loadEntries = useCallback(async (): Promise<MemoryEntry[] | null> => {
-    if (!sessionToken) return null;
+    const token = await getAuthToken();
+    if (!token) return null;
     setIsLoading(true);
     try {
-      const data = await memoryAdminService.getAllForAdmin(sessionToken);
+      const data = await memoryAdminService.getAllForAdmin(token);
       setEntries(data);
       return data;
     } catch (error) {
@@ -27,7 +28,7 @@ export function useMemoryStudioQuery({ hasSession, sessionToken }: UseMemoryStud
     } finally {
       setIsLoading(false);
     }
-  }, [sessionToken]);
+  }, [getAuthToken]);
 
   useEffect(() => {
     if (!hasSession) {

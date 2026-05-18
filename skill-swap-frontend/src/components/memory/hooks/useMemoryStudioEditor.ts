@@ -10,10 +10,10 @@ import { getMemoryErrorMessage, getMemoryErrorStatus } from "../utils/memoryErro
 import { IMAGE_UPLOAD_MAX_BYTES, IMAGE_UPLOAD_TOO_LARGE_MESSAGE } from "../../../shared/constants/uploadLimits";
 
 interface UseMemoryStudioEditorParams {
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
 }
 
-export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorParams) {
+export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorParams) {
   const [documentText, setDocumentText] = useState<string>(MEMORY_EMPTY_DOC);
   const [mode, setMode] = useState<MemoryEditorMode>("split");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -82,7 +82,8 @@ export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorPar
   };
 
   const uploadAndInsertImage = async (file: File, start?: number, end?: number) => {
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       toast.error("Please sign in.");
       return;
     }
@@ -98,7 +99,7 @@ export function useMemoryStudioEditor({ sessionToken }: UseMemoryStudioEditorPar
 
     setIsUploadingImage(true);
     try {
-      const result = await memoryAdminService.uploadMediaByAdmin(file, sessionToken);
+      const result = await memoryAdminService.uploadMediaByAdmin(file, token);
       const fallbackAlt = file.name ? file.name.replace(/\.[^.]+$/, "") : "image";
       const markdown = `<div align="center">\n  <img src="${result.url || result.path}" alt="${fallbackAlt || "image"}" width="250" />\n</div>`;
       insertTextAtRange(markdown, start, end);

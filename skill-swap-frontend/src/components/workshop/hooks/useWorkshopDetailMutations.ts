@@ -3,7 +3,7 @@ import { workshopMutationService } from '../../../shared/service/workshop/worksh
 
 interface UseWorkshopDetailMutationsParams {
   workshopId: string;
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
   attendWorkshop: (id: string) => Promise<void>;
   cancelWorkshopAttendance: (id: string) => Promise<void>;
   setCurrentPage: (page: string) => void;
@@ -14,7 +14,7 @@ interface UseWorkshopDetailMutationsParams {
 
 export function useWorkshopDetailMutations({
   workshopId,
-  sessionToken,
+  getAuthToken,
   attendWorkshop,
   cancelWorkshopAttendance,
   setCurrentPage,
@@ -49,13 +49,14 @@ export function useWorkshopDetailMutations({
   };
 
   const handleRequestApproval = async () => {
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       toast.error('Please sign in to request approval');
       return;
     }
 
     try {
-      await workshopMutationService.requestApproval(workshopId, sessionToken);
+      await workshopMutationService.requestApproval(workshopId, token);
       toast.success('Approval request sent to admins');
     } catch (error) {
       console.error('Failed to request approval', error);

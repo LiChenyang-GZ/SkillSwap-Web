@@ -7,7 +7,8 @@ import { getMemoryErrorMessage, getMemoryErrorStatus } from "../utils/memoryErro
 import { isMemoryDraftLockedByOther } from "../utils/memoryStatusLabels";
 
 interface UseMemoryStudioLockingParams {
-  sessionToken: string | null;
+  isAuthenticated: boolean;
+  getAuthToken: () => Promise<string | null>;
   currentUserId: string | null;
   selectedEntry: MemoryEntry | null;
   isCreatingNew: boolean;
@@ -15,7 +16,8 @@ interface UseMemoryStudioLockingParams {
 }
 
 export function useMemoryStudioLocking({
-  sessionToken,
+  isAuthenticated,
+  getAuthToken,
   currentUserId,
   selectedEntry,
   isCreatingNew,
@@ -36,9 +38,10 @@ export function useMemoryStudioLocking({
 
   const releaseHeldLock = useCallback(
     async (entryId: string, silent = true) => {
-      if (!sessionToken) return;
+      const token = await getAuthToken();
+      if (!token) return;
       try {
-        await memoryAdminService.releaseLockByAdmin(entryId, sessionToken);
+        await memoryAdminService.releaseLockByAdmin(entryId, token);
       } catch (error) {
         if (!silent) {
           const msg = getMemoryErrorMessage(error) || "Failed to release edit lock.";
@@ -46,17 +49,22 @@ export function useMemoryStudioLocking({
         }
       }
     },
-    [sessionToken]
+    [getAuthToken]
   );
 
   const acquireLockForEntry = useCallback(
     async (entryId: string, silent = false): Promise<MemoryEntry | null> => {
-      if (!sessionToken || !currentUserId) {
+      if (!currentUserId) {
+        return null;
+      }
+
+      const token = await getAuthToken();
+      if (!token) {
         return null;
       }
 
       try {
-        const lockedEntry = await memoryAdminService.acquireLockByAdmin(entryId, sessionToken);
+        const lockedEntry = await memoryAdminService.acquireLockByAdmin(entryId, token);
         onPatchEntry(lockedEntry);
 
         if (lockedEntry.editLockOwnerId && String(lockedEntry.editLockOwnerId) === currentUserId) {
@@ -84,12 +92,12 @@ export function useMemoryStudioLocking({
         return null;
       }
     },
-    [currentUserId, onPatchEntry, sessionToken]
+    [currentUserId, onPatchEntry, getAuthToken]
   );
 
   useEffect(() => {
     const shouldManageLock = Boolean(
-      sessionToken &&
+      isAuthenticated &&
         currentUserId &&
         selectedEntryId &&
         !isCreatingNew &&
@@ -144,7 +152,7 @@ export function useMemoryStudioLocking({
     releaseHeldLock,
     selectedEntryId,
     selectedEntryStatus,
-    sessionToken,
+    isAuthenticated,
   ]);
 
   const isEntryDraftLockedByOther = useCallback(

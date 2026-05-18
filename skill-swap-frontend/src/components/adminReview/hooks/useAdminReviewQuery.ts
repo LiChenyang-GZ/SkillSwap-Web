@@ -13,11 +13,11 @@ import {
 import { resolveAdminDisplayStatus } from '../utils/adminReviewUtils';
 
 interface UseAdminReviewQueryParams {
-  sessionToken: string | null;
-  withAuthRetry: <T>(action: (token: string) => Promise<T>) => Promise<T>;
+  isAuthenticated: boolean;
+  getAuthToken: () => Promise<string | null>;
 }
 
-export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminReviewQueryParams) {
+export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminReviewQueryParams) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +37,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   });
 
   const detailInFlightRef = useRef<Set<string>>(new Set());
-  const hasSession = Boolean(sessionToken);
+  const hasSession = isAuthenticated;
   const pageSize = ADMIN_REVIEW_PAGE_SIZE;
 
   const filteredWorkshops =
@@ -59,7 +59,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   const selectedDetailError = selectedWorkshop ? detailLoadErrors[selectedWorkshop.id] ?? null : null;
 
   const loadWorkshopDetail = async (workshopId: string, force = false) => {
-    if (!sessionToken || !workshopId) return;
+    if (!isAuthenticated || !workshopId) return;
     if (!force && loadedDetailIds[workshopId]) return;
     if (detailInFlightRef.current.has(workshopId)) return;
 
@@ -68,7 +68,9 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
     setIsDetailLoading(true);
 
     try {
-      const detail = await withAuthRetry((token) => adminWorkshopService.getById(workshopId, token));
+      const token = await getAuthToken();
+      if (!token) throw new Error('Authentication token unavailable');
+      const detail = await adminWorkshopService.getById(workshopId, token);
       if (!detail || typeof detail.id !== 'string' || detail.id.length === 0 || detail.id !== workshopId) {
         throw new Error('Workshop detail response is invalid.');
       }
@@ -85,7 +87,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   };
 
   const loadWorkshops = async (mode: 'pending' | 'all') => {
-    if (!sessionToken) {
+    if (!isAuthenticated) {
       setErrorMessage('Please sign in to review workshops.');
       return;
     }
@@ -94,10 +96,12 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
     setErrorMessage(null);
 
     try {
+      const token = await getAuthToken();
+      if (!token) throw new Error('Authentication token unavailable');
       const data =
         mode === 'pending'
-          ? await withAuthRetry((token) => adminWorkshopService.getPending(token))
-          : await withAuthRetry((token) => adminWorkshopService.getAll(token));
+          ? await adminWorkshopService.getPending(token)
+          : await adminWorkshopService.getAll(token);
 
       setLoadedDetailIds((previous) => {
         const next: Record<string, boolean> = {};
@@ -177,7 +181,7 @@ export function useAdminReviewQuery({ sessionToken, withAuthRetry }: UseAdminRev
   useEffect(() => {
     if (!selectedId) return;
     void loadWorkshopDetail(selectedId);
-  }, [selectedId, sessionToken]);
+  }, [selectedId, isAuthenticated]);
 
   useEffect(() => {
     if (sortedWorkshops.length === 0) {
