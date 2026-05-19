@@ -39,9 +39,9 @@ Clerk handles user sign-in, sign-up, OAuth-related flows, browser session manage
   - Source status: Explicitly documented comparison and deprecated historical implementation.
 
 - Supabase Auth
-  - Why considered: Supabase-related profiles and older auth/storage references remain in the repository, and Supabase can provide managed auth and PostgreSQL integration.
-  - Why not selected: Current documentation and implementation identify Clerk as the active auth provider. Supabase remains only as a historical/compatibility context in the inspected code and docs.
-  - Source status: Reasonable inferred alternative based on repository history and retained Supabase-related code/configuration.
+  - Why considered: Earlier repository history used Supabase-related auth/storage concepts, and Supabase can provide managed auth and PostgreSQL integration.
+  - Why not selected: Current implementation identifies Clerk as the only active auth provider.
+  - Source status: Historical alternative based on repository history.
 
 - Firebase Auth
   - Why considered: Managed authentication with common OAuth support and frontend SDKs.

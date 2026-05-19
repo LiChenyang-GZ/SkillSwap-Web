@@ -20,7 +20,7 @@ This document covers only what is specific to SkillSwap:
   `tasks.named('test') { systemProperty "spring.profiles.active", "test" }`
 - Test config file location: `src/test/resources/application-test.properties`
 - `application-test.properties` uses dummy/disabled values, never real endpoints. Prefer RFC 2606 reserved domains for unreachable URLs, e.g. `https://disabled.test.invalid`, over localhost or example.com. Property keys are present so Spring binding succeeds; values are intentionally non-functional.
-- SkillSwap external services in tests: Azure Blob, Supabase Storage, Clerk/Supabase JWKS, and production Postgres are never real; always mocked, stubbed, or replaced by Testcontainers.
+- SkillSwap external services in tests: Azure Blob, Clerk JWKS, and production Postgres are never real; always mocked, stubbed, or replaced by Testcontainers.
 - SkillSwap chooses to bypass the real `JwtConverter` in MockMvc tests via `jwt().authorities(...)`. `JwtConverter` gets its own dedicated unit test. Rationale: SkillSwap's `JwtConverter` performs DB-backed user/role lookup, so including it in `@WebMvcTest` would couple controller tests to the database. Other valid options, including mocking `JwtConverter` as a bean or providing a test `JwtDecoder`, were considered and not chosen.
 
 ## Product Decisions
@@ -39,7 +39,7 @@ This document covers only what is specific to SkillSwap:
    - Establishes the test profile, safe Spring context startup, baseline fixtures, and this roadmap.
 
 2. User
-   - Depends on `UserRepository`, `WorkshopRepository`, `WorkshopParticipantRepository`, `AzureBlobStorageService`, `SupabaseStorageService`, and Spring Security `Jwt`.
+   - Depends on `UserRepository`, `WorkshopRepository`, `WorkshopParticipantRepository`, `AzureBlobStorageService`, and Spring Security `Jwt`.
    - No internal service dependency.
    - Complexity: moderate; around ten public service methods, JWT/user creation branches, skill normalization, avatar storage branch, no `@Async`.
    - Reason for early placement: `UserAccount` and JWT helpers are reused by notification, memory, workshop, security, and integration tests.
@@ -51,12 +51,12 @@ This document covers only what is specific to SkillSwap:
    - Benefits from user fixtures. Establishes notification side-effect patterns before workshop tests lock notification absence/presence.
 
 4. Memory
-   - Depends on `MemoryEntryRepository`, `UserService`, `AzureBlobStorageService`, and `SupabaseStorageService`.
+   - Depends on `MemoryEntryRepository`, `UserService`, and `AzureBlobStorageService`.
    - Complexity: moderate to high; public/admin visibility, slug/status rules, edit locks, time-based expiry, media URL cleanup, storage mocking.
    - Benefits from user/security helpers and storage mocking conventions.
 
 5. Workshop
-   - Depends on `WorkshopRepository`, `WorkshopParticipantRepository`, `UserService`, `NotificationService`, `AzureBlobStorageService`, and `SupabaseStorageService`.
+   - Depends on `WorkshopRepository`, `WorkshopParticipantRepository`, `UserService`, `NotificationService`, and `AzureBlobStorageService`.
    - Complexity: high; many public methods, lifecycle/status rules, capacity, attendance cutoff, admin authorization, visibility rules, uploads, notifications, time branches.
    - Benefits from user fixtures, notification test patterns, and storage mocking patterns established earlier.
 
@@ -120,7 +120,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 
 - Consider Clock injection if time-sensitive tests proliferate.
 - Consider extracting helpers from large `WorkshopServiceImpl` / `MemoryServiceImpl` if test setup becomes repetitive.
-- Review `AzureBlobStorageService` / `SupabaseStorageService` for testability; both currently create clients internally.
+- Review `AzureBlobStorageService` for testability; it currently creates clients internally.
 - Consider centralizing authenticated user ID resolution, currently repeated across services/controllers.
 - Consider synchronous async executor test configuration when notification integration tests begin.
 - Add a GitHub Actions workflow running `./gradlew test` on `ubuntu-latest` for backend PRs. Docker is pre-installed on the `ubuntu-latest` runner image, so Testcontainers will work without extra setup. Current state: no backend test CI job exists; tests run only locally.
@@ -132,7 +132,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - 2026-05-16: Backend test plan placed at `docs/TEST_PLAN.md`. Reason: keep the SkillSwap-specific backend testing roadmap discoverable at a stable top-level docs path for every future test PR.
 - 2026-05-16: Test profile activated via Gradle system property rather than `@ActiveProfiles` on every test class. Reason: one-time configuration, impossible to forget on future tests.
 - 2026-05-16: Proposed dbSmokeTest mitigation: `@Profile("!test")` on the existing bean. Production code change pending PR #1 approval. Reason: smallest likely behavior-preserving change; production and dev would keep the smoke check.
-- 2026-05-16: PR #1 must explicitly load a test-only `JwtDecoder` configuration if full Spring context startup creates the production bean. Reason: test startup must not depend on Clerk/Supabase JWKS URLs.
+- 2026-05-16: PR #1 must explicitly load a test-only `JwtDecoder` configuration if full Spring context startup creates the production bean. Reason: test startup must not depend on Clerk JWKS URLs.
 - 2026-05-16: SkillSwap MockMvc tests bypass real `JwtConverter` via `jwt().authorities(...)`; `JwtConverter` gets a dedicated unit test. Reason: `@WebMvcTest` must not depend on DB role lookup.
 - 2026-05-16: PostgreSQL Testcontainers chosen over H2 for repository/integration tests. Reason: production uses Postgres; H2 dialect differences risk false-green tests.
 - 2026-05-16: `joinWorkshop` no-facilitator-notification behavior recorded as a product decision, not an inconsistency. Reason: per-join notifications would create low-signal noise.

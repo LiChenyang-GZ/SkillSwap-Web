@@ -38,9 +38,9 @@ The Spring Boot backend connects to PostgreSQL using datasource configuration su
   - Source status: Explicitly documented comparison.
 
 - Supabase PostgreSQL
-  - Why considered: A Supabase-oriented profile remains in backend resources, and older project history references Supabase.
-  - Why not selected: Current deployment documentation identifies Azure PostgreSQL as the production database target. Supabase is retained only as historical/alternate configuration.
-  - Source status: Reasonable inferred alternative based on retained Supabase profile and historical docs.
+  - Why considered: Older project history referenced Supabase.
+  - Why not selected: Current deployment documentation and backend configuration identify Azure PostgreSQL as the production database target.
+  - Source status: Historical alternative based on repository history.
 
 - MySQL
   - Why considered: It is a common managed relational database option.

@@ -2,7 +2,6 @@ package club.skillswap.workshop.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.common.storage.AzureBlobStorageService;
-import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.notification.service.NotificationService;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
@@ -52,7 +51,6 @@ public class WorkshopServiceImpl implements WorkshopService {
     private final WorkshopParticipantRepository participantRepository;
     private final NotificationService notificationService;
     private final AzureBlobStorageService azureBlobStorageService;
-    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -294,7 +292,6 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         if (previousImageUrl != null && !previousImageUrl.equals(publicUrl)) {
             azureBlobStorageService.deleteByUrlQuietly(previousImageUrl);
-            supabaseStorageService.deleteByPublicUrlQuietly(previousImageUrl);
         }
         return mapToDtoForViewer(saved, authentication);
     }

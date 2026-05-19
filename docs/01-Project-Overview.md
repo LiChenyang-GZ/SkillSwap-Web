@@ -76,7 +76,6 @@ Inferred product need: the system is designed to reduce manual coordination over
 ### Media Uploads
 
 - Azure Blob Storage service for memory media, workshop images, and user avatars.
-- Supabase Storage service remains in the codebase for compatibility/cleanup of older public URLs.
 - Upload validation includes image-only checks and configurable maximum image size.
 
 ### Engineering Operations
@@ -92,7 +91,7 @@ Inferred product need: the system is designed to reduce manual coordination over
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, Radix UI components, Clerk React SDK, React Markdown, remark/rehype plugins, Sonner |
 | Backend | Java 17, Spring Boot 3.5, Spring Web, Spring Security, OAuth2 Resource Server, Spring Data JPA, Hibernate, Bean Validation, Lombok |
 | Database | PostgreSQL, JPA repositories, Flyway configuration and SQL migrations |
-| Storage | Azure Blob Storage SDK, Supabase Storage compatibility service |
+| Storage | Azure Blob Storage SDK |
 | Authentication | Clerk on the frontend; JWT/JWKS verification in the backend; role mapping from PostgreSQL |
 | CI/CD | GitHub Actions, Gradle, Docker, GitHub Container Registry, SSH deployment to Azure VM |
 | Deployment Docs | Vercel frontend hosting; Azure VM backend; Azure PostgreSQL; Azure Blob Storage; Nginx; Let's Encrypt/Certbot |
@@ -145,7 +144,7 @@ Based on the repository and documentation, the project contribution can be descr
 - Built Markdown-based memory page workflows with public pages and an admin memory studio.
 - Implemented the current memory editing safety model using draft edit locks with owner and expiry handling.
 - Integrated Clerk authentication with backend JWT verification and database-backed role mapping.
-- Integrated Azure Blob Storage for uploaded media while retaining cleanup compatibility for historical Supabase-hosted media URLs.
+- Integrated Azure Blob Storage for uploaded media.
 - Added backend deployment automation with GitHub Actions, Docker, GHCR, and Azure VM redeployment.
 - Designed repository-level AI-assisted PR review workflows with context-first inline review, strict/normal policies, diff truncation awareness, and fallback comment behavior.
 - Produced technical and operational documentation covering authentication, deployment, CI/CD, AI review usage, and implementation/refactor planning.
@@ -217,7 +216,7 @@ Deployment caveat for handover: the backend reads the Azure Blob container from 
 - REST API design: controller/service/repository boundaries for workshops, users, notifications, memories, and admin operations.
 - Cloud deployment: Vercel frontend, Dockerized backend on Azure VM, Azure PostgreSQL, Azure Blob Storage, Nginx, and HTTPS/TLS.
 - CI/CD: GitHub Actions workflow for Gradle build, Docker image publication to GHCR, and remote redeployment.
-- Authentication and storage integration: Clerk JWT validation, database-backed role mapping, Azure Blob media uploads, and compatibility handling for older Supabase media URLs.
+- Authentication and storage integration: Clerk JWT validation, database-backed role mapping, and Azure Blob media uploads.
 
 ## Evidence Reviewed
 
