@@ -27,7 +27,6 @@ This document intentionally avoids exposing database credentials, usernames, pas
 | Persistence framework | Spring Data JPA with Hibernate | Code |
 | Production database context | Azure Database for PostgreSQL Flexible Server is documented for deployment | Existing documentation |
 | Local development database | A local PostgreSQL profile exists for development | Code |
-| Historical/alternate profile | A Supabase-oriented profile remains in the backend resources | Code |
 | Production SSL | Production-oriented configuration and cloud docs use PostgreSQL SSL mode | Existing documentation and code |
 | Schema management | JPA/Hibernate validates or maps entities; SQL migrations and schema scripts exist; Flyway runtime execution is disabled in inspected application profiles | Code and requires verification |
 | Media storage | PostgreSQL stores media URL references only; uploaded binary files are stored in object storage | Code and existing documentation |
@@ -69,7 +68,7 @@ HTTP request
 | DTOs | API request/response contracts and validation annotations | `WorkshopCreateRequestDto`, `SkillRequestDto`, `MemoryEntryRequestDto`, `WorkshopResponseDto` |
 | Controllers | REST endpoints and request binding | `WorkshopController`, `AdminWorkshopController`, `UserController`, `NotificationController`, `MemoryController`, `AdminMemoryController` |
 | Security | JWT validation and database-backed admin role mapping | `WebSecurityConfiguration`, `JwtConverter` |
-| Storage services | Object storage upload/delete and URL return | `AzureBlobStorageService`, `SupabaseStorageService` |
+| Storage services | Object storage upload/delete and URL return | `AzureBlobStorageService` |
 
 Data normally enters the system through controllers as JSON DTOs or multipart form data. Services validate ownership, role, status, file type, size, and workflow rules before saving entities through repositories. Response DTOs are mapped from persisted entities and often hide sensitive fields based on viewer role or ownership.
 
@@ -333,11 +332,11 @@ Uploaded binary files are not stored in PostgreSQL. The database stores URL refe
 
 | Media type | Database reference | Upload service path | Storage behaviour |
 |---|---|---|---|
-| User avatar | `user_account.avatar_url` | `UserService.uploadCurrentUserAvatar` | Uploads image to Azure Blob Storage under an avatar object path, updates URL, and attempts cleanup of previous Azure/Supabase URL. |
-| Workshop image | `workshops.image_url` | `WorkshopServiceImpl.uploadWorkshopImage` | Admin-only image upload to Azure Blob Storage under a workshop object path, updates URL, and attempts cleanup of previous Azure/Supabase URL. |
+| User avatar | `user_account.avatar_url` | `UserService.uploadCurrentUserAvatar` | Uploads image to Azure Blob Storage under an avatar object path, updates URL, and attempts cleanup of previous Azure Blob URL. |
+| Workshop image | `workshops.image_url` | `WorkshopServiceImpl.uploadWorkshopImage` | Admin-only image upload to Azure Blob Storage under a workshop object path, updates URL, and attempts cleanup of previous Azure Blob URL. |
 | Memory media | `memory_media.media_url`; `memory_entries.cover_url`; image URLs may also appear in `memory_entries.content` | `MemoryServiceImpl.uploadMemoryMedia` and memory update payloads | Admin-only image upload returns a URL. Memory update stores provided media URL list as `MemoryMedia` rows. Delete attempts to clean up cover/media/content URLs. |
 
-`AzureBlobStorageService` is the active upload implementation for avatar, workshop, and memory uploads. It can return either a plain blob URL or a read-only SAS URL depending on configuration. `SupabaseStorageService` remains in the codebase for cleanup compatibility with older public URLs.
+`AzureBlobStorageService` is the active upload implementation for avatar, workshop, and memory uploads. It can return either a plain blob URL or a read-only SAS URL depending on configuration. The old Supabase storage compatibility service has been removed from the backend.
 
 The deployment docs and backend properties use different Azure Blob container environment variable names in places. The exact production container binding requires verification.
 
@@ -391,7 +390,6 @@ Relevant non-sensitive configuration:
 | Local development | A local PostgreSQL development profile exists and disables SSL mode. Specific credentials are intentionally omitted. |
 | Hibernate | Default profile uses PostgreSQL dialect, `ddl-auto=validate`, SQL logging disabled, and Open Session in View disabled. |
 | Development profile | Uses PostgreSQL dialect, `ddl-auto=none`, and Flyway location configuration, but Flyway is disabled. |
-| Supabase profile | Historical/alternate Supabase profile remains and uses Hibernate `ddl-auto=update`; this should not be assumed as the current production model. |
 | Flyway | Dependencies, Gradle plugin configuration, and migration files exist. Runtime Flyway execution is disabled in inspected profiles. Manual Flyway usage or operational migration process requires verification. |
 | Connection pooling | HikariCP pool size and timeout settings are profile-specific. |
 | Upload limits | Multipart limits and `app.upload.max-image-bytes` enforce image upload size limits. |

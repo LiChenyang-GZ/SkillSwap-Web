@@ -1,6 +1,6 @@
 # System Architecture
 
-Last reviewed: 2026-05-13
+Last reviewed: 2026-05-19
 
 ## 1. Document Purpose
 
@@ -20,7 +20,7 @@ SkillSwap is implemented as a decoupled full-stack web application.
 | Backend | Java 17 Spring Boot 3 application exposing REST APIs | Code |
 | Backend security | Spring Security OAuth2 Resource Server with JWT issuer/JWKS validation | Code |
 | Database | PostgreSQL via Spring Data JPA/Hibernate | Code and existing documentation |
-| Media storage | Azure Blob Storage service for uploaded media; legacy Supabase storage service remains in code for cleanup compatibility | Code and existing documentation |
+| Media storage | Azure Blob Storage service for uploaded media | Code and existing documentation |
 | Deployment | Frontend on Vercel; backend as a Dockerised Spring Boot service on an Azure VM behind Nginx and HTTPS/TLS | Existing documentation and workflow files |
 | CI/CD | GitHub Actions builds the backend JAR, builds and pushes a Docker image to GHCR, then redeploys on the Azure VM | Workflow files and existing documentation |
 
@@ -174,7 +174,7 @@ flowchart TB
   Repository["Repositories\nSpring Data JPA queries"]
   Entity["Entities\nJPA persistence model"]
   Database[("PostgreSQL")]
-  Storage["Storage services\nAzure Blob + legacy Supabase cleanup"]
+  Storage["Storage service\nAzure Blob"]
 
   Controller --> DTO
   Controller --> Service
@@ -196,7 +196,7 @@ flowchart TB
 | Memory | `MemoryController`, `MemoryServiceImpl` | Public memory list and detail by slug | Code |
 | Admin memory | `AdminMemoryController`, `MemoryServiceImpl` | Admin memory CRUD, edit locks, media upload | Code |
 | Security/config | `WebSecurityConfiguration`, `JwtConverter`, `CorsConfig` | JWT validation, stateless sessions, CORS, role mapping | Code |
-| Storage | `AzureBlobStorageService`, `SupabaseStorageService` | Uploaded media storage and cleanup support | Code |
+| Storage | `AzureBlobStorageService` | Uploaded media storage and Azure blob cleanup support | Code |
 
 ### Request Handling Lifecycle
 
@@ -227,7 +227,7 @@ Validation is split across DTO annotations, service methods, and the global exce
 
 ### Authentication and Authorization Enforcement
 
-The backend enforces authentication using Spring Security's OAuth2 Resource Server support. The security configuration permits health checks, auth-related routes, public workshop reads, and public memory reads; most `/api/**` routes require authentication.
+The backend enforces authentication using Spring Security's OAuth2 Resource Server support. The security configuration permits health checks, public workshop reads, and public memory reads; most `/api/**` routes require authentication.
 
 Admin authorization is implemented through database-backed role mapping:
 
@@ -238,8 +238,6 @@ Admin authorization is implemented through database-backed role mapping:
 | Role lookup | `JwtConverter` reads the local user's role | Code |
 | Admin authority | Role values equivalent to `admin` / `role_admin` map to `ROLE_ADMIN` | Code |
 | Enforcement | Admin controllers and services check `ROLE_ADMIN` or equivalent authorities | Code |
-
-Some comments in older backend files still mention Supabase authentication. Current configuration and documentation support Clerk/JWKS validation as the active model.
 
 ## 6. Data Architecture
 
@@ -384,7 +382,7 @@ The active upload services call `AzureBlobStorageService.uploadImage`. The servi
 - Returns a blob URL, optionally with a read-only SAS query string if configured.
 - Provides deletion helpers for known blob URLs.
 
-Legacy `SupabaseStorageService` remains in the codebase and is used for cleanup compatibility in services that may delete previously stored Supabase URLs. Current documentation positions Azure Blob Storage as the active media storage layer.
+Azure Blob Storage is the active media storage layer. The old Supabase storage compatibility service has been removed, so historical Supabase-hosted objects need a separate one-off cleanup or migration if they still exist.
 
 ### Media References
 
@@ -554,7 +552,6 @@ The memory edit mechanism uses pessimistic row locking and explicit lock metadat
 | Nginx + Let's Encrypt/Certbot | Reverse proxy and TLS termination for backend API | Existing documentation |
 | GitHub Actions | Backend build/deploy automation | Workflow files |
 | GitHub Container Registry | Backend Docker image registry | Workflow files |
-| Supabase storage | Legacy compatibility service remains in backend code | Code |
 
 No external queue, cache, message broker, search engine, analytics platform, application performance monitoring service, or centralised logging service was found in the inspected runtime architecture.
 
@@ -590,7 +587,7 @@ This section is intentionally concise. Operational procedures, secrets configura
 | Use GitHub Actions and GHCR for backend releases | Removes manual JAR/image transfer and standardises backend redeploys | Workflow files |
 | Use edit locks for memory content | Reduces concurrent admin edit conflicts for memory pages | Code |
 
-Detailed ADRs are not currently present in the inspected repository. Future ADRs could formalise the authentication provider choice, VM-vs-managed-container trade-off, media storage model, and database migration approach.
+Detailed ADRs under `docs/09-decision-records/` capture the current choices for authentication, hosting, database, media storage, CI/CD, and reverse proxy/TLS.
 
 ## 13. Scalability, Reliability, and Maintainability Considerations
 
@@ -667,7 +664,6 @@ The following architecture details are directly supported by inspected source co
 - PostgreSQL persistence through Spring Data JPA entities and repositories.
 - User, workshop, participant, notification, memory entry, and memory media entities.
 - Azure Blob upload service used by avatar, admin workshop image, and admin memory media flows.
-- Legacy Supabase storage service remaining for compatibility/cleanup.
 - Global exception handling.
 - Asynchronous notification creation.
 - Memory edit lock support.

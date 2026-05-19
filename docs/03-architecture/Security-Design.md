@@ -115,7 +115,7 @@ The repository contains configuration for local development and production-style
 
 - The frontend reads Clerk and API configuration from Vite environment variables such as `<CLERK_PUBLISHABLE_KEY>` and `<API_BASE_URL>`.
 - The backend reads JWT issuer, JWKS, database, storage, and Clerk secret configuration from environment variables in deployed environments.
-- A development-only controller path supports an `X-Mock-User` mechanism for workshop creation when the Spring `dev` profile is active. This is limited in code to the `dev` profile and should not be enabled in production.
+- No active `X-Mock-User` workshop creation backdoor remains; local development should use Clerk-issued JWTs like production.
 
 The default backend application configuration includes fallback development values for Clerk issuer/JWKS configuration. Production deployments should provide explicit production values through environment variables and should not rely on defaults.
 
@@ -222,7 +222,6 @@ Implemented route policy from Spring Security configuration:
 | --- | --- |
 | `/health` | Public |
 | `/api/health` | Public |
-| `/api/v1/auth/**` | Public in security configuration |
 | `GET /api/v1/workshops` | Public at route level, with response behaviour affected by authentication/admin state |
 | `GET /api/v1/workshops/public` | Public |
 | `GET /api/v1/workshops/{id}` | Public at route level for numeric workshop IDs, with backend visibility checks |
@@ -340,7 +339,7 @@ Frontend deployment configuration should use only browser-safe public values, su
 
 - Automated secret rotation is not documented.
 - Secret expiry or rotation ownership is not documented.
-- A local development profile contains a hardcoded local database password. This should be treated as a configuration hygiene issue even if it is not a production credential.
+- The local development profile expects the database password through `DEV_DB_PASSWORD`; local `.env` files should remain untracked.
 - The backend Gradle `bootRun` task includes diagnostic output that previews the database password variable. This should be removed or restricted to avoid accidental exposure in logs.
 - Some cloud documentation includes concrete infrastructure identifiers. Security handover documents should continue to use placeholders instead of real values.
 

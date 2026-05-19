@@ -115,9 +115,6 @@ Notes:
 | `CLERK_JWKS_URI` | JWKS endpoint for JWT validation | Yes for production auth | Injected from GitHub secret | `<CLERK_JWKS_URI>` |
 | `CLERK_SECRET_KEY` | Clerk backend secret key | Yes in current deployment configuration | Injected from GitHub secret | `<CLERK_SECRET_KEY>` |
 | `PORT` | Spring Boot server port; default is `8080` | No unless overriding default | `application.properties` placeholder | `8080` |
-| `VITE_SUPABASE_URL` | Legacy Supabase storage compatibility setting | No for current Azure deployment; conditional for legacy cleanup | Backend properties | `<SUPABASE_URL>` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Legacy Supabase storage service role key | No for current Azure deployment; conditional for legacy cleanup | Backend properties | `<SUPABASE_SERVICE_ROLE_KEY>` |
-| `SUPABASE_STORAGE_BUCKET` | Legacy Supabase storage bucket | No for current Azure deployment; conditional for legacy cleanup | Backend properties | `<SUPABASE_STORAGE_BUCKET>` |
 
 ### C. Frontend Deployment Environment Variables
 
@@ -129,8 +126,6 @@ These values are configured in the Vercel project dashboard and are injected at 
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk frontend publishable key | Yes | Vercel environment variables | `<CLERK_PUBLISHABLE_KEY>` |
 | `VITE_AUTH_REDIRECT_URL` | Optional auth redirect override | Optional | Vercel environment variables | `<AUTH_REDIRECT_URL>` |
 | `VITE_IMAGE_UPLOAD_MAX_BYTES` | Optional frontend upload size limit | Optional | Vercel environment variables | `<IMAGE_UPLOAD_MAX_BYTES>` |
-| `VITE_SUPABASE_URL` | Legacy/unused Supabase utility setting observed in frontend code | Not required for current documented deployment | Vercel environment variables if a feature needs it | `<SUPABASE_URL>` |
-| `VITE_SUPABASE_ANON_KEY` | Legacy/unused Supabase utility setting observed in frontend code | Not required for current documented deployment | Vercel environment variables if a feature needs it | `<SUPABASE_ANON_KEY>` |
 
 ## 7. Automated Backend Deployment
 

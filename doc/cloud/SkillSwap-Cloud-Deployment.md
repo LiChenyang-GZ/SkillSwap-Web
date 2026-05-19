@@ -407,7 +407,7 @@ jobs:
               -e SPRING_DATASOURCE_USERNAME="${{ secrets.DB_USERNAME }}" \
               -e SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
               -e AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-              -e AZURE_STORAGE_MEMORIES_CONTAINER="memories" \
+              -e AZURE_STORAGE_MEDIA_CONTAINER="media" \
               -e CLERK_ISSUER_URI="${{ secrets.CLERK_ISSUER_URI }}" \
               -e CLERK_JWKS_URI="${{ secrets.CLERK_JWKS_URI }}" \
               -e CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}" \
@@ -496,7 +496,7 @@ docker run -d \
   -e SPRING_DATASOURCE_USERNAME=dbadmin \
   -e SPRING_DATASOURCE_PASSWORD=<password> \
   -e AZURE_STORAGE_CONNECTION_STRING=<connection_string> \
-  -e AZURE_STORAGE_MEMORIES_CONTAINER=memories \
+  -e AZURE_STORAGE_MEDIA_CONTAINER=media \
   -e CLERK_ISSUER_URI=<clerk_issuer_uri> \
   -e CLERK_JWKS_URI=<clerk_jwks_uri> \
   -e CLERK_SECRET_KEY=<clerk_secret_key> \
@@ -509,7 +509,7 @@ docker logs backend-api --tail 50
 ### 9.3 Database Migration
 
 ```bash
-# Export from source database (e.g. Supabase)
+# Export from the source PostgreSQL database
 pg_dump "postgresql://<source_connection_string>" > backup.sql
 
 # Import into Azure PostgreSQL
@@ -583,7 +583,7 @@ Sensitive configuration is never committed to source control. All secrets are in
 | `SPRING_DATASOURCE_USERNAME` | Database administrator login |
 | `SPRING_DATASOURCE_PASSWORD` | Database password |
 | `AZURE_STORAGE_CONNECTION_STRING` | Blob Storage master connection string |
-| `AZURE_STORAGE_MEMORIES_CONTAINER` | Target Blob container name (`memories`) |
+| `AZURE_STORAGE_MEDIA_CONTAINER` | Target Blob container name (`media`) |
 | `CLERK_ISSUER_URI` | Clerk Production JWT issuer URL |
 | `CLERK_JWKS_URI` | Clerk Production public key endpoint for JWT verification |
 | `CLERK_SECRET_KEY` | Clerk Production backend secret key (`sk_live_...`) |
@@ -599,7 +599,7 @@ Sensitive configuration is never committed to source control. All secrets are in
 
 ## 12. Architecture Decisions
 
-**Why Clerk instead of self-hosted JWT?** Implementing authentication from scratch introduces significant security risk and development overhead — password hashing, token rotation, and OAuth integration each carry their own attack surface. Clerk's free tier (Hobby plan) supports up to 50,000 monthly retained users, well above the expected user base, and the Supabase Auth migration was reduced to a database re-mapping rather than a full auth system rewrite.
+**Why Clerk instead of self-hosted JWT?** Implementing authentication from scratch introduces significant security risk and development overhead — password hashing, token rotation, and OAuth integration each carry their own attack surface. Clerk's free tier (Hobby plan) supports up to 50,000 monthly retained users, well above the expected user base, and moving from older auth paths to Clerk required database identity mapping rather than a full custom auth rewrite.
 
 **Why Vercel for the frontend?** Vercel provides a zero-config CDN with automatic HTTPS, Git-based CI/CD, and a generous free tier. For a React SPA, it eliminates the need to manage static file hosting infrastructure entirely.
 

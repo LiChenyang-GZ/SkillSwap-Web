@@ -1,6 +1,6 @@
 # Local Development Guide
 
-Last reviewed: 2026-05-15
+Last reviewed: 2026-05-19
 
 ## 1. Document Purpose
 
@@ -14,15 +14,14 @@ Setup instructions below were checked against the repository files. When a step 
 
 | Tool or service | Version / requirement | Local requirement | Source |
 |---|---:|---|---|
-| Node.js | Requires verification. Use Node.js 20+ unless the team confirms another version. `package.json` has no `engines`; locked frontend dependencies include packages requiring Node 20 and Vite allowing Node 18/20/22. | Required for frontend | `skill-swap-frontend/package.json`, `package-lock.json` |
-| npm | Requires verification. Use the npm bundled with Node.js 20+. | Required for frontend | `package-lock.json` lockfile v3 |
+| Node.js | Requires verification. Use Node.js 20+ unless the team confirms another version. `package.json` has no `engines` and dependency ranges are not lockfile-pinned. | Required for frontend | `skill-swap-frontend/package.json` |
+| npm | Requires verification. Use the npm bundled with Node.js 20+. | Required for frontend | `skill-swap-frontend/package.json` |
 | Java | 17 | Required for backend | `README.md`, `skill-swap-backend/build.gradle` |
 | Gradle | Use Gradle Wrapper 8.14.3 | Required for backend | `skill-swap-backend/gradle/wrapper/gradle-wrapper.properties` |
 | PostgreSQL | Requires verification. Local profile points to PostgreSQL at `localhost:5432` and database `skill_swap_dev`; production docs mention PostgreSQL 16.x. | Required unless using an explicitly configured remote/dev database | `application-dev.properties`, database docs |
 | Docker | Requires verification for local development. A backend Dockerfile exists, but no `docker-compose.yml` or local Docker service stack was found. | Optional | `skill-swap-backend/Dockerfile` |
 | Clerk account / project | Required for real sign-in. Backend has development issuer/JWKS fallback; frontend still requires a Clerk publishable key. | Required for authenticated flows | `main.tsx`, `application.properties` |
 | Azure Blob Storage | Required only for local media upload flows unless replaced by a compatible local/test account. | Conditional | `AzureBlobStorageService.java`, `application.properties` |
-| Supabase | Not required for normal local upload flow. Supabase storage settings remain for legacy cleanup compatibility and an unused frontend utility. | Conditional / requires verification | `SupabaseStorageService.java`, `src/utils/supabase/supabase.ts` |
 
 ## 3. Repository Structure
 
@@ -166,7 +165,6 @@ http://127.0.0.1:5173
 | App crashes with `Missing VITE_CLERK_PUBLISHABLE_KEY` | `main.tsx` throws when the Clerk publishable key is missing. | Add `VITE_CLERK_PUBLISHABLE_KEY=<CLERK_PUBLISHABLE_KEY>` to `.env.local` and restart Vite. |
 | API calls go to the wrong backend | `VITE_API_BASE_URL` is missing or points to production/another server. | Set `VITE_API_BASE_URL=http://localhost:8080`. |
 | OAuth redirect returns to the wrong port | Clerk redirect URL does not match local Vite port. | Configure Clerk and `VITE_AUTH_REDIRECT_URL` for `http://localhost:3000/explore`. |
-| Supabase env warnings or future feature issues | `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are typed and read by an unused utility. | Not required for normal current frontend flow; add placeholders only if a feature imports that utility. Requires verification. |
 
 ## 6. Backend Local Setup
 
@@ -271,6 +269,7 @@ Example local-only values:
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/skill_swap_dev?sslmode=disable
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=<DATABASE_PASSWORD>
+DEV_DB_PASSWORD=<DATABASE_PASSWORD>
 CLERK_ISSUER_URI=<CLERK_ISSUER_URI>
 CLERK_JWKS_URI=<CLERK_JWKS_URI>
 CLERK_SECRET_KEY=<CLERK_SECRET_KEY>
@@ -279,7 +278,7 @@ AZURE_STORAGE_MEDIA_CONTAINER=<AZURE_STORAGE_MEDIA_CONTAINER>
 AZURE_STORAGE_SAS_DAYS=0
 ```
 
-Requires verification: `application-dev.properties` currently contains concrete local datasource values directly. Prefer local overrides through `.env` or command-line/Spring properties, and do not copy real secrets into documentation.
+`application-dev.properties` reads the local database password from `DEV_DB_PASSWORD`. Keep that value in an untracked local `.env` file or provide it through your shell environment.
 
 ### Clerk Development Fallback
 
@@ -342,7 +341,6 @@ JPA/Hibernate schema behavior:
 |---|---|---|
 | default | `ddl-auto=validate` | Expects schema to already exist and match entities. |
 | `dev` | `ddl-auto=none` | Does not create or update schema. |
-| `supabase` | `ddl-auto=update` | Historical/alternate profile. Do not assume this is the current local standard. |
 
 Inferred from implementation: if using Flyway locally, the Gradle plugin provides a `flywayMigrate` task configured for the local database and migrations folder. This requires a reachable local PostgreSQL database and credentials such as `DB_USER` and `DB_PASSWORD` in `skill-swap-backend/.env`.
 
@@ -404,7 +402,6 @@ Behavior verified from implementation:
 - The backend creates the configured blob container if it does not exist.
 - The backend returns either a plain blob URL or a read-only SAS URL, depending on `AZURE_STORAGE_SAS_DAYS`.
 - Uploads validate that files are images and respect configured/default size limits.
-- Supabase storage remains for cleanup compatibility with older URLs, but active upload paths call Azure Blob Storage.
 
 Requires verification:
 
@@ -422,9 +419,6 @@ Requires verification:
 | `VITE_API_BASE_URL` | Recommended | Backend API base URL. Falls back to `http://localhost:8080` if missing. | `http://localhost:8080` | `src/lib/api.ts` |
 | `VITE_AUTH_REDIRECT_URL` | Recommended for Clerk local redirects | Overrides auth redirect target. | `http://localhost:3000/explore` | `src/lib/authRedirect.ts` |
 | `VITE_IMAGE_UPLOAD_MAX_BYTES` | Optional | Frontend image size label/limit. Defaults to 10 MB if absent or invalid. | `10485760` | `src/shared/constants/uploadLimits.ts` |
-| `VITE_SUPABASE_URL` | No for current normal flow; requires verification | Read by an unused Supabase utility. | `<SUPABASE_URL>` | `src/utils/supabase/supabase.ts`, `src/vite-env.d.ts` |
-| `VITE_SUPABASE_ANON_KEY` | No for current normal flow; requires verification | Read by an unused Supabase utility. Browser-visible. | `<SUPABASE_ANON_KEY>` | `src/utils/supabase/supabase.ts`, `src/vite-env.d.ts` |
-| `VITE_SUPABASE_STORAGE_BUCKET` | No; requires verification | Typed but no direct current usage found. | `<SUPABASE_STORAGE_BUCKET>` | `src/vite-env.d.ts` |
 
 Note: non-`VITE_` variables in frontend `.env` files are not exposed to Vite client code.
 
@@ -435,20 +429,16 @@ Note: non-`VITE_` variables in frontend `.env` files are not exposed to Vite cli
 | `SPRING_DATASOURCE_URL` | Recommended override | Local JDBC URL. Useful to avoid relying on checked-in profile values. | `jdbc:postgresql://localhost:5432/skill_swap_dev?sslmode=disable` | Spring Boot override pattern, deploy workflow |
 | `SPRING_DATASOURCE_USERNAME` | Recommended override | Local database username. | `<DATABASE_USER>` | Spring Boot override pattern, deploy workflow |
 | `SPRING_DATASOURCE_PASSWORD` | Recommended override | Local database password. | `<DATABASE_PASSWORD>` | Spring Boot override pattern, deploy workflow |
+| `DEV_DB_PASSWORD` | Required when using the checked-in `dev` profile datasource settings | Password consumed by `application-dev.properties`. | `<DATABASE_PASSWORD>` | `application-dev.properties` |
 | `DB_USER` | Conditional | Used by Gradle Flyway configuration; defaults to `postgres` if absent. | `<DATABASE_USER>` | `build.gradle` |
 | `DB_PASSWORD` | Conditional | Used by default datasource placeholder and Gradle Flyway password. | `<DATABASE_PASSWORD>` | `application.properties`, `build.gradle` |
-| `PORT` | Optional | Backend server port; defaults to `8080`. | `8080` | `application.properties`, `application-supabase.properties` |
+| `PORT` | Optional | Backend server port; defaults to `8080`. | `8080` | `application.properties` |
 | `CLERK_ISSUER_URI` | Optional for backend startup; recommended for matching local Clerk | JWT issuer. Backend has dev fallback if absent. | `<CLERK_ISSUER_URI>` | `application.properties` |
 | `CLERK_JWKS_URI` | Optional for backend startup; recommended for matching local Clerk | JWKS endpoint. Backend has dev fallback if absent. | `<CLERK_JWKS_URI>` | `application.properties` |
 | `CLERK_SECRET_KEY` | Requires verification | Backend property exists, but no direct code usage was found beyond configuration. | `<CLERK_SECRET_KEY>` | `application.properties` |
 | `AZURE_STORAGE_CONNECTION_STRING` | Required for upload flows | Azure Blob Storage connection string. | `<AZURE_STORAGE_CONNECTION_STRING>` | `application.properties`, `AzureBlobStorageService.java` |
 | `AZURE_STORAGE_MEDIA_CONTAINER` | Required for upload flows unless default `media` is acceptable | Azure Blob container name used by backend code. | `<AZURE_STORAGE_MEDIA_CONTAINER>` | `application.properties`, `AzureBlobStorageService.java` |
 | `AZURE_STORAGE_SAS_DAYS` | Optional | If greater than 0, returned blob URLs include read-only SAS. | `0` | `application.properties`, `AzureBlobStorageService.java` |
-| `VITE_SUPABASE_URL` | Conditional / legacy cleanup | Supabase project URL for legacy storage cleanup. | `<SUPABASE_URL>` | `application.properties`, `SupabaseStorageService.java` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Conditional / legacy cleanup | Supabase service role key for legacy storage cleanup. | `<SUPABASE_SERVICE_ROLE_KEY>` | `application.properties`, `SupabaseStorageService.java` |
-| `SUPABASE_STORAGE_BUCKET` | Conditional / legacy cleanup | Supabase storage bucket; defaults to `skillswap-media`. | `<SUPABASE_STORAGE_BUCKET>` | `application.properties`, `SupabaseStorageService.java` |
-| `SUPABASE_PASSWORD` | Only for `supabase` profile | Database password for historical/alternate Supabase profile. | `<SUPABASE_PASSWORD>` | `application-supabase.properties` |
-| `JWT_HS256_SECRET` | No for current auth flow | Historical/commented JWT config only. | `<JWT_HS256_SECRET>` | Commented config/docs; old auth code disabled |
 
 ### Production-Only / Deployment Variables
 
@@ -660,13 +650,11 @@ Use this checklist after setup:
 
 - Local database name `skill_swap_dev` is the intended local DB because the `dev` profile points to it.
 - Gradle `flywayMigrate` can be used locally because the Flyway plugin and local migration config exist.
-- Supabase storage is legacy cleanup compatibility rather than the active upload target.
 - Local media uploads require a real or compatible Azure Blob configuration because no local storage fallback was found.
 
 ### Missing Automation or Improvements
 
 - Add a checked-in `.env.example` for frontend and backend with placeholders only.
-- Remove concrete local credentials from tracked application properties and rely on local overrides.
 - Add a local Docker Compose file for PostgreSQL if the team wants one-command onboarding.
 - Clarify and automate schema setup.
 - Add frontend test/lint/type-check scripts.
@@ -680,9 +668,9 @@ Use this checklist after setup:
 
 - Frontend scripts from `skill-swap-frontend/package.json`: `dev`, `build`, `preview`, `build:now`, `deploy`.
 - Frontend port and output directory from `skill-swap-frontend/vite.config.ts`: dev server port `3000`, build output `build`.
-- Frontend environment usage from `src/main.tsx`, `src/lib/api.ts`, `src/lib/authRedirect.ts`, `src/shared/constants/uploadLimits.ts`, `src/utils/supabase/supabase.ts`, and `src/vite-env.d.ts`.
+- Frontend environment usage from `src/main.tsx`, `src/lib/api.ts`, `src/lib/authRedirect.ts`, `src/shared/constants/uploadLimits.ts`, and `src/vite-env.d.ts`.
 - Backend Java version, dependencies, Gradle wrapper, `bootRun`, `test`, `bootJar`, `.env` loading, and Flyway plugin config from `skill-swap-backend/build.gradle` and Gradle wrapper properties.
-- Backend application profiles from `application.properties`, `application-dev.properties`, and `application-supabase.properties`.
+- Backend application profiles from `application.properties` and `application-dev.properties`.
 - Database schema evidence from `src/main/resources/db/migration`, `src/main/resources/db/schema.sql`, and `doc/sql`.
 - Authentication/security from `WebSecurityConfiguration.java`, `JwtConverter.java`, frontend Clerk code, and auth docs.
 - CORS from `CorsConfig.java`.

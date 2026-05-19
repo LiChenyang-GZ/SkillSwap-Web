@@ -44,7 +44,7 @@ Authorization: Bearer <JWT_TOKEN>
 
 The active security configuration is `skill-swap-backend/src/main/java/club/skillswap/common/config/WebSecurityConfiguration.java`.
 
-The backend validates JWTs with a configured issuer and/or JWKS endpoint through Spring Security OAuth2 Resource Server. Project documentation and frontend code identify Clerk as the current identity provider. Some older comments still mention Supabase, but the active implementation is generic issuer/JWKS JWT validation and current properties support Clerk configuration.
+The backend validates JWTs with a configured issuer and/or JWKS endpoint through Spring Security OAuth2 Resource Server. Project documentation and frontend code identify Clerk as the current identity provider. The active implementation is generic issuer/JWKS JWT validation and current properties support Clerk configuration.
 
 ### Local User Mapping
 
@@ -62,8 +62,6 @@ Verified public endpoints:
 - `GET /api/v1/workshops/{id}` for numeric IDs, subject to workshop visibility rules
 - `GET /api/v1/memories`
 - `GET /api/v1/memories/{slug}`
-
-Security also permits `/api/v1/auth/**`, but no active controller for that route group was found. It is not documented as an implemented API.
 
 ### Protected Endpoints
 
@@ -442,7 +440,7 @@ Error cases:
 #### POST `/api/v1/workshops`
 
 - Purpose: create a new workshop proposal.
-- Authentication: required. In the `dev` profile only, `X-Mock-User` can be used by this controller path.
+- Authentication: required.
 - Request body schema: `WorkshopCreateRequestDto`.
 - Successful response: `201 ApiMessageDto`.
 - Source: `WorkshopController`, `WorkshopCreateRequestDto`, `WorkshopServiceImpl`; directly verified.
@@ -697,7 +695,7 @@ Error cases:
 - Purpose: join an eligible upcoming workshop.
 - Authentication: required.
 - Path parameters: `id` as workshop ID.
-- Request body: none. `JoinWorkshopRequestDto` exists in code but is not consumed by this controller.
+- Request body: none.
 - Successful response: `200 ApiMessageDto`.
 - Source: `WorkshopController`, `WorkshopServiceImpl`; directly verified.
 
@@ -727,7 +725,7 @@ Error cases:
 - Purpose: leave a workshop that the current user previously joined.
 - Authentication: required.
 - Path parameters: `id` as workshop ID.
-- Request body: none. `LeaveWorkshopRequestDto` exists in code but is not consumed by this controller.
+- Request body: none.
 - Successful response: `200 ApiMessageDto`.
 - Source: `WorkshopController`, `WorkshopServiceImpl`; directly verified.
 
@@ -1652,7 +1650,7 @@ Fields are returned from the DTO and may be omitted when `null`.
 | `avatarUrl` | string | No | Participant avatar URL. | DTO/service |
 | `email` | string | No | Participant email. Included when participant DTOs are returned. | DTO/service |
 
-Unused active-code DTOs: `JoinWorkshopRequestDto`, `LeaveWorkshopRequestDto`, and `WorkshopStatusUpdateResponseDto` exist, but no current controller endpoint consumes or returns them.
+Unused active-code DTO: `WorkshopStatusUpdateResponseDto` exists, but no current controller endpoint returns it.
 
 ### User Models
 
@@ -1832,9 +1830,8 @@ Storage behaviour:
 - Active uploads use `AzureBlobStorageService.uploadImage(...)`.
 - The storage service creates the configured container if needed.
 - The returned URL may be a plain blob URL or a read-only SAS URL depending on configuration.
-- Avatar and workshop image uploads attempt to delete the previous Azure/Supabase URL after successful replacement.
+- Avatar and workshop image uploads attempt to delete the previous Azure Blob URL after successful replacement.
 - Memory deletion attempts to clean up cover, media list, and image URLs found in content.
-- `SupabaseStorageService` remains in code for cleanup compatibility with older URLs.
 
 Restrictions:
 

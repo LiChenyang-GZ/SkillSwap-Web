@@ -15,7 +15,6 @@ Repository and documentation evidence:
 - User avatar, admin workshop image, and admin memory media flows call Azure Blob Storage upload methods.
 - PostgreSQL stores media URL references rather than binary file contents.
 - The backend can return plain blob URLs or read-only SAS URLs depending on configuration.
-- `SupabaseStorageService` remains in the codebase for cleanup compatibility with older URLs.
 - Existing docs note a mismatch: deployment docs/workflow mention `AZURE_STORAGE_MEMORIES_CONTAINER`, while backend properties read `AZURE_STORAGE_MEDIA_CONTAINER`.
 
 ## Decision
@@ -43,9 +42,9 @@ The backend uploads media to Blob Storage, stores returned URLs in PostgreSQL, a
   - Source status: Reasonable inferred alternative.
 
 - Supabase Storage
-  - Why considered: Supabase storage code remains for compatibility and cleanup of older public URLs.
+  - Why considered: Older project history used Supabase storage concepts.
   - Why not selected: Current documentation and active upload code identify Azure Blob Storage as the media target.
-  - Source status: Reasonable inferred alternative based on repository history and retained compatibility service.
+  - Source status: Historical alternative based on repository history.
 
 - AWS S3
   - Why considered: It is a common object storage service.
@@ -90,5 +89,4 @@ The backend uploads media to Blob Storage, stores returned URLs in PostgreSQL, a
 - `doc/cloud/SkillSwap-Cloud-Deployment.md`
 - `.github/workflows/deploy.yml`
 - `skill-swap-backend/src/main/java/club/skillswap/common/storage/AzureBlobStorageService.java`
-- `skill-swap-backend/src/main/java/club/skillswap/common/storage/SupabaseStorageService.java`
 - `skill-swap-backend/src/main/resources/application.properties`

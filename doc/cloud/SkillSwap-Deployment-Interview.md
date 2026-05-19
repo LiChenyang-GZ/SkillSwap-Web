@@ -144,7 +144,7 @@ All secrets (database credentials, Blob Storage connection string, Clerk keys) a
 
 ## 6. Architecture Decisions
 
-**Clerk over self-hosted JWT** — Password hashing, token rotation, and OAuth integration each carry meaningful attack surface. Clerk's Hobby plan (50,000 MAU free) is well above the expected user base, and migrating from Supabase Auth required only a database field re-mapping rather than a full auth rewrite.
+**Clerk over self-hosted JWT** — Password hashing, token rotation, and OAuth integration each carry meaningful attack surface. Clerk's Hobby plan (50,000 MAU free) is well above the expected user base, and moving from older auth paths to Clerk required database identity mapping rather than a full auth rewrite.
 
 **Azure VM over managed container service** — A single VM with Docker and Nginx gives full control without the cost and operational complexity of AKS or Azure Container Instances. The manual container lifecycle overhead is eliminated by the CI/CD pipeline.
 
