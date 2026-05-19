@@ -642,6 +642,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // 调用后端 API，传递 JWT token
       const token = await getAuthToken();
+      if (!token) {
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
       await workshopMutationService.join(workshopId, token);
 
       toast.success(`Joined "${workshop.title}"!`);
@@ -678,6 +682,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // 调用后端 API，传递 JWT token
       const token = await getAuthToken();
+      if (!token) {
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
       await workshopMutationService.leave(workshopId, token);
 
       toast.success("Workshop attendance cancelled");
@@ -701,6 +709,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       // 调用后端 API 删除 workshop，传递 JWT token
       const token = await getAuthToken();
+      if (!token) {
+        toast.error("Your session expired. Please sign in again.");
+        return;
+      }
       await workshopMutationService.delete(workshopId, token);
 
       // 删除成功后，从本地状态中移除该 workshop（处理 ID 类型不一致）
