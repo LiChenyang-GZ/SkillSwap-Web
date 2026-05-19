@@ -32,6 +32,8 @@ const normalizeWorkshopId = (workshopId: string | null | undefined) => {
 const isMatchingWorkshopId = (workshopId: string, targetWorkshopId: string | null) =>
   normalizeWorkshopId(workshopId) === normalizeWorkshopId(targetWorkshopId);
 
+const getErrorStatus = (error: unknown) => (error as { status?: number })?.status;
+
 export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminReviewQueryParams) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -123,6 +125,9 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
             ...data.filter((workshop) => !isMatchingWorkshopId(workshop.id, targetDetail?.id || null)),
           ];
         } catch (targetError) {
+          if (getErrorStatus(targetError) !== 404) {
+            throw targetError;
+          }
           console.warn('Failed to load target workshop from notification:', targetError);
         }
       }
@@ -177,7 +182,7 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
       }
     } catch (error) {
       console.error('Failed to load admin workshops:', error);
-      const status = (error as Error & { status?: number }).status;
+      const status = getErrorStatus(error);
       if (status === 401) {
         setErrorMessage('Session expired. Please sign in again.');
       } else if (status === 403) {
