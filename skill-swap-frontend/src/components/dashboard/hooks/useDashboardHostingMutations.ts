@@ -11,13 +11,13 @@ import {
 import { isHostedByCurrentUser } from "../utils/dashboardWorkshopUtils";
 
 interface UseDashboardHostingMutationsParams {
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
   user: User | null;
   workshops: Workshop[];
 }
 
 export function useDashboardHostingMutations({
-  sessionToken,
+  getAuthToken,
   user,
   workshops,
 }: UseDashboardHostingMutationsParams) {
@@ -38,14 +38,15 @@ export function useDashboardHostingMutations({
   }, [hostedWorkshopIds]);
 
   const hideHostedWorkshopFromView = async (workshopId: string) => {
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       toast.error(DASHBOARD_HIDE_SIGNIN_MESSAGE);
       return;
     }
 
     setHidingWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
     try {
-      await workshopMutationService.hideHostingWorkshop(workshopId, sessionToken);
+      await workshopMutationService.hideHostingWorkshop(workshopId, token);
       setHiddenHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
       toast.success(DASHBOARD_HIDE_SUCCESS_MESSAGE);
     } catch (error) {

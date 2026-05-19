@@ -12,17 +12,17 @@ import { useNotificationsSelection } from "../hooks/useNotificationsSelection";
 
 export function NotificationsScreen() {
   const {
-    sessionToken,
+    getAuthToken,
     refreshNotificationsUnreadCount,
     isAuthenticated,
     setCurrentPage,
     upsertWorkshop,
   } = useApp();
 
-  const query = useNotificationsQuery({ isAuthenticated, sessionToken });
-  const canMarkAllRead = Boolean(sessionToken) && !query.errorMessage && !query.isLoading;
+  const query = useNotificationsQuery({ isAuthenticated, getAuthToken });
+  const canMarkAllRead = isAuthenticated && !query.errorMessage && !query.isLoading;
   const mutations = useNotificationsMutations({
-    sessionToken,
+    getAuthToken,
     canMarkAllRead,
     refreshNotificationsUnreadCount,
     replaceNotification: query.replaceNotification,
@@ -30,7 +30,8 @@ export function NotificationsScreen() {
   });
   const selection = useNotificationsSelection({ onMarkRead: mutations.handleMarkRead });
   const actions = useNotificationActions({
-    sessionToken,
+    isAuthenticated,
+    getAuthToken,
     setCurrentPage,
     upsertWorkshop,
   });

@@ -10,28 +10,32 @@ import {
 } from "../constants/notificationOptions";
 
 interface UseNotificationActionsParams {
-  sessionToken: string | null;
+  isAuthenticated: boolean;
+  getAuthToken: () => Promise<string | null>;
   setCurrentPage: (page: string) => void;
   upsertWorkshop: (workshop: Workshop) => void;
 }
 
 export function useNotificationActions({
-  sessionToken,
+  isAuthenticated,
+  getAuthToken,
   setCurrentPage,
   upsertWorkshop,
 }: UseNotificationActionsParams) {
   const openWorkshopFromNotification = (workshopId: string) => {
-    if (sessionToken) {
-      void workshopQueryService
-        .getById(workshopId, sessionToken)
-        .then((latest) => {
+    if (isAuthenticated) {
+      void (async () => {
+        try {
+          const token = await getAuthToken();
+          if (!token) return;
+          const latest = await workshopQueryService.getById(workshopId, token);
           if (latest) {
             upsertWorkshop(latest);
           }
-        })
-        .catch((error) => {
+        } catch (error) {
           console.warn("Failed to preload workshop from notification", error);
-        });
+        }
+      })();
     }
     setCurrentPage(`workshop-${workshopId}`);
   };

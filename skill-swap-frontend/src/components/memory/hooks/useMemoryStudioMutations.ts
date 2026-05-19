@@ -14,7 +14,7 @@ import { getMemoryErrorMessage, getMemoryErrorStatus } from "../utils/memoryErro
 import { toMemoryStatusLabel } from "../utils/memoryStatusLabels";
 
 interface UseMemoryStudioMutationsParams {
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
   selectedId: string | null;
   selectedEntry: MemoryEntry | null;
   selectedStatus: MemoryEntry["status"];
@@ -33,7 +33,7 @@ interface UseMemoryStudioMutationsParams {
 }
 
 export function useMemoryStudioMutations({
-  sessionToken,
+  getAuthToken,
   selectedId,
   selectedEntry,
   selectedStatus,
@@ -54,7 +54,8 @@ export function useMemoryStudioMutations({
   const [deleteDialogEntry, setDeleteDialogEntry] = useState<MemoryEntry | null>(null);
 
   const handleSave = async (forcedStatus?: MemoryEntry["status"]) => {
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       toast.error("Please sign in.");
       return;
     }
@@ -82,7 +83,7 @@ export function useMemoryStudioMutations({
       };
 
       if (selectedId) {
-        const updated = await memoryAdminService.updateByAdmin(selectedId, payload, sessionToken);
+        const updated = await memoryAdminService.updateByAdmin(selectedId, payload, token);
         setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
         setIsCreatingNew(false);
         setSelectedStatus(updated.status || statusToPersist);
@@ -94,7 +95,7 @@ export function useMemoryStudioMutations({
 
         toast.success("Saved.");
       } else {
-        const created = await memoryAdminService.createByAdmin(payload, sessionToken);
+        const created = await memoryAdminService.createByAdmin(payload, token);
         setEntries((prev) => [created, ...prev]);
         setSelectedId(created.id);
         setIsCreatingNew(false);
@@ -124,7 +125,8 @@ export function useMemoryStudioMutations({
   const handleDeleteEntry = async () => {
     if (!deleteDialogEntry) return;
 
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       toast.error("Please sign in.");
       return;
     }
@@ -137,7 +139,7 @@ export function useMemoryStudioMutations({
 
     setIsSaving(true);
     try {
-      await memoryAdminService.deleteByAdmin(deleteDialogEntry.id, sessionToken);
+      await memoryAdminService.deleteByAdmin(deleteDialogEntry.id, token);
       if (heldLockEntryIdRef.current === deleteDialogEntry.id) {
         heldLockEntryIdRef.current = null;
       }
@@ -160,7 +162,8 @@ export function useMemoryStudioMutations({
   };
 
   const handleStatusForEntry = async (entry: MemoryEntry, nextStatus: MemoryEntry["status"]) => {
-    if (!sessionToken) {
+    const token = await getAuthToken();
+    if (!token) {
       toast.error("Please sign in.");
       return;
     }
@@ -173,7 +176,7 @@ export function useMemoryStudioMutations({
 
     setIsSaving(true);
     try {
-      const updated = await memoryAdminService.updateByAdmin(entry.id, { status: nextStatus }, sessionToken);
+      const updated = await memoryAdminService.updateByAdmin(entry.id, { status: nextStatus }, token);
       setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       if (selectedId === entry.id) {
         setSelectedStatus(updated.status || nextStatus);

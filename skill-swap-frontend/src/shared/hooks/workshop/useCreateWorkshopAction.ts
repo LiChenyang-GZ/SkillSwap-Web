@@ -7,15 +7,13 @@ import { createWorkshopService } from '../../service/workshop/createWorkshopServ
 interface UseCreateWorkshopActionParams {
   isAuthenticated: boolean;
   user: User | null;
-  sessionToken: string | null;
-  refreshSessionToken: () => Promise<string | null>;
+  getAuthToken: () => Promise<string | null>;
 }
 
 export function useCreateWorkshopAction({
   isAuthenticated,
   user,
-  sessionToken,
-  refreshSessionToken,
+  getAuthToken,
 }: UseCreateWorkshopActionParams) {
   return useCallback(
     async (workshopData: WorkshopUpsertPayload): Promise<boolean> => {
@@ -25,25 +23,13 @@ export function useCreateWorkshopAction({
       }
 
       try {
-        let tokenToUse = sessionToken ?? (await refreshSessionToken());
-        if (!tokenToUse) {
+        const token = await getAuthToken();
+        if (!token) {
           toast.error('Please sign in to create workshops');
           return false;
         }
 
-        try {
-          await createWorkshopService.create(workshopData, tokenToUse);
-        } catch (error) {
-          const status = (error as Error & { status?: number }).status;
-          if (status !== 401) throw error;
-
-          const refreshedToken = await refreshSessionToken();
-          if (!refreshedToken || refreshedToken === tokenToUse) {
-            throw error;
-          }
-          tokenToUse = refreshedToken;
-          await createWorkshopService.create(workshopData, tokenToUse);
-        }
+        await createWorkshopService.create(workshopData, token);
 
         toast.success('Workshop created successfully!');
         return true;
@@ -53,6 +39,6 @@ export function useCreateWorkshopAction({
         return false;
       }
     },
-    [isAuthenticated, refreshSessionToken, sessionToken, user]
+    [isAuthenticated, getAuthToken, user]
   );
 }

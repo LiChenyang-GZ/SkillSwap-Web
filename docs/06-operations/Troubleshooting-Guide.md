@@ -734,14 +734,14 @@ Confidence labels:
 - Symptom: Protected endpoint returns `401` and backend sees an unauthenticated request.
 - Likely causes:
   - Caller used public `fetch` without passing token.
-  - Frontend service call did not receive `sessionToken`.
+  - Frontend service call did not obtain a Clerk token (`getAuthToken()` returned null).
   - Manual `curl` command omitted the header.
 - Diagnostic steps:
   - Inspect the request headers.
   - Compare with a known working request from `apiCall<T>()`.
 - Resolution steps:
   - Add `Authorization: Bearer <JWT_TOKEN>`.
-  - Ensure frontend calls pass the Clerk token to service functions.
+  - Ensure the frontend obtains a Clerk token via `getAuthToken()` before the protected call.
 - Prevention notes:
   - Public endpoints do not prove protected endpoint auth is configured correctly.
 - Source / confidence: Verified from code/docs.

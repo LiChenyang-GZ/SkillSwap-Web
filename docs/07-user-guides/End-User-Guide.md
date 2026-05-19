@@ -251,7 +251,7 @@ The `Feedback` navigation item currently opens a placeholder screen stating that
 
 | Issue | Suggested Action |
 |---|---|
-| You are redirected to sign in after logging in. | Refresh the page and sign in again. If it repeats, your session may not be loading correctly. |
+| You see a "session expired" message and are returned to the home page. | Your session ended (long inactivity, or signed out in another tab/device). Sign in again. If this happens immediately and repeatedly right after sign-in, the session is not loading correctly. |
 | Google sign-in says the account is not linked. | Use `Sign Up` once with that Google account, then return to `Sign In`. |
 | A workshop you submitted is not visible in Explore. | New submissions are pending until an admin approves them. |
 | You cannot join a workshop. | Check whether it is full, closed, ongoing, completed, cancelled, or hosted by you. |

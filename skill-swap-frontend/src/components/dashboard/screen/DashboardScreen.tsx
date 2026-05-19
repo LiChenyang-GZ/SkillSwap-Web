@@ -20,7 +20,7 @@ import type { Workshop } from "../../../types/workshop";
 interface DashboardAuthenticatedScreenProps {
   user: User;
   workshops: Workshop[];
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
   setCurrentPage: (page: string) => void;
   cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
   updateCurrentUserProfile: (updates: {
@@ -35,7 +35,7 @@ interface DashboardAuthenticatedScreenProps {
 function DashboardAuthenticatedScreen({
   user,
   workshops,
-  sessionToken,
+  getAuthToken,
   setCurrentPage,
   cancelWorkshopAttendance,
   updateCurrentUserProfile,
@@ -50,7 +50,7 @@ function DashboardAuthenticatedScreen({
   });
 
   const hostingMutations = useDashboardHostingMutations({
-    sessionToken,
+    getAuthToken,
     user: nonNullableUser,
     workshops,
   });
@@ -158,7 +158,7 @@ export function DashboardScreen() {
   const {
     user,
     workshops,
-    sessionToken,
+    getAuthToken,
     setCurrentPage,
     cancelWorkshopAttendance,
     updateCurrentUserProfile,
@@ -173,7 +173,7 @@ export function DashboardScreen() {
     <DashboardAuthenticatedScreen
       user={user}
       workshops={workshops}
-      sessionToken={sessionToken}
+      getAuthToken={getAuthToken}
       setCurrentPage={setCurrentPage}
       cancelWorkshopAttendance={cancelWorkshopAttendance}
       updateCurrentUserProfile={updateCurrentUserProfile}

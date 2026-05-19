@@ -17,11 +17,11 @@ import { useMemoryStudioSelection } from "../hooks/useMemoryStudioSelection";
 import { buildMemoryDocumentFromEntry } from "../utils/memoryDocument";
 
 export function MemoryStudioScreen() {
-  const { sessionToken, isAdmin, setCurrentPage, user } = useApp();
-  const hasSession = Boolean(sessionToken);
+  const { isAuthenticated, getAuthToken, isAdmin, setCurrentPage, user } = useApp();
+  const hasSession = isAuthenticated;
   const currentUserId = user?.id ? String(user.id) : null;
 
-  const query = useMemoryStudioQuery({ hasSession, sessionToken });
+  const query = useMemoryStudioQuery({ hasSession, getAuthToken });
   const { entries, setEntries, isLoading, loadEntries } = query;
   const selection = useMemoryStudioSelection({ entries });
   const {
@@ -40,7 +40,7 @@ export function MemoryStudioScreen() {
     selectEntry,
     resetSelectionState,
   } = selection;
-  const editor = useMemoryStudioEditor({ sessionToken });
+  const editor = useMemoryStudioEditor({ getAuthToken });
   const {
     documentText,
     setDocumentText,
@@ -69,7 +69,8 @@ export function MemoryStudioScreen() {
   );
 
   const locking = useMemoryStudioLocking({
-    sessionToken,
+    isAuthenticated,
+    getAuthToken,
     currentUserId,
     selectedEntry,
     isCreatingNew,
@@ -101,7 +102,7 @@ export function MemoryStudioScreen() {
   }, [clearLockState, hasSession, resetDocument, resetSelectionState, setEntries]);
 
   const mutations = useMemoryStudioMutations({
-    sessionToken,
+    getAuthToken,
     selectedId,
     selectedEntry,
     selectedStatus,

@@ -2,7 +2,7 @@ import type { NotificationItem } from "../../../types/notification";
 import { notificationMutationService } from "../../../shared/service/notification/notificationMutationService";
 
 interface UseNotificationsMutationsParams {
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
   canMarkAllRead: boolean;
   refreshNotificationsUnreadCount: () => Promise<void>;
   replaceNotification: (notification: NotificationItem) => void;
@@ -10,7 +10,7 @@ interface UseNotificationsMutationsParams {
 }
 
 export function useNotificationsMutations({
-  sessionToken,
+  getAuthToken,
   canMarkAllRead,
   refreshNotificationsUnreadCount,
   replaceNotification,
@@ -18,7 +18,9 @@ export function useNotificationsMutations({
 }: UseNotificationsMutationsParams) {
   const handleMarkRead = async (notificationId: string) => {
     try {
-      const updated = await notificationMutationService.markRead(notificationId, sessionToken);
+      const token = await getAuthToken();
+      if (!token) return;
+      const updated = await notificationMutationService.markRead(notificationId, token);
       replaceNotification(updated);
       void refreshNotificationsUnreadCount();
     } catch (error) {
@@ -31,7 +33,9 @@ export function useNotificationsMutations({
       return;
     }
     try {
-      await notificationMutationService.markAllRead(sessionToken);
+      const token = await getAuthToken();
+      if (!token) return;
+      await notificationMutationService.markAllRead(token);
       markAllReadLocally();
       void refreshNotificationsUnreadCount();
     } catch (error) {

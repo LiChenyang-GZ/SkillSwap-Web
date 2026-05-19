@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { NotificationItem } from "../../../types/notification";
 import { notificationQueryService } from "../../../shared/service/notification/notificationQueryService";
-import {
-  NOTIFICATIONS_SESSION_EXPIRED_MESSAGE,
-} from "../constants/notificationMessages";
 import { sortNotifications } from "../utils/notificationSort";
 import { resolveNotificationErrorMessage } from "../utils/notificationError";
 
 interface UseNotificationsQueryParams {
   isAuthenticated: boolean;
-  sessionToken: string | null;
+  getAuthToken: () => Promise<string | null>;
 }
 
-export function useNotificationsQuery({ isAuthenticated, sessionToken }: UseNotificationsQueryParams) {
+export function useNotificationsQuery({ isAuthenticated, getAuthToken }: UseNotificationsQueryParams) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,22 +32,25 @@ export function useNotificationsQuery({ isAuthenticated, sessionToken }: UseNoti
         return;
       }
 
-      if (!sessionToken) {
-        if (!isCancelled) {
-          setNotifications([]);
-          setErrorMessage(NOTIFICATIONS_SESSION_EXPIRED_MESSAGE);
-          setIsLoading(false);
-        }
-        return;
-      }
-
       if (!isCancelled) {
         setIsLoading(true);
         setErrorMessage(null);
       }
 
       try {
-        const data = await notificationQueryService.getAll(sessionToken);
+        const token = await getAuthToken();
+        if (!token) {
+          // Clerk may briefly have no token while it refreshes the session.
+          // Treat this as transient: keep any prior notifications and just stop
+          // the spinner instead of showing a misleading "session expired" error.
+          // If the session is genuinely gone, isAuthenticated flips and this
+          // effect re-runs through the !isAuthenticated branch and clears cleanly.
+          if (!isCancelled) {
+            setIsLoading(false);
+          }
+          return;
+        }
+        const data = await notificationQueryService.getAll(token);
         if (!isCancelled) {
           setNotifications(data);
         }
@@ -76,7 +76,7 @@ export function useNotificationsQuery({ isAuthenticated, sessionToken }: UseNoti
     return () => {
       isCancelled = true;
     };
-  }, [isAuthenticated, sessionToken, reloadNonce]);
+  }, [isAuthenticated, getAuthToken, reloadNonce]);
 
   const replaceNotification = (updatedNotification: NotificationItem) => {
     setNotifications((previous) =>

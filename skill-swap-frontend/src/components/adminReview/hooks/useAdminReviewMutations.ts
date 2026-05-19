@@ -11,8 +11,8 @@ import { normalizeAttendCloseAtForApi, normalizeContactNumber } from '../utils/a
 import { validateAdminReviewWorkshopForm } from '../utils/adminReviewValidation';
 
 interface UseAdminReviewMutationsParams {
-  sessionToken: string | null;
-  withAuthRetry: <T>(action: (token: string) => Promise<T>) => Promise<T>;
+  isAuthenticated: boolean;
+  getAuthToken: () => Promise<string | null>;
   selectedWorkshop: Workshop | null;
   selectedHasDetail: boolean;
   formData: WorkshopFormState;
@@ -27,8 +27,8 @@ interface UseAdminReviewMutationsParams {
 }
 
 export function useAdminReviewMutations({
-  sessionToken,
-  withAuthRetry,
+  isAuthenticated,
+  getAuthToken,
   selectedWorkshop,
   selectedHasDetail,
   formData,
@@ -62,7 +62,7 @@ export function useAdminReviewMutations({
   };
 
   const handleSave = async () => {
-    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !isAuthenticated) return;
 
     const validationResult = validateAdminReviewWorkshopForm(formData);
     if (!validationResult.isValid) {
@@ -75,6 +75,8 @@ export function useAdminReviewMutations({
 
     try {
       clearValidationState();
+      const token = await getAuthToken();
+      if (!token) throw new Error('Authentication token unavailable');
       const payload: WorkshopUpsertPayload = {
         hostName: formData.hostName,
         title: formData.title,
@@ -100,14 +102,10 @@ export function useAdminReviewMutations({
         detailsConfirmed: formData.detailsConfirmed,
       };
 
-      let updated = await withAuthRetry((token) =>
-        adminWorkshopService.update(selectedWorkshop.id, payload, token)
-      );
+      let updated = await adminWorkshopService.update(selectedWorkshop.id, payload, token);
 
       if (pendingImageFile) {
-        updated = await withAuthRetry((token) =>
-          adminWorkshopService.uploadImage(selectedWorkshop.id, pendingImageFile, token)
-        );
+        updated = await adminWorkshopService.uploadImage(selectedWorkshop.id, pendingImageFile, token);
       }
 
       setWorkshops((prev) => prev.map((workshop) => (workshop.id === updated.id ? updated : workshop)));
@@ -123,11 +121,13 @@ export function useAdminReviewMutations({
   };
 
   const handleApprove = async () => {
-    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !isAuthenticated) return;
     setIsSaving(true);
 
     try {
-      await withAuthRetry((token) => adminWorkshopService.approve(selectedWorkshop.id, token));
+      const token = await getAuthToken();
+      if (!token) throw new Error('Authentication token unavailable');
+      await adminWorkshopService.approve(selectedWorkshop.id, token);
       toast.success('Workshop approved.');
       setWorkshops((prev) =>
         prev.map((workshop) =>
@@ -149,13 +149,13 @@ export function useAdminReviewMutations({
   };
 
   const handleReject = async () => {
-    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !isAuthenticated) return;
     setIsSaving(true);
 
     try {
-      await withAuthRetry((token) =>
-        adminWorkshopService.reject(selectedWorkshop.id, rejectComment || undefined, token)
-      );
+      const token = await getAuthToken();
+      if (!token) throw new Error('Authentication token unavailable');
+      await adminWorkshopService.reject(selectedWorkshop.id, rejectComment || undefined, token);
       toast.success('Workshop rejected.');
       setWorkshops((prev) =>
         prev.map((workshop) =>
@@ -178,11 +178,13 @@ export function useAdminReviewMutations({
   };
 
   const handleCancel = async () => {
-    if (!selectedWorkshop || !selectedHasDetail || !sessionToken) return;
+    if (!selectedWorkshop || !selectedHasDetail || !isAuthenticated) return;
     setIsSaving(true);
 
     try {
-      await withAuthRetry((token) => adminWorkshopService.cancel(selectedWorkshop.id, token));
+      const token = await getAuthToken();
+      if (!token) throw new Error('Authentication token unavailable');
+      await adminWorkshopService.cancel(selectedWorkshop.id, token);
       toast.success('Workshop cancelled.');
       setWorkshops((prev) =>
         prev.map((workshop) =>
