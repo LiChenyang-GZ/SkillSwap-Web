@@ -101,7 +101,7 @@ cd skill-swap-frontend
 npm install
 ```
 
-`npm install` is documented in the root `README.md`. A `package-lock.json` exists, so the dependency tree is lockfile-based.
+`npm install` is documented in the root `README.md`. The frontend is **not** lockfile-pinned: `package-lock.json` is git-ignored (see root `.gitignore`) and `package.json` uses floating version ranges, so install with `npm install` (not `npm ci`).
 
 ### Development Server Command
 

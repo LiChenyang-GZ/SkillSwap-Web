@@ -9,7 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import club.skillswap.common.storage.AzureBlobStorageService;
-import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.common.exception.DomainException;
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.user.dto.UpdateProfileRequestDto;
@@ -26,7 +25,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Locale;
 import java.util.List;
-import java.util.Map;
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -48,7 +46,6 @@ public class UserService {
     private final WorkshopRepository workshopRepository;
     private final WorkshopParticipantRepository participantRepository;
     private final AzureBlobStorageService azureBlobStorageService;
-    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -260,7 +257,6 @@ public class UserService {
         userRepository.save(user);
         if (previousAvatarUrl != null && !previousAvatarUrl.equals(publicUrl)) {
             azureBlobStorageService.deleteByUrlQuietly(previousAvatarUrl);
-            supabaseStorageService.deleteByPublicUrlQuietly(previousAvatarUrl);
         }
 
         return getUserProfileWithStats(userId);
@@ -370,39 +366,18 @@ public class UserService {
     }
 
     private void maybeRequireVerifiedEmail(Jwt jwt, String email) {
-        // 邮箱缺失时：不强制（某些身份平台默认 JWT 不包含 email claim）。
+        // No email in the token: do not enforce (Clerk session tokens may omit email claims).
         if (email == null || email.isBlank()) {
             return;
         }
 
-        // Supabase deployments may expose either `confirmed_at` or `email_confirmed_at`.
-        String confirmedAt = jwt.getClaimAsString("confirmed_at");
-        String emailConfirmedAt = jwt.getClaimAsString("email_confirmed_at");
+        // Clerk exposes email verification via the email_verified boolean claim.
+        // Only reject when the token explicitly says the email is NOT verified;
+        // a missing claim stays lenient (same behavior as the previous logic).
         Boolean emailVerified = jwt.getClaimAsBoolean("email_verified");
-
-        Map<String, Object> userMetadata = jwt.getClaimAsMap("user_metadata");
-        Object metaVerified = userMetadata == null ? null : userMetadata.get("email_verified");
-        Map<String, Object> rawUserMetadata = jwt.getClaimAsMap("raw_user_meta_data");
-        Object rawMetaVerified = rawUserMetadata == null ? null : rawUserMetadata.get("email_verified");
-
-        boolean hasAnyVerificationSignal =
-                confirmedAt != null || emailConfirmedAt != null || emailVerified != null || metaVerified != null || rawMetaVerified != null;
-
-        boolean isVerified =
-                hasText(confirmedAt)
-                        || hasText(emailConfirmedAt)
-                        || Boolean.TRUE.equals(emailVerified)
-                        || Boolean.TRUE.equals(metaVerified)
-                        || Boolean.TRUE.equals(rawMetaVerified);
-
-        // 只有当 token 明确提供了验证信号但都不通过时，才拒绝。
-        if (hasAnyVerificationSignal && !isVerified) {
+        if (Boolean.FALSE.equals(emailVerified)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please verify your email before accessing profile.");
         }
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 
     private UUID tryParseUuid(String value) {

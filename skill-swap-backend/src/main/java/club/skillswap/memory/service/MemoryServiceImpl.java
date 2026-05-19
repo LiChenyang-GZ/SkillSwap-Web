@@ -2,7 +2,6 @@ package club.skillswap.memory.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.common.storage.AzureBlobStorageService;
-import club.skillswap.common.storage.SupabaseStorageService;
 import club.skillswap.memory.dto.MemoryEntryRequestDto;
 import club.skillswap.memory.dto.MemoryEntryResponseDto;
 import club.skillswap.memory.entity.MemoryEntry;
@@ -48,7 +47,6 @@ public class MemoryServiceImpl implements MemoryService {
     private final MemoryEntryRepository memoryEntryRepository;
     private final UserService userService;
     private final AzureBlobStorageService azureBlobStorageService;
-    private final SupabaseStorageService supabaseStorageService;
 
     @Value("${app.upload.max-image-bytes:" + DEFAULT_MAX_IMAGE_BYTES + "}")
     private long maxImageBytes;
@@ -462,7 +460,6 @@ public class MemoryServiceImpl implements MemoryService {
 
         for (String url : urls) {
             azureBlobStorageService.deleteByUrlQuietly(url);
-            supabaseStorageService.deleteByPublicUrlQuietly(url);
         }
     }
 

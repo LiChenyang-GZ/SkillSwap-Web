@@ -18,9 +18,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import java.util.Locale;
 
 /**
- * Spring Security 閰嶇疆 - 浣跨敤 Supabase JWT 璁よ瘉
- * 
- * Supabase 浣跨敤 ES256 (ECC P-256) 绠楁硶锛岄€氳繃 JWKS 绔偣鑾峰彇鍏挜楠岃瘉
+ * Spring Security configuration - validates third-party identity-provider JWTs.
+ *
+ * Provider-agnostic OAuth2 Resource Server: issuer / JWKS endpoint / signing
+ * algorithm are all driven by application.properties. Currently configured for
+ * Clerk (RS256); previously Supabase (ES256). Switching providers is a config
+ * change only, no code change here.
  */
 @Configuration
 @EnableWebSecurity
@@ -37,8 +40,8 @@ public class WebSecurityConfiguration {
     private String jwsAlgorithms;
 
     /**
-     * 鏄惧紡鍒涘缓浣跨敤 JWKS 鐨?JwtDecoder (ES256/P-256)
-     * Supabase 浣跨敤 ES256 绠楁硶绛惧悕 JWT
+     * Builds a JWKS-backed JwtDecoder. The signing algorithm is taken from
+     * spring.security.oauth2.resourceserver.jwt.jws-algorithms (RS256 for Clerk).
      */
     @Bean
     public JwtDecoder jwtDecoder() {
@@ -104,14 +107,13 @@ public class WebSecurityConfiguration {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-            // 浣跨敤 JWKS 绔偣楠岃瘉 Supabase JWT (ES256)
+            // Verify the identity provider's JWT via its JWKS endpoint
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {
                 jwt.decoder(jwtDecoder);
                 jwt.jwtAuthenticationConverter(jwtConverter);
             }))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/health", "/api/health").permitAll()
-                .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/workshops", "/api/v1/workshops/public", "/api/v1/workshops/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/memories", "/api/v1/memories/*").permitAll()
                 .requestMatchers("/api/**").authenticated()
