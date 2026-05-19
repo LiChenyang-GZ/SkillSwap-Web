@@ -13,7 +13,7 @@ import { useAuthTabState } from "../hooks/useAuthTabState";
 export function AuthScreen() {
   const { setCurrentPage, isDarkMode, toggleDarkMode } = useApp();
   const { isLoaded, isSignedIn } = useAuth();
-  const signInPaneRef = useRef<HTMLDivElement | null>(null);
+  const signInPaneRef = useRef<HTMLDivElement>(null);
 
   const { activeTab, authErrorNotice, setActiveTab, setAuthErrorNotice, handleAuthTabChange } = useAuthTabState();
 

@@ -31,7 +31,7 @@ export function ExploreWorkshopsFilters({
           />
         </div>
 
-        <Select value={selectedCategory} onValueChange={onCategoryChange} modal={false}>
+        <Select value={selectedCategory} onValueChange={onCategoryChange}>
           <SelectTrigger>
             <SelectValue placeholder="Category" />
           </SelectTrigger>

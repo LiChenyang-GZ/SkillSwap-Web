@@ -9,7 +9,7 @@ interface AuthFormCardProps {
   isDarkMode: boolean;
   activeTab: AuthTab;
   authErrorNotice: string | null;
-  signInPaneRef: RefObject<HTMLDivElement | null>;
+  signInPaneRef: RefObject<HTMLDivElement>;
   onTabChange: (value: string) => void;
   onSwitchToSignup: () => void;
   clerkAppearance: {

@@ -17,6 +17,21 @@ interface UseAdminReviewQueryParams {
   getAuthToken: () => Promise<string | null>;
 }
 
+const readStoredTargetWorkshopId = () => {
+  const storedTarget = sessionStorage.getItem(ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY);
+  const trimmedTarget = storedTarget?.trim();
+  return trimmedTarget || null;
+};
+
+const normalizeWorkshopId = (workshopId: string | null | undefined) => {
+  const normalized = String(workshopId || '').trim();
+  const mockIdMatch = /^workshop-(\d+)$/.exec(normalized);
+  return mockIdMatch ? mockIdMatch[1] : normalized;
+};
+
+const isMatchingWorkshopId = (workshopId: string, targetWorkshopId: string | null) =>
+  normalizeWorkshopId(workshopId) === normalizeWorkshopId(targetWorkshopId);
+
 export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminReviewQueryParams) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -25,16 +40,11 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
   const [loadedDetailIds, setLoadedDetailIds] = useState<Record<string, boolean>>({});
   const [detailLoadErrors, setDetailLoadErrors] = useState<Record<string, string | undefined>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<AdminReviewStatusFilter>(ADMIN_REVIEW_DEFAULT_STATUS_FILTER);
+  const [statusFilter, setStatusFilter] = useState<AdminReviewStatusFilter>(() =>
+    readStoredTargetWorkshopId() ? 'all' : ADMIN_REVIEW_DEFAULT_STATUS_FILTER
+  );
   const [currentPage, setCurrentPageState] = useState(1);
-  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(() => {
-    const storedTarget = sessionStorage.getItem(ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY);
-    if (storedTarget) {
-      sessionStorage.removeItem(ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY);
-      return storedTarget;
-    }
-    return null;
-  });
+  const [targetWorkshopId, setTargetWorkshopId] = useState<string | null>(() => readStoredTargetWorkshopId());
 
   const detailInFlightRef = useRef<Set<string>>(new Set());
   const hasSession = isAuthenticated;
@@ -102,38 +112,66 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
         mode === 'pending'
           ? await adminWorkshopService.getPending(token)
           : await adminWorkshopService.getAll(token);
+      let nextWorkshops = data;
+      let targetDetail: Workshop | null = null;
+
+      if (targetWorkshopId && !data.some((workshop) => isMatchingWorkshopId(workshop.id, targetWorkshopId))) {
+        try {
+          targetDetail = await adminWorkshopService.getById(targetWorkshopId, token);
+          nextWorkshops = [
+            targetDetail,
+            ...data.filter((workshop) => !isMatchingWorkshopId(workshop.id, targetDetail?.id || null)),
+          ];
+        } catch (targetError) {
+          console.warn('Failed to load target workshop from notification:', targetError);
+        }
+      }
 
       setLoadedDetailIds((previous) => {
         const next: Record<string, boolean> = {};
-        data.forEach((workshop) => {
+        nextWorkshops.forEach((workshop) => {
           if (previous[workshop.id]) {
             next[workshop.id] = true;
           }
         });
+        if (targetDetail) {
+          next[targetDetail.id] = true;
+        }
         return next;
       });
       setDetailLoadErrors((previous) => {
         const next: Record<string, string | undefined> = {};
-        data.forEach((workshop) => {
+        nextWorkshops.forEach((workshop) => {
           if (previous[workshop.id]) {
             next[workshop.id] = previous[workshop.id];
           }
         });
         return next;
       });
-      setWorkshops(data);
+      setWorkshops(nextWorkshops);
 
-      if (data.length > 0) {
-        const fallbackId = data[0].id;
+      const targetWorkshop = targetWorkshopId
+        ? nextWorkshops.find((workshop) => isMatchingWorkshopId(workshop.id, targetWorkshopId))
+        : null;
+
+      if (targetWorkshopId && !targetWorkshop) {
+        setSelectedId(null);
+        setErrorMessage('The workshop from this notification could not be found. It may have been deleted.');
+      } else if (nextWorkshops.length > 0) {
+        const fallbackId = nextWorkshops[0].id;
         const nextSelectedId =
-          targetWorkshopId && data.some((workshop) => workshop.id === targetWorkshopId)
-            ? targetWorkshopId
-            : selectedId && data.some((workshop) => workshop.id === selectedId)
+          targetWorkshop
+            ? targetWorkshop.id
+            : selectedId && nextWorkshops.some((workshop) => workshop.id === selectedId)
               ? selectedId
               : fallbackId;
 
         setSelectedId(nextSelectedId);
-        void loadWorkshopDetail(nextSelectedId);
+        if (targetDetail && nextSelectedId === targetDetail.id) {
+          setWorkshops((prev) => prev.map((workshop) => (workshop.id === targetDetail.id ? { ...workshop, ...targetDetail } : workshop)));
+        } else {
+          void loadWorkshopDetail(nextSelectedId);
+        }
       } else {
         setSelectedId(null);
       }
@@ -171,6 +209,12 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
   }, [hasSession]);
 
   useEffect(() => {
+    if (targetWorkshopId) {
+      sessionStorage.removeItem(ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY);
+    }
+  }, [targetWorkshopId]);
+
+  useEffect(() => {
     if (!hasSession) {
       return;
     }
@@ -190,9 +234,12 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
     }
     const stillExists = sortedWorkshops.some((workshop) => workshop.id === selectedId);
     if (!stillExists) {
+      if (targetWorkshopId) {
+        return;
+      }
       setSelectedId(sortedWorkshops[0].id);
     }
-  }, [sortedWorkshops, selectedId]);
+  }, [sortedWorkshops, selectedId, targetWorkshopId]);
 
   useEffect(() => {
     setCurrentPageState(1);
@@ -201,15 +248,16 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
   useEffect(() => {
     if (!targetWorkshopId || sortedWorkshops.length === 0) return;
 
-    const targetIndex = sortedWorkshops.findIndex((workshop) => workshop.id === targetWorkshopId);
+    const targetIndex = sortedWorkshops.findIndex((workshop) => isMatchingWorkshopId(workshop.id, targetWorkshopId));
     if (targetIndex === -1) return;
 
-    setSelectedId(targetWorkshopId);
+    const targetId = sortedWorkshops[targetIndex].id;
+    setSelectedId(targetId);
     setCurrentPageState(Math.floor(targetIndex / pageSize) + 1);
     setTargetWorkshopId(null);
 
     requestAnimationFrame(() => {
-      const targetElement = document.querySelector(`[data-workshop-id="${targetWorkshopId}"]`);
+      const targetElement = document.querySelector(`[data-workshop-id="${targetId}"]`);
       if (targetElement instanceof HTMLElement) {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -226,7 +274,6 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
     workshops,
     setWorkshops,
     selectedId,
-    setSelectedId,
     isLoading,
     isDetailLoading,
     errorMessage,
@@ -241,6 +288,10 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
     selectedDetailError,
     refreshWorkshops,
     loadWorkshopDetail,
+    setSelectedId: (workshopId: string | null) => {
+      setTargetWorkshopId(null);
+      setSelectedId(workshopId);
+    },
     goToPrevPage: () => setCurrentPageState((prev) => Math.max(1, prev - 1)),
     goToNextPage: () => setCurrentPageState((prev) => Math.min(totalPages, prev + 1)),
   };

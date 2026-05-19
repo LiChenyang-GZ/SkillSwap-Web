@@ -4,7 +4,7 @@ import type { AuthTab } from "./useAuthTabState";
 
 interface UseAuthExternalAccountWatcherParams {
   activeTab: AuthTab;
-  signInPaneRef: RefObject<HTMLDivElement | null>;
+  signInPaneRef: RefObject<HTMLDivElement>;
   setAuthErrorNotice: (message: string | null) => void;
   setActiveTab: (tab: AuthTab) => void;
 }

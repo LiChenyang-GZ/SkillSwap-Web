@@ -220,7 +220,7 @@ export function AdminReviewDetailPanel({
                     </div>
                     <div>
                       <Label htmlFor="category">Category</Label>
-                      <Select value={formData.category} onValueChange={(value: string) => onInputChange('category', value)} modal={false}>
+                      <Select value={formData.category} onValueChange={(value: string) => onInputChange('category', value)}>
                         <SelectTrigger
                           className={`mt-1${categoryError ? ` ${invalidClassName}` : ''}`}
                           aria-invalid={Boolean(categoryError)}
@@ -330,7 +330,7 @@ export function AdminReviewDetailPanel({
                     </div>
                     <div>
                       <Label htmlFor="eventSubmitted">Event Submit</Label>
-                      <Select value={formData.eventSubmitted} onValueChange={(value: 'true' | 'false') => onInputChange('eventSubmitted', value)} modal={false}>
+                      <Select value={formData.eventSubmitted} onValueChange={(value: 'true' | 'false') => onInputChange('eventSubmitted', value)}>
                         <SelectTrigger className="mt-1" disabled={!canEdit}>
                           <SelectValue placeholder="Select value" />
                         </SelectTrigger>
@@ -345,7 +345,7 @@ export function AdminReviewDetailPanel({
                     </div>
                     <div>
                       <Label htmlFor="usuApprovalStatus">Approved by USU</Label>
-                      <Select value={formData.usuApprovalStatus} onValueChange={(value: 'pending' | 'approved') => onInputChange('usuApprovalStatus', value)} modal={false}>
+                      <Select value={formData.usuApprovalStatus} onValueChange={(value: 'pending' | 'approved') => onInputChange('usuApprovalStatus', value)}>
                         <SelectTrigger className="mt-1" disabled={!canEdit}>
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>

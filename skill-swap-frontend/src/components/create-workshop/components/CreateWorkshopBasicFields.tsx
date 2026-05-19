@@ -52,7 +52,7 @@ export function CreateWorkshopBasicFields({
         </div>
         <div>
           <Label htmlFor="category">Category *</Label>
-          <Select value={values.category} onValueChange={(next: string) => setField('category', next)} modal={false}>
+          <Select value={values.category} onValueChange={(next: string) => setField('category', next)}>
             <SelectTrigger
               id="category-trigger"
               aria-invalid={Boolean(getFieldError('category'))}

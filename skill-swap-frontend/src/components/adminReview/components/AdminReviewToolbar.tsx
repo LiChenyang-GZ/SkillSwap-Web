@@ -29,7 +29,6 @@ export function AdminReviewToolbar({
             onStatusFilterChange(value);
           }
         }}
-        modal={false}
       >
         <SelectTrigger className="w-44">
           <SelectValue placeholder="Filter status" />
