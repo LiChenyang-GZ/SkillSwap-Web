@@ -81,19 +81,22 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     updateSelection(next, cursor, cursor);
   };
 
+  const validateImageFile = (file: File): boolean => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files are supported.");
+      return false;
+    }
+    if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
+      toast.error(IMAGE_UPLOAD_TOO_LARGE_MESSAGE);
+      return false;
+    }
+    return true;
+  };
+
   const uploadAndInsertImage = async (file: File, start?: number, end?: number) => {
     const token = await getAuthToken();
     if (!token) {
       toast.error("Please sign in.");
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only image files are supported.");
-      return;
-    }
-    if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
-      toast.error(IMAGE_UPLOAD_TOO_LARGE_MESSAGE);
       return;
     }
 
@@ -163,6 +166,9 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     const end = target.selectionEnd;
 
     event.preventDefault();
+    if (!validateImageFile(file)) {
+      return;
+    }
     if (isUploadingImage || uploadQueueRunningRef.current) {
       enqueueImageUpload(file);
       toast.info("Image added to upload queue.");
@@ -175,6 +181,9 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     const file = event.target.files?.[0];
     event.currentTarget.value = "";
     if (!file) return;
+    if (!validateImageFile(file)) {
+      return;
+    }
     if (isUploadingImage || uploadQueueRunningRef.current) {
       enqueueImageUpload(file);
       toast.info("Image added to upload queue.");
