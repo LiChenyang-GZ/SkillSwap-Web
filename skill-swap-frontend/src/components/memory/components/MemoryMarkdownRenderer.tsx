@@ -1,3 +1,4 @@
+import { Children, isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -13,6 +14,24 @@ interface MemoryMarkdownRendererProps {
   embedClassName?: string;
 }
 
+function MarkdownEmbed({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className: string;
+}) {
+  return <div className={className}>{children}</div>;
+}
+
+const isMarkdownEmbedElement = (child: ReactNode) => (
+  isValidElement(child) && child.type === MarkdownEmbed
+);
+
+const isWhitespaceText = (child: ReactNode) => (
+  typeof child === "string" && child.trim() === ""
+);
+
 export function MemoryMarkdownRenderer({
   content,
   fallbackMarkdown,
@@ -25,6 +44,20 @@ export function MemoryMarkdownRenderer({
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeRaw, [rehypeSanitize, memoryMarkdownSanitizeSchema]]}
       components={{
+        p: ({ children }) => {
+          const childArray = Children.toArray(children);
+          const hasEmbed = childArray.some(isMarkdownEmbedElement);
+
+          if (!hasEmbed) {
+            return <p>{children}</p>;
+          }
+
+          const onlyEmbedContent = childArray.every((child) => (
+            isMarkdownEmbedElement(child) || isWhitespaceText(child)
+          ));
+
+          return onlyEmbedContent ? <>{children}</> : <div>{children}</div>;
+        },
         img: ({ src, alt, width }) => (
           <img
             src={resolveAssetUrl(src)}
@@ -43,7 +76,7 @@ export function MemoryMarkdownRenderer({
           if (ytMatch && ytMatch[1]) {
             const videoId = ytMatch[1];
             return (
-              <span className={`${embedClassName} block aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border/70 bg-muted`}>
+              <MarkdownEmbed className={`${embedClassName} aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border/70 bg-muted`}>
                 <iframe
                   width="100%"
                   height="100%"
@@ -53,14 +86,14 @@ export function MemoryMarkdownRenderer({
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 ></iframe>
-              </span>
+              </MarkdownEmbed>
             );
           }
 
           const igMatch = href.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
           if (igMatch && igMatch[0]) {
             return (
-              <span className={`${embedClassName} block w-full max-w-[400px] mx-auto overflow-hidden rounded-xl border border-border/70 bg-muted`}>
+              <MarkdownEmbed className={`${embedClassName} w-full max-w-[400px] mx-auto overflow-hidden rounded-xl border border-border/70 bg-muted`}>
                 <iframe
                   src={`https://www.${igMatch[0]}/embed`}
                   width="100%"
@@ -69,7 +102,7 @@ export function MemoryMarkdownRenderer({
                   frameBorder="0"
                   scrolling="no"
                 ></iframe>
-              </span>
+              </MarkdownEmbed>
             );
           }
 

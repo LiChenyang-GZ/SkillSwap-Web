@@ -224,7 +224,7 @@ export const useWorkshopState = ({
       if (!isAuthenticated || !user) return;
 
       try {
-        const workshop = workshops.find((item) => item.id === workshopId);
+        const workshop = findLoadedWorkshop(workshops, workshopId);
         if (!workshop) {
           throw new Error("Workshop not found");
         }
