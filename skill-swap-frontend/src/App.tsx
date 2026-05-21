@@ -136,13 +136,6 @@ function AppContent() {
         return <MemoryStudio />;
       case 'notifications':
         return <Notifications />;
-      case 'feedback':
-        return <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Feedback & Reviews</h1>
-            <p className="text-muted-foreground">Coming soon! Rate workshops and provide feedback.</p>
-          </div>
-        </div>;
       default:
         // Show Hero page for non-authenticated users, Explore page for authenticated users
         return isAuthenticated ? <ExploreWorkshops /> : <HeroScreen />;

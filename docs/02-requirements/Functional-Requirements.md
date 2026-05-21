@@ -19,7 +19,7 @@ The requirements were drafted from the current repository, including the Project
 
 | Area | Out Of Scope Or Requires Verification | Evidence |
 |---|---|---|
-| Feedback/reviews | Frontend contains a placeholder page, but no complete feedback/review backend flow was found | `App.tsx` placeholder |
+| Feedback/reviews | No active frontend route, navigation item, or complete backend feedback/review flow was found | Frontend routes and backend controllers |
 | Credit economy | Credit fields remain in models, but code comments show the credit system is disabled and values default to zero | Workshop/user service comments |
 | Version-based memory locking | Historical migrations added a version column, but a later migration removes it and current DTOs/entities do not expose it | Memory migrations and entity |
 | Public user profile by ID | Controller comments imply public access, but current security configuration requires authentication for `/api/v1/users/{id}` | User controller and security config |
@@ -174,7 +174,7 @@ The requirements were drafted from the current repository, including the Project
 
 | Feature | Status | Notes |
 |---|---|---|
-| Feedback and workshop reviews | Partially supported | Frontend placeholder exists; complete backend workflow was not found. |
+| Feedback and workshop reviews | Unsupported in current implementation | No active frontend route, navigation item, or backend workflow was found. |
 | Credit economy | Unsupported in current implementation | Credit fields remain, but service logic is disabled and values default to zero. |
 | Version-based optimistic locking for memory content | Unsupported in current implementation | Current implementation uses edit locks; version column was removed by migration. |
 | Standalone current API reference | Requires verification | API contracts are visible in controllers/DTOs, but current standalone API docs are not present in active files reviewed. |

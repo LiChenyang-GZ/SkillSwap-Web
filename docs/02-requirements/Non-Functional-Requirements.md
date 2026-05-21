@@ -92,7 +92,7 @@ The requirements were verified against the current repository and existing docum
 | NFR-045 | Validation errors should be displayed before or after submission in user-facing flows. | Should | Code | Create workshop and admin/profile flows surface validation or toast messages. |
 | NFR-046 | Authentication failures should present actionable user-facing messages. | Should | Code | Clerk OAuth error cases map to sign-in/sign-up guidance where detected. |
 | NFR-047 | Markdown memory content should render readable rich content without exposing unsafe raw HTML. | Should | Code | Markdown renderer supports images and known embeds while applying sanitization. |
-| NFR-048 | Feedback/review UX should be presented as incomplete until implemented. | Must | Code | Placeholder feedback page is not represented as a completed capability. |
+| NFR-048 | Feedback/review UX should not be presented as available until implemented. | Must | Code | Feedback/review navigation and placeholder UI are not exposed as a completed capability. |
 
 ## Compatibility Requirements
 
@@ -145,7 +145,7 @@ The requirements were verified against the current repository and existing docum
 | KC-004 | Frontend test/lint CI checks were not verified in workflow files reviewed. | Client-side regressions may not be automatically caught in CI. |
 | KC-005 | Flyway migrations exist but application profiles currently disable Flyway. | Migration process needs clarification before handover. |
 | KC-006 | Azure Blob container variable names differ between code and workflow/docs. | Storage deployment configuration should be aligned. |
-| KC-007 | Feedback/reviews and credit economy are incomplete or disabled. | These should not be presented as completed capabilities. |
+| KC-007 | Feedback/reviews are not exposed, and the credit economy is disabled. | These should not be presented as completed capabilities. |
 | KC-008 | Version-based memory optimistic locking is not active in current code. | Concurrency claims should refer to edit locks only. |
 | KC-009 | Public user profile access is unclear due to controller comment/security config mismatch. | Access expectation should be verified before documenting as public. |
 | KC-010 | Live deployment state was not inspected. | Deployment claims are based on repository evidence only. |

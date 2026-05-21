@@ -1,6 +1,6 @@
 # SkillSwap End-User Guide
 
-Last reviewed: 2026-05-13
+Last reviewed: 2026-05-21
 
 ## Document Purpose
 
@@ -45,7 +45,7 @@ In plain language:
 | View notifications and mark them as read | Supported | Code |
 | View published memory pages | Supported | Code |
 | Create or edit memory pages | Admin-only | Code |
-| Submit feedback/reviews | Placeholder only | Code |
+| Submit feedback/reviews | Not supported | Code review |
 | Use credits | Disabled in current implementation | Code and requirements |
 | In-app messaging or matching | Not supported | Code review |
 
@@ -84,7 +84,6 @@ If Google sign-in fails with an account-linking message, use `Sign Up` once with
 |---|---|---|
 | `Explore` | Public and signed-in users | Browse visible workshops. |
 | `Memory` | Public and signed-in users | View published memory pages. |
-| `Feedback` | Public and signed-in users | Placeholder page. Reviews are not currently implemented. |
 | `Dashboard` | Signed-in users | View profile, upcoming workshops, attended workshops, and hosted workshops. |
 | `Host a Workshop` | Signed-in users | Submit a workshop for review. |
 | `Notifications` | Signed-in users | View workshop-related updates. |
@@ -229,7 +228,7 @@ Only published memory entries are visible to regular users. Draft and archived e
 
 ### Feedback And Reviews
 
-The `Feedback` navigation item currently opens a placeholder screen stating that feedback and reviews are coming soon. No complete user-facing feedback/review workflow or backend API was verified in the current repository.
+Feedback and workshop reviews are not currently exposed in the user interface. No complete user-facing feedback/review workflow or backend API was verified in the current repository.
 
 ## Common Validation Errors
 
@@ -257,11 +256,11 @@ The `Feedback` navigation item currently opens a placeholder screen stating that
 | You cannot join a workshop. | Check whether it is full, closed, ongoing, completed, cancelled, or hosted by you. |
 | Your dashboard is empty. | Join a workshop or submit one; if you recently acted, refresh the page. |
 | A memory page link does not load. | The memory may still be draft, archived, or unpublished. |
-| Feedback/reviews are unavailable. | This feature is not complete in the current implementation. |
+| Feedback/reviews are unavailable. | This feature is not exposed or complete in the current implementation. |
 
 ## User-Facing Limitations
 
-- Feedback and reviews are placeholder-only.
+- Feedback and reviews are not currently exposed in the user interface.
 - The credit system is disabled in the current implementation.
 - Regular users cannot upload workshop cover images.
 - Regular users cannot create or edit memory pages.
@@ -295,9 +294,9 @@ No in-app messaging or matching workflow was verified in the current repository.
 
 Regular users can upload profile avatars. Workshop cover images and memory media are admin-managed.
 
-### Why is the Feedback page not usable?
+### Is there a Feedback page?
 
-The current frontend shows a placeholder page for feedback and reviews. No completed feedback/review backend workflow was verified.
+No. The current frontend does not expose a Feedback page or completed feedback/review workflow.
 
 ### Why do credits show as zero or not appear?
 

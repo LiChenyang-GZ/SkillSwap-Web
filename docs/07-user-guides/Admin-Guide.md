@@ -1,6 +1,6 @@
 # SkillSwap Admin Guide
 
-Last reviewed: 2026-05-13
+Last reviewed: 2026-05-21
 
 ## Document Purpose
 
@@ -414,7 +414,7 @@ Do not include passwords, API keys, private tokens, database credentials, or raw
 - No reports, flags, complaint workflow, or general moderation queue was verified.
 - No admin audit log or activity-log viewer was verified.
 - Workshop deletion exists as a backend admin endpoint but is not exposed as a verified admin UI workflow.
-- Feedback/reviews are not implemented beyond a placeholder page.
+- Feedback/reviews are not implemented and are not exposed as an active UI workflow.
 - Credit-related workflows are disabled.
 - Live deployment status was not independently checked; deployment claims are based on repository documentation and workflow configuration.
 - Memory concurrency uses edit locks, not active version-based optimistic locking.

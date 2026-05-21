@@ -1,6 +1,6 @@
 # Local Development Guide
 
-Last reviewed: 2026-05-19
+Last reviewed: 2026-05-21
 
 ## 1. Document Purpose
 
@@ -531,6 +531,20 @@ npm test
 
 Do not document or rely on a frontend test command until one is added to `package.json`.
 
+### Frontend Manual Smoke Checks
+
+Run these browser checks after frontend state-management, routing, authentication, notification, workshop, or memory-rendering changes:
+
+1. Start the frontend with `npm run dev` and open `http://localhost:3000`.
+2. Open browser DevTools, clear the Console, and watch for new red React warnings.
+3. Verify public pages load while signed out.
+4. Sign in through Clerk, refresh the page, and confirm the user profile/session remains available.
+5. Sign out and confirm the app returns to the public landing state without stale user data, workshop data, notification badges, or duplicate session-expired toasts.
+6. Join and leave the same workshop from the relevant list/detail/dashboard surfaces, including workshop IDs represented as strings or numbers.
+7. Navigate to notifications and back; confirm unread counts do not reappear after sign-out or cache clearing.
+8. Open a memory detail page with Markdown media embeds; confirm YouTube/Instagram embeds render without DOM nesting warnings and normal Markdown links still behave as links.
+9. Run `npm run build` before committing frontend changes.
+
 ### Backend Tests
 
 Backend test command:
@@ -627,6 +641,7 @@ Use this checklist after setup:
 - [ ] Clerk sign-in works in the frontend.
 - [ ] `GET /api/v1/users/me` succeeds after login.
 - [ ] Public workshop and memory APIs load.
+- [ ] Frontend manual smoke checks pass after frontend state, routing, notification, workshop, or memory-rendering changes.
 - [ ] Admin APIs work for a local user whose database role is admin.
 - [ ] Avatar upload works if Azure Blob local config is present.
 - [ ] Workshop/memory image upload works if testing admin media flows.

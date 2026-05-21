@@ -1,6 +1,6 @@
 # SkillSwap REST API Documentation
 
-Last reviewed: 2026-05-15
+Last reviewed: 2026-05-21
 
 ## 1. Document Purpose
 
@@ -1900,7 +1900,7 @@ Frontend endpoints cross-checked against backend:
 | Public memory list/detail | Implemented |
 | Admin memory CRUD/lock/media upload | Implemented |
 | Transaction API | Frontend throws not implemented; no backend transaction endpoints found. |
-| Feedback/reviews | No backend API found. |
+| Feedback/reviews | No backend API found; no active frontend route is currently exposed. |
 
 Do not hard-code production API URLs in client code or documentation. Use `<API_BASE_URL>` and environment variables.
 
