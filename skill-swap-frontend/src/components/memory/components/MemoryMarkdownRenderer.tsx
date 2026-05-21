@@ -43,7 +43,7 @@ export function MemoryMarkdownRenderer({
           if (ytMatch && ytMatch[1]) {
             const videoId = ytMatch[1];
             return (
-              <div className={`${embedClassName} aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border/70 bg-muted`}>
+              <span className={`${embedClassName} block aspect-video w-full rounded-xl overflow-hidden shadow-lg border border-border/70 bg-muted`}>
                 <iframe
                   width="100%"
                   height="100%"
@@ -53,23 +53,23 @@ export function MemoryMarkdownRenderer({
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 ></iframe>
-              </div>
+              </span>
             );
           }
 
           const igMatch = href.match(/instagram\.com\/(?:p|reel)\/([a-zA-Z0-9_-]+)/i);
           if (igMatch && igMatch[0]) {
             return (
-              <div className={`${embedClassName} w-full max-w-[400px] mx-auto overflow-hidden rounded-xl border border-border/70 bg-muted`}>
+              <span className={`${embedClassName} block w-full max-w-[400px] mx-auto overflow-hidden rounded-xl border border-border/70 bg-muted`}>
                 <iframe
                   src={`https://www.${igMatch[0]}/embed`}
                   width="100%"
                   height="480"
+                  title="Instagram embed"
                   frameBorder="0"
                   scrolling="no"
-                  allowTransparency={true}
                 ></iframe>
-              </div>
+              </span>
             );
           }
 

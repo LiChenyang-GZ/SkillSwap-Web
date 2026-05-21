@@ -1,18 +1,16 @@
 import {
   createContext,
-  useContext,
-  useState,
-  useEffect,
-  useRef,
   useCallback,
-  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
 } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import type { WorkshopUpsertPayload } from "../lib/api";
+import { toast } from "sonner";
 import type { User } from "../types/user";
-import type { Workshop } from "../types/workshop";
-import type { CreditTransaction } from "../types/creditTransaction";
-import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
 import {
   buildIdentityFallback,
   decodeJwtPayload,
@@ -21,152 +19,49 @@ import {
   mapBackendUser,
   syncFallbackUsername,
 } from "../shared/service/auth/appAuthService";
-import { notificationQueryService } from "../shared/service/notification/notificationQueryService";
-import { userProfileService } from "../shared/service/user/userProfileService";
-import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
-import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
-import { toast } from "sonner";
+import type {
+  AppContextType,
+  AuthTab,
+  RecentProfileCache,
+} from "./app/appContextTypes";
 import {
-  ADMIN_MEMORY_PAGE_ID,
-  ADMIN_MEMORY_PATH,
-  MEMORY_PAGE_ID,
-  MEMORY_PATH,
-} from "../components/memory/constants/memoryRouteConstants";
-import { pageFromMemoryPath, pathFromMemoryPage } from "../components/memory/utils/memoryRoute";
+  normalizePath,
+  pageFromPath,
+  pathFromPage,
+  resolvePostLoginPage,
+} from "./app/appRoutes";
+import { useCurrentUserProfileActions } from "./app/useCurrentUserProfileActions";
+import { useNotificationUnreadCount } from "./app/useNotificationUnreadCount";
+import { useThemeMode } from "./app/useThemeMode";
+import { useWorkshopState } from "./app/useWorkshopState";
 
-export type GetAuthToken = () => Promise<string | null>;
-
-interface AppContextType {
-  user: User | null;
-  workshops: Workshop[];
-  transactions: CreditTransaction[];
-  currentPage: string;
-  authTab: "signin" | "signup";
-  isDarkMode: boolean;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-  notificationsUnreadCount: number;
-  refreshNotificationsUnreadCount: () => Promise<void>;
-  isLoading: boolean;
-  getAuthToken: GetAuthToken;
-  setCurrentPage: (page: string, authTab?: "signin" | "signup") => void;
-  toggleDarkMode: () => void;
-  attendWorkshop: (workshopId: string) => Promise<void>;
-  cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
-  createWorkshop: (workshopData: WorkshopUpsertPayload) => Promise<boolean>;
-  deleteWorkshop: (workshopId: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  updateCurrentUserProfile: (updates: {
-    username?: string;
-    avatarUrl?: string;
-    bio?: string;
-    skills?: string[];
-  }) => Promise<User>;
-  uploadCurrentUserAvatar: (file: File) => Promise<User>;
-  refreshData: (mode?: "public" | "mine" | "full" | "dashboard") => Promise<void>;
-  clearCache: () => void;
-  upsertWorkshop: (workshop: Workshop) => void;
-}
+export type { GetAuthToken } from "./app/appContextTypes";
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
-
-const PAGE_TO_PATH: Record<string, string> = {
-  hero: "/",
-  home: "/home",
-  explore: "/explore",
-  create: "/create",
-  dashboard: "/dashboard",
-  [MEMORY_PAGE_ID]: MEMORY_PATH,
-  [ADMIN_MEMORY_PAGE_ID]: ADMIN_MEMORY_PATH,
-  feedback: "/feedback",
-  notifications: "/notifications",
-  adminReview: "/admin/workshops",
-  auth: "/auth",
-  credits: "/credits",
-};
-
-const PATH_TO_PAGE: Record<string, string> = {
-  "/": "hero",
-  "/home": "home",
-  "/explore": "explore",
-  "/create": "create",
-  "/dashboard": "dashboard",
-  [MEMORY_PATH]: MEMORY_PAGE_ID,
-  [ADMIN_MEMORY_PATH]: ADMIN_MEMORY_PAGE_ID,
-  "/feedback": "feedback",
-  "/notifications": "notifications",
-  "/admin/workshops": "adminReview",
-  "/auth": "auth",
-  "/credits": "credits",
-};
-
-const normalizePath = (pathname: string) => {
-  if (!pathname) return "/";
-  const trimmed = pathname.trim();
-  if (!trimmed || trimmed === "/") return "/";
-  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
-};
-
-const pageFromPath = (pathname: string) => {
-  const normalizedPath = normalizePath(pathname);
-  if (normalizedPath.startsWith("/workshops/")) {
-    const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
-    return workshopId ? `workshop-${workshopId}` : "explore";
-  }
-  const memoryPage = pageFromMemoryPath(normalizedPath);
-  if (memoryPage) {
-    return memoryPage;
-  }
-  return PATH_TO_PAGE[normalizedPath] || "explore";
-};
-
-const pathFromPage = (page: string) => {
-  if (page.startsWith("workshop-")) {
-    const workshopId = page.slice("workshop-".length);
-    return `/workshops/${encodeURIComponent(workshopId)}`;
-  }
-  const memoryPath = pathFromMemoryPage(page);
-  if (memoryPath) {
-    return memoryPath;
-  }
-  return PAGE_TO_PATH[page] || "/explore";
-};
-
-const resolvePostLoginPage = () => {
-  const requestedPage = pageFromPath(window.location.pathname);
-  if (requestedPage === "hero" || requestedPage === "auth") {
-    return "explore";
-  }
-  return requestedPage;
-};
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { isLoaded: clerkLoaded, isSignedIn, getToken, signOut: clerkSignOut } = useAuth();
   const { user: clerkUser } = useUser();
 
   const [user, setUser] = useState<User | null>(null);
-  const [workshops, setWorkshops] = useState<Workshop[]>([]);
-  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [currentPage, setCurrentPageState] = useState(() => pageFromPath(window.location.pathname));
-  const [authTab, setAuthTab] = useState<"signin" | "signup">("signin");
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [authTab, setAuthTab] = useState<AuthTab>("signin");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [notificationsUnreadCount, setNotificationsUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   // 防止标签页切换时重复初始化
   const initializedRef = useRef(false);
-  const refreshInFlightRef = useRef<{ mode: "public" | "mine" | "full" | "dashboard"; task: Promise<void> } | null>(null);
-  const notificationsInFlightRef = useRef<Promise<void> | null>(null);
   const profileInFlightRef = useRef<Promise<User> | null>(null);
   const profileInFlightTokenRef = useRef<string | null>(null);
   const bootstrapAuthInProgressRef = useRef(false);
   const hasBackendProfileRef = useRef(false);
-  const recentProfileCacheRef = useRef<{ subject: string | null; user: User; at: number } | null>(null);
+  const recentProfileCacheRef = useRef<RecentProfileCache | null>(null);
   // 区分“用户主动登出”与“session 被动过期”：主动登出已有自己的提示，
   // 不应再弹“会话过期”。
   const explicitSignOutRef = useRef(false);
+
+  const { isDarkMode, toggleDarkMode } = useThemeMode();
 
   // Clerk 内部已对 getToken() 做缓存与自动刷新：每次调用按需取最新 token，
   // 不再把 token 存进 React state（避免过期后变成陈旧值导致被强制登出）。
@@ -174,11 +69,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return getToken({ template: "signupTemplate" });
   }, [getToken]);
 
-  const createWorkshop = useCreateWorkshopAction({
-    isAuthenticated,
-    user,
-    getAuthToken,
-  });
+  const setCurrentPage = useCallback((page: string, authTabOption?: AuthTab) => {
+    setCurrentPageState(page);
+
+    const targetPath = pathFromPage(page);
+    if (normalizePath(window.location.pathname) !== targetPath) {
+      window.history.pushState({ page }, "", targetPath);
+    }
+
+    if (authTabOption) setAuthTab(authTabOption);
+  }, []);
 
   const fetchBackendUser = useCallback(async (accessToken: string): Promise<User> => {
     const payload = decodeJwtPayload(accessToken) as { sub?: string } | null;
@@ -221,9 +121,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // --------------------------
-  // Theme Initialization
-  // --------------------------
+  const {
+    attendWorkshop,
+    cancelWorkshopAttendance,
+    clearWorkshopList,
+    createWorkshop,
+    deleteWorkshop,
+    refreshData,
+    resetWorkshopState,
+    transactions,
+    upsertWorkshop,
+    workshops,
+  } = useWorkshopState({
+    currentPage,
+    getAuthToken,
+    isAuthenticated,
+    user,
+  });
+
+  const {
+    notificationsUnreadCount,
+    refreshNotificationsUnreadCount,
+    resetNotificationsUnreadCount,
+  } = useNotificationUnreadCount({
+    currentPage,
+    getAuthToken,
+    isAuthenticated,
+  });
+
+  const {
+    updateCurrentUserProfile,
+    uploadCurrentUserAvatar,
+  } = useCurrentUserProfileActions({
+    getAuthToken,
+    recentProfileCacheRef,
+    setUser,
+  });
+
+  const clearAuthState = useCallback((targetPage: "hero" | "auth" = "hero") => {
+    setUser(null);
+    setIsAuthenticated(false);
+    clearWorkshopList();
+    resetNotificationsUnreadCount();
+    setIsAdmin(false);
+    hasBackendProfileRef.current = false;
+    recentProfileCacheRef.current = null;
+    setCurrentPage(targetPage);
+  }, [clearWorkshopList, resetNotificationsUnreadCount, setCurrentPage]);
+
   useEffect(() => {
     const handlePopState = () => {
       setCurrentPageState(pageFromPath(window.location.pathname));
@@ -232,82 +177,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("skill-swap-theme");
-    const systemPrefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-
-    if (savedTheme === "dark" || (savedTheme === null && systemPrefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-    }
-  }, []);
-
-  const fetchVisibleWorkshops = useCallback(async () => {
-    if (isAuthenticated) {
-      const token = await getAuthToken();
-      // No token (Clerk session momentarily unavailable): skip the auth-only
-      // endpoints and fall back to public results instead of calling them
-      // unauthenticated.
-      if (token) {
-        const [publicWorkshops, myWorkshops, attendingWorkshops] = await Promise.all([
-          workshopQueryService.getPublic(),
-          workshopQueryService.getMine(token),
-          workshopQueryService.getAttending(token),
-        ]);
-        const merged = new Map<string, Workshop>();
-        [...publicWorkshops, ...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
-          merged.set(workshop.id, workshop);
-        });
-        return Array.from(merged.values());
-      }
-    }
-
-    return workshopQueryService.getPublic();
-  }, [isAuthenticated, getAuthToken]);
-
-  const fetchPublicWorkshops = useCallback(async () => {
-    return workshopQueryService.getPublic();
-  }, []);
-
-  const fetchMineWorkshops = useCallback(async () => {
-    if (!isAuthenticated) {
-      return [];
-    }
-    const token = await getAuthToken();
-    if (!token) {
-      return [];
-    }
-    return workshopQueryService.getMine(token);
-  }, [isAuthenticated, getAuthToken]);
-
-  const fetchDashboardWorkshops = useCallback(async () => {
-    if (!isAuthenticated) {
-      return [];
-    }
-
-    const token = await getAuthToken();
-    if (!token) {
-      return [];
-    }
-    const [myWorkshops, attendingWorkshops] = await Promise.all([
-      workshopQueryService.getMine(token),
-      workshopQueryService.getAttending(token),
-    ]);
-
-    const merged = new Map<string, Workshop>();
-    [...myWorkshops, ...attendingWorkshops].forEach((workshop) => {
-      merged.set(workshop.id, workshop);
-    });
-    return Array.from(merged.values());
-  }, [isAuthenticated, getAuthToken]);
 
   // --------------------------
   // Auth Initialization
@@ -329,17 +198,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser((prev) => (prev ? buildIdentityFallback(prev, clerkUser) : prev));
       return;
     }
-
-    const clearAuthState = (targetPage: "hero" | "auth" = "hero") => {
-      setUser(null);
-      setIsAuthenticated(false);
-      setWorkshops([]);
-      setNotificationsUnreadCount(0);
-      setIsAdmin(false);
-      hasBackendProfileRef.current = false;
-      recentProfileCacheRef.current = null;
-      setCurrentPage(targetPage);
-    };
 
     bootstrapAuthInProgressRef.current = true;
     void (async () => {
@@ -408,361 +266,99 @@ export function AppProvider({ children }: { children: ReactNode }) {
         initializedRef.current = true;
       }
     })();
-  }, [clerkLoaded, isSignedIn, getToken, fetchBackendUser, clerkUser]);
+  }, [
+    clerkLoaded,
+    isSignedIn,
+    getToken,
+    fetchBackendUser,
+    clerkUser,
+    clearAuthState,
+    setCurrentPage,
+  ]);
 
-  // --------------------------
-  // Cache
-  // --------------------------
-  const clearCache = () => {
+  const clearCache = useCallback(() => {
     localStorage.clear();
     sessionStorage.clear();
     setUser(null);
-    setWorkshops([]);
-    setTransactions([]);
+    resetWorkshopState();
+    resetNotificationsUnreadCount();
     setIsAuthenticated(false);
+    setIsAdmin(false);
+    hasBackendProfileRef.current = false;
+    recentProfileCacheRef.current = null;
     setCurrentPage("hero");
     toast.success("Cache cleared! Refreshing...");
     setTimeout(() => window.location.reload(), 1000);
-  };
+  }, [resetNotificationsUnreadCount, resetWorkshopState, setCurrentPage]);
 
-  // --------------------------
-  // Navigation
-  // --------------------------
-  const setCurrentPage = (page: string, authTabOption?: "signin" | "signup") => {
-    setCurrentPageState(page);
-
-    const targetPath = pathFromPage(page);
-    if (normalizePath(window.location.pathname) !== targetPath) {
-      window.history.pushState({ page }, "", targetPath);
-    }
-
-    if (authTabOption) setAuthTab(authTabOption);
-  };
-
-  const resolveRefreshModeByPage = (page: string): "public" | "mine" | "full" | "dashboard" => {
-    if (page === "home" || page === "explore") {
-      return "public";
-    }
-    if (page === "dashboard") {
-      return "dashboard";
-    }
-    if (page === "create") {
-      return "mine";
-    }
-    return "full";
-  };
-
-  // --------------------------
-  // Data
-  // --------------------------
-  const refreshData = useCallback(async (mode: "public" | "mine" | "full" | "dashboard" = "full") => {
-    if (refreshInFlightRef.current && refreshInFlightRef.current.mode === mode) {
-      return refreshInFlightRef.current.task;
-    }
-
-    const task = (async () => {
-      try {
-        let backendWorkshops: Workshop[];
-        if (mode === "public") {
-          backendWorkshops = await fetchPublicWorkshops();
-        } else if (mode === "mine") {
-          backendWorkshops = await fetchMineWorkshops();
-        } else if (mode === "dashboard") {
-          backendWorkshops = await fetchDashboardWorkshops();
-        } else {
-          backendWorkshops = await fetchVisibleWorkshops();
-        }
-        setWorkshops(backendWorkshops);
-      } catch (err) {
-        console.warn("⚠️ Failed to fetch workshops", err);
-      }
-
-      // 积分系统已停用：不再加载 mock 交易历史。
-      setTransactions([]);
-    })();
-
-    refreshInFlightRef.current = { mode, task };
-    try {
-      await task;
-    } finally {
-      if (refreshInFlightRef.current?.task === task) {
-        refreshInFlightRef.current = null;
-      }
-    }
-  }, [fetchDashboardWorkshops, fetchMineWorkshops, fetchPublicWorkshops, fetchVisibleWorkshops]);
-
-  const refreshNotificationsUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) {
-      setNotificationsUnreadCount(0);
-      return;
-    }
-
-    if (notificationsInFlightRef.current) {
-      return notificationsInFlightRef.current;
-    }
-
-    const task = (async () => {
-      try {
-        const token = await getAuthToken();
-        if (!token) return;
-        const count = await notificationQueryService.getUnreadCount(token);
-        setNotificationsUnreadCount(count);
-      } catch (error) {
-        console.warn("Failed to fetch notification count", error);
-      }
-    })();
-
-    notificationsInFlightRef.current = task;
-    try {
-      await task;
-    } finally {
-      notificationsInFlightRef.current = null;
-    }
-  }, [isAuthenticated, getAuthToken]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setNotificationsUnreadCount(0);
-      return;
-    }
-
-    if (currentPage === "notifications") {
-      return;
-    }
-
-    // 在非通知页面后台刷新未读数，避免阻塞当前页渲染。
-    const timer = window.setTimeout(() => {
-      void refreshNotificationsUnreadCount();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [currentPage, refreshNotificationsUnreadCount, isAuthenticated]);
-
-  const upsertWorkshop = useCallback((workshop: Workshop) => {
-    setWorkshops((prev) => {
-      const index = prev.findIndex((item) => item.id === workshop.id);
-      if (index === -1) {
-        return [workshop, ...prev];
-      }
-      const next = [...prev];
-      next[index] = workshop;
-      return next;
-    });
-  }, []);
-
-  // --------------------------
-  // Auth Actions
-  // --------------------------
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     explicitSignOutRef.current = true;
     await clerkSignOut();
     setUser(null);
-    setWorkshops([]);
-    setTransactions([]);
+    resetWorkshopState();
+    resetNotificationsUnreadCount();
     setIsAuthenticated(false);
     setIsAdmin(false);
     hasBackendProfileRef.current = false;
     recentProfileCacheRef.current = null;
     setCurrentPage("hero");
     toast.success("Signed out successfully");
-  };
+  }, [clerkSignOut, resetNotificationsUnreadCount, resetWorkshopState, setCurrentPage]);
 
-  const updateCurrentUserProfile = async (updates: {
-    username?: string;
-    avatarUrl?: string;
-    bio?: string;
-    skills?: string[];
-  }): Promise<User> => {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error("Please sign in again before updating your profile.");
-    }
-
-    const profile = await userProfileService.updateCurrentUserProfile<any>(updates, token);
-    const mapped = mapBackendUser(profile);
-
-    setUser(mapped);
-    localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
-
-    const payload = decodeJwtPayload(token) as { sub?: string } | null;
-    recentProfileCacheRef.current = {
-      subject: payload?.sub ?? null,
-      user: mapped,
-      at: Date.now(),
-    };
-
-    return mapped;
-  };
-
-  const uploadCurrentUserAvatar = async (file: File): Promise<User> => {
-    const token = await getAuthToken();
-    if (!token) {
-      throw new Error("Please sign in again before updating your avatar.");
-    }
-
-    const profile = await userProfileService.uploadCurrentUserAvatar<any>(file, token);
-    const mapped = mapBackendUser(profile);
-
-    setUser(mapped);
-    localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
-
-    const payload = decodeJwtPayload(token) as { sub?: string } | null;
-    recentProfileCacheRef.current = {
-      subject: payload?.sub ?? null,
-      user: mapped,
-      at: Date.now(),
-    };
-
-    return mapped;
-  };
-
-  // --------------------------
-  // Workshop Actions
-  // --------------------------
-  const attendWorkshop = async (workshopId: string) => {
-    if (!isAuthenticated || !user) {
-      toast.error("Please sign in to attend workshops");
-      return;
-    }
-
-    try {
-      // 查找要 join 的 workshop
-      // 尝试精确匹配，也支持数字ID格式
-      let workshop = workshops.find((w) => w.id === workshopId);
-
-      // 如果精确匹配失败，尝试转换为数字后再匹配
-      if (!workshop && !isNaN(Number(workshopId))) {
-        const numId = Number(workshopId);
-        workshop = workshops.find((w) => String(w.id) === String(numId) || Number(w.id) === numId);
-      }
-
-      if (!workshop) {
-        throw new Error(`Workshop with ID "${workshopId}" not found in loaded workshops`);
-      }
-
-      // 调用后端 API，传递 JWT token
-      const token = await getAuthToken();
-      if (!token) {
-        toast.error("Your session expired. Please sign in again.");
-        return;
-      }
-      await workshopMutationService.join(workshopId, token);
-
-      toast.success(`Joined "${workshop.title}"!`);
-
-      // 成功后后台刷新，避免 toast 被全量拉取阻塞。
-      setTimeout(() => {
-        void refreshData(resolveRefreshModeByPage(currentPage));
-      }, 0);
-    } catch (error) {
-      console.error("Failed to join workshop:", error);
-      const message = error instanceof Error ? error.message : "Unknown error";
-      const alreadyParticipant = message.toLowerCase().includes("already a participant");
-
-      if (alreadyParticipant) {
-        // 若后端返回“已参加”，将其视为幂等成功并后台刷新列表。
-        void refreshData(resolveRefreshModeByPage(currentPage));
-        toast.success("You are already attending this workshop.");
-        return;
-      }
-
-      toast.error("Failed to join workshop: " + message);
-    }
-  };
-
-  const cancelWorkshopAttendance = async (workshopId: string) => {
-    if (!isAuthenticated || !user) return;
-
-    try {
-      // 查找要 leave 的 workshop
-      const workshop = workshops.find((w) => w.id === workshopId);
-      if (!workshop) {
-        throw new Error("Workshop not found");
-      }
-
-      // 调用后端 API，传递 JWT token
-      const token = await getAuthToken();
-      if (!token) {
-        toast.error("Your session expired. Please sign in again.");
-        return;
-      }
-      await workshopMutationService.leave(workshopId, token);
-
-      toast.success("Workshop attendance cancelled");
-
-      // 后台刷新，避免操作反馈被阻塞。
-      setTimeout(() => {
-        void refreshData(resolveRefreshModeByPage(currentPage));
-      }, 0);
-    } catch (error) {
-      console.error("Failed to leave workshop:", error);
-      toast.error("Failed to leave workshop: " + (error instanceof Error ? error.message : "Unknown error"));
-    }
-  };
-
-  const deleteWorkshop = async (workshopId: string) => {
-    if (!isAuthenticated || !user) {
-      toast.error("Please sign in to delete workshops");
-      return;
-    }
-
-    try {
-      // 调用后端 API 删除 workshop，传递 JWT token
-      const token = await getAuthToken();
-      if (!token) {
-        toast.error("Your session expired. Please sign in again.");
-        return;
-      }
-      await workshopMutationService.delete(workshopId, token);
-
-      // 删除成功后，从本地状态中移除该 workshop（处理 ID 类型不一致）
-      setWorkshops((prev) =>
-        prev.filter((w) => String(w.id) !== String(workshopId))
-      );
-
-      toast.success("Workshop deleted successfully!");
-    } catch (error) {
-      console.error("Failed to delete workshop:", error);
-      toast.error("Failed to delete workshop: " + (error instanceof Error ? error.message : "Unknown error"));
-      throw error;
-    }
-  };
+  const contextValue = useMemo<AppContextType>(() => ({
+    user,
+    workshops,
+    transactions,
+    currentPage,
+    authTab,
+    isDarkMode,
+    isAuthenticated,
+    isAdmin,
+    notificationsUnreadCount,
+    refreshNotificationsUnreadCount,
+    isLoading,
+    getAuthToken,
+    setCurrentPage,
+    toggleDarkMode,
+    attendWorkshop,
+    cancelWorkshopAttendance,
+    createWorkshop,
+    deleteWorkshop,
+    signOut,
+    updateCurrentUserProfile,
+    uploadCurrentUserAvatar,
+    refreshData,
+    clearCache,
+    upsertWorkshop,
+  }), [
+    user,
+    workshops,
+    transactions,
+    currentPage,
+    authTab,
+    isDarkMode,
+    isAuthenticated,
+    isAdmin,
+    notificationsUnreadCount,
+    refreshNotificationsUnreadCount,
+    isLoading,
+    getAuthToken,
+    setCurrentPage,
+    toggleDarkMode,
+    attendWorkshop,
+    cancelWorkshopAttendance,
+    createWorkshop,
+    deleteWorkshop,
+    signOut,
+    updateCurrentUserProfile,
+    uploadCurrentUserAvatar,
+    refreshData,
+    clearCache,
+    upsertWorkshop,
+  ]);
 
   return (
-    <AppContext.Provider
-      value={{
-        user,
-        workshops,
-        transactions,
-        currentPage,
-        authTab,
-        isDarkMode,
-        isAuthenticated,
-        isAdmin,
-        notificationsUnreadCount,
-        refreshNotificationsUnreadCount,
-        isLoading,
-        getAuthToken,
-        setCurrentPage,
-        toggleDarkMode: () => {
-          const newMode = !isDarkMode;
-          setIsDarkMode(newMode);
-          localStorage.setItem("skill-swap-theme", newMode ? "dark" : "light");
-          document.documentElement.classList.toggle("dark", newMode);
-          document.documentElement.classList.toggle("light", !newMode);
-        },
-        attendWorkshop,
-        cancelWorkshopAttendance,
-        createWorkshop,
-        deleteWorkshop,
-        signOut,
-        updateCurrentUserProfile,
-        uploadCurrentUserAvatar,
-        refreshData,
-        clearCache,
-        upsertWorkshop,
-      }}
-    >
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );

@@ -14,6 +14,28 @@ interface ClerkUserLike {
   username?: string | null;
 }
 
+export interface BackendUserProfile {
+  id: number | string;
+  email?: string;
+  username?: string;
+  avatarUrl?: string;
+  avatar_url?: string;
+  avatar?: string;
+  updatedAt?: string;
+  updated_at?: string;
+  avatarUpdatedAt?: string;
+  avatar_updated_at?: string;
+  bio?: string;
+  creditBalance?: number;
+  skills?: string[];
+  totalWorkshopsHosted?: number;
+  totalWorkshopsAttended?: number;
+  rating?: number;
+  reviewCount?: number;
+  createdAt?: string;
+  role?: string;
+}
+
 export const decodeJwtPayload = (token: string | null) => {
   if (!token) return null;
   try {
@@ -139,7 +161,7 @@ export const detectClerkAuthError = (search: string, hash: string) => {
   return null;
 };
 
-export async function fetchBackendProfile(accessToken: string) {
+export async function fetchBackendProfile(accessToken: string): Promise<BackendUserProfile> {
   const url = `${API_BASE_URL}/api/v1/users/me`;
 
   const res = await fetch(url, {
@@ -156,7 +178,7 @@ export async function fetchBackendProfile(accessToken: string) {
   return res.json();
 }
 
-export function mapBackendUser(userProfile: any): User {
+export function mapBackendUser(userProfile: BackendUserProfile): User {
   const rawAvatar = userProfile.avatarUrl || userProfile.avatar_url || userProfile.avatar || "";
   const resolvedAvatar = resolveAssetUrl(rawAvatar);
   const avatarVersion =
@@ -174,8 +196,8 @@ export function mapBackendUser(userProfile: any): User {
 
   return {
     id: String(userProfile.id),
-    email: userProfile.email,
-    username: userProfile.username,
+    email: userProfile.email || "",
+    username: userProfile.username || "",
     avatarUrl,
     bio: userProfile.bio || "",
     // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
