@@ -15,13 +15,18 @@ export const useNotificationUnreadCount = ({
 }: UseNotificationUnreadCountParams) => {
   const [notificationsUnreadCount, setNotificationsUnreadCount] = useState(0);
   const notificationsInFlightRef = useRef<Promise<void> | null>(null);
+  const authGenerationRef = useRef(0);
+  const isAuthenticatedRef = useRef(isAuthenticated);
 
   const resetNotificationsUnreadCount = useCallback(() => {
+    authGenerationRef.current += 1;
+    isAuthenticatedRef.current = false;
+    notificationsInFlightRef.current = null;
     setNotificationsUnreadCount(0);
   }, []);
 
   const refreshNotificationsUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !isAuthenticatedRef.current) {
       setNotificationsUnreadCount(0);
       return;
     }
@@ -30,11 +35,14 @@ export const useNotificationUnreadCount = ({
       return notificationsInFlightRef.current;
     }
 
+    const requestGeneration = authGenerationRef.current;
     const task = (async () => {
       try {
         const token = await getAuthToken();
+        if (requestGeneration !== authGenerationRef.current || !isAuthenticatedRef.current) return;
         if (!token) return;
         const count = await notificationQueryService.getUnreadCount(token);
+        if (requestGeneration !== authGenerationRef.current || !isAuthenticatedRef.current) return;
         setNotificationsUnreadCount(count);
       } catch (error) {
         console.warn("Failed to fetch notification count", error);
@@ -48,6 +56,16 @@ export const useNotificationUnreadCount = ({
       notificationsInFlightRef.current = null;
     }
   }, [isAuthenticated, getAuthToken]);
+
+  useEffect(() => {
+    if (isAuthenticatedRef.current !== isAuthenticated) {
+      authGenerationRef.current += 1;
+      isAuthenticatedRef.current = isAuthenticated;
+      if (!isAuthenticated) {
+        notificationsInFlightRef.current = null;
+      }
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {

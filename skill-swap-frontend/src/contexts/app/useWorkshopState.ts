@@ -38,6 +38,7 @@ export const useWorkshopState = ({
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const refreshInFlightRef = useRef<{ mode: RefreshDataMode; task: Promise<void> } | null>(null);
+  const workshopGenerationRef = useRef(0);
 
   const createWorkshop = useCreateWorkshopAction({
     isAuthenticated,
@@ -45,14 +46,21 @@ export const useWorkshopState = ({
     getAuthToken,
   });
 
-  const clearWorkshopList = useCallback(() => {
-    setWorkshops([]);
+  const invalidateWorkshopRequests = useCallback(() => {
+    workshopGenerationRef.current += 1;
+    refreshInFlightRef.current = null;
   }, []);
 
+  const clearWorkshopList = useCallback(() => {
+    invalidateWorkshopRequests();
+    setWorkshops([]);
+  }, [invalidateWorkshopRequests]);
+
   const resetWorkshopState = useCallback(() => {
+    invalidateWorkshopRequests();
     setWorkshops([]);
     setTransactions([]);
-  }, []);
+  }, [invalidateWorkshopRequests]);
 
   const fetchVisibleWorkshops = useCallback(async () => {
     if (isAuthenticated) {
@@ -118,6 +126,7 @@ export const useWorkshopState = ({
       return refreshInFlightRef.current.task;
     }
 
+    const requestGeneration = workshopGenerationRef.current;
     const task = (async () => {
       try {
         let backendWorkshops: Workshop[];
@@ -130,11 +139,15 @@ export const useWorkshopState = ({
         } else {
           backendWorkshops = await fetchVisibleWorkshops();
         }
+        if (requestGeneration !== workshopGenerationRef.current) return;
         setWorkshops(backendWorkshops);
       } catch (err) {
-        console.warn("⚠️ Failed to fetch workshops", err);
+        if (requestGeneration === workshopGenerationRef.current) {
+          console.warn("⚠️ Failed to fetch workshops", err);
+        }
       }
 
+      if (requestGeneration !== workshopGenerationRef.current) return;
       // 积分系统已停用：不再加载 mock 交易历史。
       setTransactions([]);
     })();
