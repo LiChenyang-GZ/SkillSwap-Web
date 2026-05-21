@@ -330,7 +330,7 @@
 - Account Registration And Login (Sign Up / Sign In / Auth Options) — L52
 - Main User Navigation — L81
 - User Profile Management (Edit / Fields) — L95
-- Core User Workflows (browse / attend / cancel / submit workshop / manage hosted / view attended / upload / notifications / memory / feedback) — L119
+- Core User Workflows (browse / attend / cancel / submit workshop / manage hosted / view attended / upload / notifications / memory) — L119
 - Common Validation Errors — L234
 - Common User Troubleshooting — L250
 - User-Facing Limitations — L262

@@ -1,6 +1,6 @@
 # System Architecture
 
-Last reviewed: 2026-05-19
+Last reviewed: 2026-05-21
 
 ## 1. Document Purpose
 
@@ -75,7 +75,7 @@ The frontend is a React 18, TypeScript, and Vite application located under `skil
 |---|---|---|
 | Entry point | `main.tsx` renders the React app inside `ClerkProvider` | Code |
 | Main shell | `App.tsx` lazy-loads major screens and renders the selected page | Code |
-| Application context | `contexts/AppContext.tsx` owns global app state, authentication status, current page, workshop cache, notification count, and user profile actions | Code |
+| Application context | `contexts/AppContext.tsx` exposes the global `AppProvider`/`useApp` API and composes focused internal hooks under `contexts/app` for routing helpers, theme state, workshop cache/actions, notification unread count, and user profile actions | Code |
 | Feature structure | Feature folders under `components`, with screens, hooks, components, constants, models, and utilities | Code |
 | Shared API services | `shared/service` and `lib/api.ts` contain backend API wrappers and mapping helpers | Code |
 
@@ -97,7 +97,6 @@ The frontend uses an internal page identifier and browser history mapping patter
 | `/admin/memory` | `adminMemory` | Admin memory studio | Code |
 | `/notifications` | `notifications` | User notification inbox | Code |
 | `/auth` | `auth` | Clerk sign-in/sign-up screen | Code |
-| `/feedback` | `feedback` | Placeholder screen only | Code |
 | `/credits` | `credits` | Redirects to dashboard because the credit system is disabled | Code |
 
 ### Key Feature Areas
@@ -113,7 +112,7 @@ The frontend uses an internal page identifier and browser history mapping patter
 | Memory pages | Public memory wall and detail pages, Markdown rendering with sanitisation | Supported |
 | Admin workshop review | Admin list/detail workflow, approval/rejection/cancellation, image upload | Supported for admin users |
 | Admin memory studio | Admin CRUD, media upload, edit locks | Supported for admin users |
-| Feedback/ratings | Placeholder only | Not currently implemented |
+| Feedback/ratings | Not exposed in current UI | Not currently implemented |
 | Credits | Historical fields exist, but current frontend comments indicate credit transactions are disabled | Partially supported / disabled |
 
 ### API Communication Pattern
@@ -138,7 +137,9 @@ The frontend derives `isAdmin` from the backend profile role rather than from a 
 
 ### State Management Approach
 
-State management is implemented with React Context, React hooks, local component state, `localStorage`, and `sessionStorage`.
+State management is implemented with React Context, focused custom hooks, local component state, `localStorage`, and `sessionStorage`.
+
+The application-wide context keeps one public access point, `useApp()`, while its implementation is split into smaller modules under `src/contexts/app`. Authenticated async state such as notification unread counts and workshop refreshes guards against stale responses after sign-out or cache resets.
 
 No Redux, Zustand, server-state cache library, or GraphQL client was found in the inspected code. This is inferred from implementation.
 
@@ -635,7 +636,7 @@ These are not currently implemented unless separately verified:
 
 | Area | Limitation / assumption | Status |
 |---|---|---|
-| Feedback/reviews | Feedback route exists as a placeholder only | Directly supported by code |
+| Feedback/reviews | No active frontend route or backend API is currently exposed | Unsupported in current code |
 | Credits | Credit-related fields exist, but frontend comments indicate the credit system is disabled | Partially supported |
 | User management | No admin user-management module was found | Unsupported in current code |
 | Reports/flags/complaints | No reporting or complaint workflow found | Unsupported in current code |

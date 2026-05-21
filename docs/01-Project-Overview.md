@@ -198,7 +198,7 @@ Deployment caveat for handover: the backend reads the Azure Blob container from 
 - Add frontend CI checks for TypeScript, build, and lint/test coverage if not already handled outside the repository.
 - Add observability and rollback procedures for production operations, such as health checks, structured logs, deployment verification steps, and documented rollback commands.
 - Consider managed container hosting in future if operational load grows beyond what a single VM can comfortably support.
-- Complete or remove unfinished product areas, such as the placeholder feedback/reviews page and disabled credit system.
+- Continue cleaning unfinished product areas, such as the disabled credit system and any future incomplete feature placeholders.
 
 ## Professional Relevance
 
