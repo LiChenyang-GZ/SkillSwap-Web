@@ -34,7 +34,6 @@ export const useCurrentUserProfileActions = ({
       const mapped = mapBackendUser(profile);
 
       setUser(mapped);
-      localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
 
       const payload = decodeJwtPayload(token) as { sub?: string } | null;
       recentProfileCacheRef.current = {
@@ -59,7 +58,6 @@ export const useCurrentUserProfileActions = ({
       const mapped = mapBackendUser(profile);
 
       setUser(mapped);
-      localStorage.setItem("skill-swap-user", JSON.stringify(mapped));
 
       const payload = decodeJwtPayload(token) as { sub?: string } | null;
       recentProfileCacheRef.current = {

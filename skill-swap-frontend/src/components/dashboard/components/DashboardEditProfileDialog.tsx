@@ -69,7 +69,7 @@ export function DashboardEditProfileDialog({
                 <input
                   ref={avatarFileInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/svg+xml"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
                   className="hidden"
                   onChange={onAvatarFileChange}
                 />

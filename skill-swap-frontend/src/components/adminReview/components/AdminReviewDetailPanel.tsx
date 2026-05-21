@@ -163,7 +163,7 @@ export function AdminReviewDetailPanel({
                           ref={imageFileInputRef}
                           id="workshopImageUpload"
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
                           className="hidden"
                           onChange={(event) => {
                             const nextFile = event.target.files?.[0] || null;
@@ -423,7 +423,7 @@ export function AdminReviewDetailPanel({
                           </Badge>
                           <Button type="button" size="sm" variant="outline" onClick={() => onExportParticipantsExcel(selectedWorkshop)} disabled={participantCount === 0}>
                             <Download className="w-4 h-4 mr-2" />
-                            Export Excel
+                            Export CSV
                           </Button>
                         </div>
                       </div>

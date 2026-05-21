@@ -226,7 +226,7 @@ export function MemoryStudioEditorPanel({
           <Button variant="ghost" size="sm" onClick={onInsertDivider} disabled={editorActionsDisabled}>
             <Minus className="w-4 h-4" />
           </Button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onPickImage(e)} />
+          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp,image/gif" className="hidden" onChange={(e) => void onPickImage(e)} />
         </div>
 
         <div className={`grid gap-4 ${mode === "split" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>
