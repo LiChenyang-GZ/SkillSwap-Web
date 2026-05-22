@@ -12,7 +12,7 @@ public class UpdateProfileRequestDto {
     // 鍓嶇鍙互鍙彂閫佷粬浠兂鏇存柊鐨勫瓧娈?
     @Size(max = 100, message = "Username must be at most 100 characters.")
     private String username;
-    @Size(max = 500, message = "Bio must be at most 500 characters.")
+    @Size(max = 255, message = "Bio must be at most 255 characters.")
     private String bio;
     @Size(max = 50, message = "At most 50 skills are allowed.")
     private List<@Size(max = 100, message = "Skill name must be at most 100 characters.") String> skills;

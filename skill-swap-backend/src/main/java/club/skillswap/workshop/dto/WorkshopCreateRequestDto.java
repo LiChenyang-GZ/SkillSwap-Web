@@ -43,7 +43,7 @@ public record WorkshopCreateRequestDto(
     @NotNull(message = "isOnline is required.")
     Boolean isOnline,
 
-    @Size(max = 500, message = "Location must be at most 500 characters.")
+    @Size(max = 255, message = "Location must be at most 255 characters.")
     String location,
 
     @Positive(message = "Max participants must be greater than 0 when provided.")

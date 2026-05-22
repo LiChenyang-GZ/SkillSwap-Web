@@ -75,7 +75,7 @@ public final class ImageUploadValidator {
                     return rasterType;
                 }
             } catch (IOException ex) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read upload content.");
+                return null;
             }
         }
 

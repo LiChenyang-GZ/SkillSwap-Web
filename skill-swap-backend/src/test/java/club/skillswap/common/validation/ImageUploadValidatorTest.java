@@ -39,6 +39,20 @@ class ImageUploadValidatorTest {
                         assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
+    @Test
+    void rejectsCorruptPngAsBadRequest() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "corrupt.png",
+                ImageUploadValidator.IMAGE_PNG,
+                new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+        );
+
+        assertThatThrownBy(() -> ImageUploadValidator.validate(file, 1024))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
     private byte[] forgedWebpWithInvalidVp8Payload() {
         return new byte[]{
                 'R', 'I', 'F', 'F',

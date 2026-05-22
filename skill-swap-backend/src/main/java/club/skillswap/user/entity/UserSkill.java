@@ -21,10 +21,10 @@ public class UserSkill {
     @JsonIgnore // 闃叉鍦ㄥ簭鍒楀寲鏃朵骇鐢熷惊鐜紩鐢?
     private UserAccount user;
 
-    @Column(name = "skill_name", nullable = false, length = 100)
+    @Column(name = "skill_name", nullable = false)
     private String skillName;
 
-    @Column(name = "skill_level", length = 50)
+    @Column(name = "skill_level")
     private String skillLevel;
 }
 

@@ -24,16 +24,16 @@ public class Workshop {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 200)
+    @Column
     private String title;
     @Column(columnDefinition = "text")
     private String description;
-    @Column(length = 100)
+    @Column
     private String category;
 
     private Integer duration;
 
-    @Column(length = 30)
+    @Column
     private String status = "pending";
 
     private LocalDate date;
@@ -46,7 +46,7 @@ public class Workshop {
     private Boolean isOnline;
 
 
-    @Column(name = "location", length = 500)
+    @Column(name = "location")
     private String location;
 
     @Column(name = "max_participants")
@@ -82,10 +82,10 @@ public class Workshop {
     @JoinColumn(name = "facilitator_id", nullable = false)
     private UserAccount facilitator; // 涓庣敤鎴峰疄浣撶殑澶氬涓€鍏崇郴
 
-    @Column(name = "host_name", length = 100)
+    @Column(name = "host_name")
     private String hostName;
 
-    @Column(name = "contact_number", length = 20)
+    @Column(name = "contact_number")
     private String contactNumber;
 
     @Column(name = "materials_provided", columnDefinition = "text")
@@ -103,10 +103,10 @@ public class Workshop {
     @Column(name = "details_confirmed")
     private Boolean detailsConfirmed;
 
-    @Column(name = "submitter_username", length = 100)
+    @Column(name = "submitter_username")
     private String submitterUsername;
 
-    @Column(name = "submitter_email", length = 320)
+    @Column(name = "submitter_email")
     private String submitterEmail;
 
     @Column(name = "image_url", columnDefinition = "text")
@@ -115,7 +115,7 @@ public class Workshop {
     @Column(name = "week_number")
     private Integer weekNumber;
 
-    @Column(name = "member_responsible", length = 100)
+    @Column(name = "member_responsible")
     private String memberResponsible;
 
     @Column(name = "members_present", columnDefinition = "text")
@@ -124,7 +124,7 @@ public class Workshop {
     @Column(name = "event_submitted")
     private Boolean eventSubmitted;
 
-    @Column(name = "usu_approval_status", length = 30)
+    @Column(name = "usu_approval_status", length = 32)
     private String usuApprovalStatus;
 
     @Column(name = "hidden_by_host", nullable = false, columnDefinition = "boolean not null default false")
