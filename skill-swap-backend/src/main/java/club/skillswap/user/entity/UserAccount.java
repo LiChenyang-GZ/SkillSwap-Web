@@ -42,7 +42,7 @@ public class UserAccount {
     @Column(name = "bio")
     private String bio;
 
-    @Column(name = "role")
+    @Column(name = "role", length = 50)
     private String role;
 
     @Column(name = "credit_balance")

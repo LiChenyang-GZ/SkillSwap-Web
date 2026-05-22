@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +25,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/workshops")
+@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class AdminWorkshopController {
 
@@ -43,7 +45,7 @@ public class AdminWorkshopController {
     public ResponseEntity<WorkshopResponseDto> getWorkshopById(
             @PathVariable Long id,
             Authentication authentication) {
-        return ResponseEntity.ok(workshopService.getWorkshopById(id, authentication));
+        return ResponseEntity.ok(workshopService.getWorkshopByIdForAdmin(id, authentication));
     }
 
     @PutMapping("/{id}")

@@ -2,6 +2,8 @@ package club.skillswap.workshop.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.common.storage.AzureBlobStorageService;
+import club.skillswap.common.validation.ImageUploadValidator;
+import club.skillswap.common.validation.ImageUploadValidator.ValidatedImage;
 import club.skillswap.notification.service.NotificationService;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
@@ -122,6 +124,15 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop workshop = workshopRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + id));
         enforceWorkshopVisibility(workshop, authentication);
+        return mapToDtoForViewer(workshop, authentication);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WorkshopResponseDto getWorkshopByIdForAdmin(Long id, Authentication authentication) {
+        requireAdmin(authentication);
+        Workshop workshop = workshopRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + id));
         return mapToDtoForViewer(workshop, authentication);
     }
 
@@ -266,26 +277,14 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
 
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required.");
-        }
-
-        String contentType = trimToNull(file.getContentType());
-        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image uploads are supported.");
-        }
-
-        if (file.getSize() > maxImageBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
-        }
-
         String previousImageUrl = trimToNull(workshop.getImageUrl());
 
-        String extension = resolveImageFileExtension(file.getOriginalFilename(), contentType);
+        ValidatedImage image = ImageUploadValidator.validate(file, maxImageBytes);
+        String extension = resolveImageFileExtension(image.contentType());
         String fileName = UUID.randomUUID() + extension;
 
         String objectPath = "workshops/" + workshop.getId() + "/" + fileName;
-        String publicUrl = azureBlobStorageService.uploadImage(file, objectPath);
+        String publicUrl = azureBlobStorageService.uploadImage(file, objectPath, image.contentType());
 
         workshop.setImageUrl(publicUrl);
         Workshop saved = workshopRepository.save(workshop);
@@ -436,15 +435,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     @Override
     @Transactional
     public void deleteWorkshop(Long workshopId, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
-
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
-        if (!isAdmin) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required to delete workshops.");
-        }
+        requireAdmin(authentication);
 
         // 1. 鏍规嵁ID鏌ユ壘Workshop锛屽鏋滄壘涓嶅埌鍒欐姏鍑哄紓甯?
         Workshop workshop = workshopRepository.findById(workshopId)
@@ -818,32 +809,8 @@ public class WorkshopServiceImpl implements WorkshopService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private String resolveImageFileExtension(String originalFilename, String contentType) {
-        String fallback = switch (contentType.toLowerCase(Locale.ROOT)) {
-            case "image/png" -> ".png";
-            case "image/jpeg" -> ".jpg";
-            case "image/gif" -> ".gif";
-            case "image/webp" -> ".webp";
-            case "image/svg+xml" -> ".svg";
-            default -> ".bin";
-        };
-
-        String fileName = trimToNull(originalFilename);
-        if (fileName == null) {
-            return fallback;
-        }
-
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
-            return fallback;
-        }
-
-        String extension = fileName.substring(dotIndex).toLowerCase(Locale.ROOT);
-        if (!extension.matches("\\.[a-z0-9]{1,10}")) {
-            return fallback;
-        }
-
-        return extension;
+    private String resolveImageFileExtension(String contentType) {
+        return ImageUploadValidator.extensionFor(contentType);
     }
 
     private String resolveEffectiveStatus(Workshop workshop) {

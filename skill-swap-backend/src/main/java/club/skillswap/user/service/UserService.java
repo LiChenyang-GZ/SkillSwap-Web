@@ -9,6 +9,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import club.skillswap.common.storage.AzureBlobStorageService;
+import club.skillswap.common.validation.ImageUploadValidator;
+import club.skillswap.common.validation.ImageUploadValidator.ValidatedImage;
 import club.skillswap.common.exception.DomainException;
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.user.dto.UpdateProfileRequestDto;
@@ -26,22 +28,12 @@ import java.util.stream.Collectors;
 import java.util.Locale;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
-    private static final Set<String> SUPPORTED_IMAGE_CONTENT_TYPES = Set.of(
-            "image/png",
-            "image/jpeg",
-            "image/jpg",
-            "image/webp",
-            "image/gif",
-            "image/svg+xml"
-    );
-
     private final UserRepository userRepository;
     private final WorkshopRepository workshopRepository;
     private final WorkshopParticipantRepository participantRepository;
@@ -201,9 +193,6 @@ public class UserService {
             }
             userToUpdate.setUsername(nextUsername);
         }
-        if (updateRequest.getAvatarUrl() != null) {
-            userToUpdate.setAvatarUrl(updateRequest.getAvatarUrl());
-        }
         if (updateRequest.getBio() != null) {
             userToUpdate.setBio(updateRequest.getBio());
         }
@@ -234,24 +223,11 @@ public class UserService {
         UUID userId = user.getId();
         String previousAvatarUrl = trimToNull(user.getAvatarUrl());
 
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required.");
-        }
-
-        String contentType = trimToNull(file.getContentType());
-        String normalizedContentType = contentType == null ? null : contentType.toLowerCase(Locale.ROOT);
-        if (normalizedContentType == null || !SUPPORTED_IMAGE_CONTENT_TYPES.contains(normalizedContentType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported image format. Please use PNG/JPG/WEBP/GIF/SVG.");
-        }
-
-        if (file.getSize() > maxImageBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
-        }
-
-        String extension = resolveImageFileExtension(file.getOriginalFilename(), normalizedContentType);
+        ValidatedImage image = ImageUploadValidator.validate(file, maxImageBytes);
+        String extension = resolveImageFileExtension(image.contentType());
         String fileName = UUID.randomUUID() + extension;
         String objectPath = "avatars/" + user.getId() + "/" + fileName;
-        String publicUrl = azureBlobStorageService.uploadImage(file, objectPath);
+        String publicUrl = azureBlobStorageService.uploadImage(file, objectPath, image.contentType());
 
         user.setAvatarUrl(publicUrl);
         userRepository.save(user);
@@ -321,27 +297,8 @@ public class UserService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private String resolveImageFileExtension(String originalFilename, String contentType) {
-        String candidate = null;
-        if (originalFilename != null) {
-            int dotIndex = originalFilename.lastIndexOf('.');
-            if (dotIndex >= 0 && dotIndex < originalFilename.length() - 1) {
-                candidate = originalFilename.substring(dotIndex).toLowerCase(Locale.ROOT);
-            }
-        }
-
-        if (candidate != null && candidate.matches("\\.[a-z0-9]{1,5}")) {
-            return candidate;
-        }
-
-        return switch (contentType.toLowerCase(Locale.ROOT)) {
-            case "image/png" -> ".png";
-            case "image/jpeg", "image/jpg" -> ".jpg";
-            case "image/gif" -> ".gif";
-            case "image/webp" -> ".webp";
-            case "image/svg+xml" -> ".svg";
-            default -> ".bin";
-        };
+    private String resolveImageFileExtension(String contentType) {
+        return ImageUploadValidator.extensionFor(contentType);
     }
 
     private void requireNonBlank(String skill) {

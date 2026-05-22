@@ -2,6 +2,9 @@ package club.skillswap.memory.service;
 
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.common.storage.AzureBlobStorageService;
+import club.skillswap.common.validation.AzureBlobUrlValidator;
+import club.skillswap.common.validation.ImageUploadValidator;
+import club.skillswap.common.validation.ImageUploadValidator.ValidatedImage;
 import club.skillswap.memory.dto.MemoryEntryRequestDto;
 import club.skillswap.memory.dto.MemoryEntryResponseDto;
 import club.skillswap.memory.entity.MemoryEntry;
@@ -53,6 +56,9 @@ public class MemoryServiceImpl implements MemoryService {
 
     @Value("${app.memory.edit-lock-seconds:" + DEFAULT_EDIT_LOCK_SECONDS + "}")
     private long editLockSeconds;
+
+    @Value("${app.storage.azure.blob.connection-string:}")
+    private String azureBlobConnectionString;
 
     @Override
     @Transactional(readOnly = true)
@@ -191,23 +197,11 @@ public class MemoryServiceImpl implements MemoryService {
     public String uploadMemoryMedia(MultipartFile file, Authentication authentication) {
         requireAdmin(authentication);
 
-        if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required.");
-        }
-
-        String contentType = trimToNull(file.getContentType());
-        if (contentType == null || !contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image uploads are supported.");
-        }
-
-        if (file.getSize() > maxImageBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image is too large.");
-        }
-
-        String extension = resolveFileExtension(file.getOriginalFilename(), contentType);
+        ValidatedImage image = ImageUploadValidator.validate(file, maxImageBytes);
+        String extension = resolveFileExtension(image.contentType());
         String fileName = UUID.randomUUID() + extension;
         String objectPath = "memory/" + fileName;
-        return azureBlobStorageService.uploadImage(file, objectPath);
+        return azureBlobStorageService.uploadImage(file, objectPath, image.contentType());
     }
 
     private void applyPayload(MemoryEntry entry, MemoryEntryRequestDto requestDto, boolean createMode) {
@@ -245,7 +239,7 @@ public class MemoryServiceImpl implements MemoryService {
         entry.setSlug(candidateSlug);
 
         if (requestDto.coverUrl() != null || createMode) {
-            entry.setCoverUrl(trimToNull(requestDto.coverUrl()));
+            entry.setCoverUrl(validateMemoryUrl(requestDto.coverUrl(), "coverUrl"));
         }
         if (requestDto.content() != null || createMode) {
             entry.setContent(trimToNull(requestDto.content()));
@@ -276,6 +270,7 @@ public class MemoryServiceImpl implements MemoryService {
         List<String> sanitized = urls.stream()
                 .map(this::trimToNull)
                 .filter(Objects::nonNull)
+                .map(url -> validateMemoryUrl(url, "mediaUrls"))
                 .distinct()
                 .toList();
 
@@ -286,6 +281,10 @@ public class MemoryServiceImpl implements MemoryService {
             media.setSortOrder(i);
             entry.getMedia().add(media);
         }
+    }
+
+    private String validateMemoryUrl(String url, String fieldName) {
+        return AzureBlobUrlValidator.requireAzureBlobUrl(url, fieldName, azureBlobConnectionString);
     }
 
     private String normalizeStatus(String status) {
@@ -331,31 +330,8 @@ public class MemoryServiceImpl implements MemoryService {
         return slug.isBlank() ? null : slug;
     }
 
-    private String resolveFileExtension(String originalFilename, String contentType) {
-        String fallback = switch (contentType.toLowerCase(Locale.ROOT)) {
-            case "image/png" -> ".png";
-            case "image/jpeg" -> ".jpg";
-            case "image/gif" -> ".gif";
-            case "image/webp" -> ".webp";
-            case "image/svg+xml" -> ".svg";
-            default -> ".bin";
-        };
-
-        String fileName = trimToNull(originalFilename);
-        if (fileName == null) {
-            return fallback;
-        }
-
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex < 0 || dotIndex == fileName.length() - 1) {
-            return fallback;
-        }
-
-        String extension = fileName.substring(dotIndex).toLowerCase(Locale.ROOT);
-        if (!extension.matches("\\.[a-z0-9]{1,10}")) {
-            return fallback;
-        }
-        return extension;
+    private String resolveFileExtension(String contentType) {
+        return ImageUploadValidator.extensionFor(contentType);
     }
 
     private MemoryEntryResponseDto toResponse(MemoryEntry entry) {

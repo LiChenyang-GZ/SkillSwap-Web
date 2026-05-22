@@ -24,13 +24,16 @@ public class Workshop {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column
     private String title;
     @Column(columnDefinition = "text")
     private String description;
+    @Column
     private String category;
 
     private Integer duration;
 
+    @Column
     private String status = "pending";
 
     private LocalDate date;
@@ -121,7 +124,7 @@ public class Workshop {
     @Column(name = "event_submitted")
     private Boolean eventSubmitted;
 
-    @Column(name = "usu_approval_status")
+    @Column(name = "usu_approval_status", length = 32)
     private String usuApprovalStatus;
 
     @Column(name = "hidden_by_host", nullable = false, columnDefinition = "boolean not null default false")

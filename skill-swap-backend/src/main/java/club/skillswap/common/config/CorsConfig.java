@@ -22,9 +22,6 @@ public class CorsConfig {
             "http://localhost:3000",   // 澶囩敤绔彛
             "http://127.0.0.1:5173",
             "http://127.0.0.1:3000",
-            "https://skill-swap-web-beta.vercel.app",
-            "https://skill-swap-web-git-main-lichenyang-gzs-projects.vercel.app",
-            "https://skill-swap-8svulzvb7-lichenyang-gzs-projects.vercel.app",
             "https://www.skillswap-club.site",
             "https://skillswap-club.site"
 
@@ -36,7 +33,13 @@ public class CorsConfig {
         ));
         
         // 鍏佽鐨勮姹傚ご
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "Origin",
+            "X-Requested-With"
+        ));
         
         // 鍏佽鎼哄甫鍑瘉锛坈ookies, authorization headers锛?
         configuration.setAllowCredentials(true);
