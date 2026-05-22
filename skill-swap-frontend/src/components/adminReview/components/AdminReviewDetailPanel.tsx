@@ -11,6 +11,7 @@ import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { Textarea } from '../../../components/ui/textarea';
+import { IMAGE_UPLOAD_ACCEPT } from '../../../shared/constants/uploadLimits';
 import { normalizeAdminWorkshopStatus } from '../../workshop/utils/workshopStatusRules';
 import {
   ADMIN_REVIEW_CANCELLABLE_STATUSES,
@@ -45,7 +46,7 @@ interface AdminReviewDetailPanelProps {
   onCancel: () => void;
   onReject: () => void;
   onApprove: () => void;
-  onExportParticipantsExcel: (workshop: Workshop) => void;
+  onExportParticipantsCsv: (workshop: Workshop) => void;
 }
 
 export function AdminReviewDetailPanel({
@@ -70,7 +71,7 @@ export function AdminReviewDetailPanel({
   onCancel,
   onReject,
   onApprove,
-  onExportParticipantsExcel,
+  onExportParticipantsCsv,
 }: AdminReviewDetailPanelProps) {
   const invalidClassName = 'border-destructive focus-visible:ring-destructive';
   const normalizedStatus = selectedWorkshop ? normalizeAdminWorkshopStatus(selectedWorkshop.status) : null;
@@ -163,7 +164,7 @@ export function AdminReviewDetailPanel({
                           ref={imageFileInputRef}
                           id="workshopImageUpload"
                           type="file"
-                          accept="image/*"
+                          accept={IMAGE_UPLOAD_ACCEPT}
                           className="hidden"
                           onChange={(event) => {
                             const nextFile = event.target.files?.[0] || null;
@@ -421,9 +422,9 @@ export function AdminReviewDetailPanel({
                           <Badge variant="secondary">
                             {participantCount} attendee{participantCount === 1 ? '' : 's'}
                           </Badge>
-                          <Button type="button" size="sm" variant="outline" onClick={() => onExportParticipantsExcel(selectedWorkshop)} disabled={participantCount === 0}>
+                          <Button type="button" size="sm" variant="outline" onClick={() => onExportParticipantsCsv(selectedWorkshop)} disabled={participantCount === 0}>
                             <Download className="w-4 h-4 mr-2" />
-                            Export Excel
+                            Export CSV
                           </Button>
                         </div>
                       </div>

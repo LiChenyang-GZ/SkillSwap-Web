@@ -26,6 +26,7 @@ import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { MemoryMarkdownRenderer } from "./MemoryMarkdownRenderer";
 import { toMemoryStatusLabel } from "../utils/memoryStatusLabels";
+import { IMAGE_UPLOAD_ACCEPT } from "../../../shared/constants/uploadLimits";
 
 interface MemoryStudioEditorPanelProps {
   mode: MemoryEditorMode;
@@ -226,7 +227,7 @@ export function MemoryStudioEditorPanel({
           <Button variant="ghost" size="sm" onClick={onInsertDivider} disabled={editorActionsDisabled}>
             <Minus className="w-4 h-4" />
           </Button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onPickImage(e)} />
+          <input ref={fileInputRef} type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" onChange={(e) => void onPickImage(e)} />
         </div>
 
         <div className={`grid gap-4 ${mode === "split" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>

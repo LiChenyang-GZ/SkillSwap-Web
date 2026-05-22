@@ -104,7 +104,7 @@ export function AdminReviewScreen() {
             onCancel={mutations.handleCancel}
             onReject={mutations.handleReject}
             onApprove={mutations.handleApprove}
-            onExportParticipantsExcel={mutations.handleExportParticipantsExcel}
+            onExportParticipantsCsv={mutations.handleExportParticipantsCsv}
           />
         </div>
       </div>
