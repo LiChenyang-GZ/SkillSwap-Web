@@ -55,7 +55,7 @@ public class UserController {
     @PatchMapping("/me")
     public ResponseEntity<UserProfileDto> updateCurrentUserProfile(
             @AuthenticationPrincipal Jwt jwt, 
-            @RequestBody UpdateProfileRequestDto updateRequest) {
+            @Valid @RequestBody UpdateProfileRequestDto updateRequest) {
         
         UserAccount updatedUser = userService.updateCurrentUserProfile(jwt, updateRequest);
         UserProfileDto userProfileDto = userService.getUserProfileWithStats(updatedUser.getId());

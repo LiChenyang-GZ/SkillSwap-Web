@@ -4,10 +4,12 @@ import club.skillswap.memory.dto.MemoryEntryRequestDto;
 import club.skillswap.memory.dto.MemoryEntryResponseDto;
 import club.skillswap.memory.dto.MemoryMediaUploadResponseDto;
 import club.skillswap.memory.service.MemoryService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +26,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/memories")
+@PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class AdminMemoryController {
 
@@ -36,7 +39,7 @@ public class AdminMemoryController {
 
     @PostMapping
     public ResponseEntity<MemoryEntryResponseDto> createMemory(
-            @RequestBody MemoryEntryRequestDto requestDto,
+            @Valid @RequestBody MemoryEntryRequestDto requestDto,
             Authentication authentication
     ) {
         MemoryEntryResponseDto created = memoryService.createMemory(requestDto, authentication);
@@ -46,7 +49,7 @@ public class AdminMemoryController {
     @PutMapping("/{id}")
     public ResponseEntity<MemoryEntryResponseDto> updateMemory(
             @PathVariable Long id,
-            @RequestBody MemoryEntryRequestDto requestDto,
+            @Valid @RequestBody MemoryEntryRequestDto requestDto,
             Authentication authentication
     ) {
         return ResponseEntity.ok(memoryService.updateMemory(id, requestDto, authentication));

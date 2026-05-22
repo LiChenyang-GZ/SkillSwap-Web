@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import jakarta.annotation.PostConstruct;
 import java.util.Locale;
 
 /**
@@ -38,6 +39,12 @@ public class WebSecurityConfiguration {
 
     @Value("${spring.security.oauth2.resourceserver.jwt.jws-algorithms:}")
     private String jwsAlgorithms;
+
+    @PostConstruct
+    void validateRequiredJwtConfiguration() {
+        requireNonBlank(issuerUri, "CLERK_ISSUER_URI");
+        requireNonBlank(jwkSetUri, "CLERK_JWKS_URI");
+    }
 
     /**
      * Builds a JWKS-backed JwtDecoder. The signing algorithm is taken from
@@ -68,9 +75,7 @@ public class WebSecurityConfiguration {
         }
 
         NimbusJwtDecoder decoder = builder.build();
-        if (issuerUri != null && !issuerUri.isBlank()) {
-            decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuerUri));
-        }
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuerUri));
         return decoder;
     }
 
@@ -90,6 +95,12 @@ public class WebSecurityConfiguration {
             return SignatureAlgorithm.from(normalized);
         } catch (IllegalArgumentException ex) {
             return null;
+        }
+    }
+
+    private void requireNonBlank(String value, String envName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(envName + " must be configured.");
         }
     }
 

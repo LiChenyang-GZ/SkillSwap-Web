@@ -15,6 +15,8 @@ public interface WorkshopService {
 
     WorkshopResponseDto getWorkshopById(Long id, Authentication authentication);
 
+    WorkshopResponseDto getWorkshopByIdForAdmin(Long id, Authentication authentication);
+
     List<WorkshopResponseDto> getAllWorkshops();
 
     List<WorkshopResponseDto> getPublicWorkshops();

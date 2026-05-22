@@ -76,7 +76,7 @@ jobs:
               -e SPRING_DATASOURCE_USERNAME="${{ secrets.DB_USERNAME }}" \
               -e SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
               -e AZURE_STORAGE_CONNECTION_STRING="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-              -e AZURE_STORAGE_MEMORIES_CONTAINER="memories" \
+              -e AZURE_STORAGE_MEDIA_CONTAINER="media" \
               -e CLERK_ISSUER_URI="${{ secrets.CLERK_ISSUER_URI }}" \
               -e CLERK_JWKS_URI="${{ secrets.CLERK_JWKS_URI }}" \
               -e CLERK_SECRET_KEY="${{ secrets.CLERK_SECRET_KEY }}" \

@@ -24,13 +24,16 @@ public class Workshop {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 200)
     private String title;
-    @Column(columnDefinition = "text")
+    @Column(columnDefinition = "text", length = 5000)
     private String description;
+    @Column(length = 100)
     private String category;
 
     private Integer duration;
 
+    @Column(length = 30)
     private String status = "pending";
 
     private LocalDate date;
@@ -43,7 +46,7 @@ public class Workshop {
     private Boolean isOnline;
 
 
-    @Column(name = "location")
+    @Column(name = "location", length = 500)
     private String location;
 
     @Column(name = "max_participants")
@@ -69,7 +72,7 @@ public class Workshop {
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
 
-    @Column(name = "review_comment", columnDefinition = "text")
+    @Column(name = "review_comment", columnDefinition = "text", length = 1000)
     private String reviewComment;
 
     @Column(name = "approved_at")
@@ -79,49 +82,49 @@ public class Workshop {
     @JoinColumn(name = "facilitator_id", nullable = false)
     private UserAccount facilitator; // 涓庣敤鎴峰疄浣撶殑澶氬涓€鍏崇郴
 
-    @Column(name = "host_name")
+    @Column(name = "host_name", length = 100)
     private String hostName;
 
-    @Column(name = "contact_number")
+    @Column(name = "contact_number", length = 20)
     private String contactNumber;
 
-    @Column(name = "materials_provided", columnDefinition = "text")
+    @Column(name = "materials_provided", columnDefinition = "text", length = 2000)
     private String materialsProvided;
 
-    @Column(name = "materials_needed_from_club", columnDefinition = "text")
+    @Column(name = "materials_needed_from_club", columnDefinition = "text", length = 2000)
     private String materialsNeededFromClub;
 
-    @Column(name = "venue_requirements", columnDefinition = "text")
+    @Column(name = "venue_requirements", columnDefinition = "text", length = 2000)
     private String venueRequirements;
 
-    @Column(name = "other_important_info", columnDefinition = "text")
+    @Column(name = "other_important_info", columnDefinition = "text", length = 2000)
     private String otherImportantInfo;
 
     @Column(name = "details_confirmed")
     private Boolean detailsConfirmed;
 
-    @Column(name = "submitter_username")
+    @Column(name = "submitter_username", length = 100)
     private String submitterUsername;
 
-    @Column(name = "submitter_email")
+    @Column(name = "submitter_email", length = 320)
     private String submitterEmail;
 
-    @Column(name = "image_url", columnDefinition = "text")
+    @Column(name = "image_url", columnDefinition = "text", length = 2048)
     private String imageUrl;
 
     @Column(name = "week_number")
     private Integer weekNumber;
 
-    @Column(name = "member_responsible")
+    @Column(name = "member_responsible", length = 100)
     private String memberResponsible;
 
-    @Column(name = "members_present", columnDefinition = "text")
+    @Column(name = "members_present", columnDefinition = "text", length = 2000)
     private String membersPresent;
 
     @Column(name = "event_submitted")
     private Boolean eventSubmitted;
 
-    @Column(name = "usu_approval_status")
+    @Column(name = "usu_approval_status", length = 30)
     private String usuApprovalStatus;
 
     @Column(name = "hidden_by_host", nullable = false, columnDefinition = "boolean not null default false")

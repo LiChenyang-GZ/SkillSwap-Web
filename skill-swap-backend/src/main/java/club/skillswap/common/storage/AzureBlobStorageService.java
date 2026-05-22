@@ -41,15 +41,16 @@ public class AzureBlobStorageService {
     @Value("${app.storage.azure.blob.sas-valid-days:0}")
     private long sasValidDays;
 
-    public String uploadImage(MultipartFile file, String objectPath) {
+    public String uploadImage(MultipartFile file, String objectPath, String safeContentType) {
         String normalizedConnectionString = trimToNull(connectionString);
         String normalizedContainerName = trimToNull(containerName);
         String normalizedObjectPath = normalizeObjectPath(objectPath);
+        String normalizedSafeContentType = trimToNull(safeContentType);
 
-        if (normalizedConnectionString == null || normalizedContainerName == null) {
+        if (normalizedConnectionString == null || normalizedContainerName == null || normalizedSafeContentType == null) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Azure Blob storage is not configured. Missing connection string or container name."
+                    "Azure Blob storage is not configured. Missing connection string, container name, or safe content type."
             );
         }
 
@@ -63,26 +64,24 @@ public class AzureBlobStorageService {
         BlobClient blobClient = container.getBlobClient(normalizedObjectPath);
         try (InputStream inputStream = file.getInputStream()) {
             blobClient.upload(inputStream, file.getSize(), true);
-            String contentType = trimToNull(file.getContentType());
-            if (contentType != null) {
-                blobClient.setHttpHeaders(new BlobHttpHeaders().setContentType(contentType));
-            }
+            blobClient.setHttpHeaders(new BlobHttpHeaders().setContentType(normalizedSafeContentType));
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to read upload content.");
         } catch (BlobStorageException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Azure Blob upload failed.");
         }
 
-        String blobUrl = blobClient.getBlobUrl();
+        return buildReturnedUrl(blobClient, blobClient.getBlobUrl());
+    }
+
+    String buildReturnedUrl(BlobClient blobClient, String blobUrl) {
         if (sasValidDays <= 0) {
             return blobUrl;
         }
-
         try {
             return blobUrl + "?" + generateReadSas(blobClient, Duration.ofDays(sasValidDays));
         } catch (RuntimeException ex) {
-            log.warn("Failed to generate SAS for blob {}: {}", blobUrl, ex.getMessage());
-            return blobUrl;
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to generate Azure Blob SAS URL.");
         }
     }
 

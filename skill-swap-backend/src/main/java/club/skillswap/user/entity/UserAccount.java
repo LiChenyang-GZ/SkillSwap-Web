@@ -23,26 +23,26 @@ public class UserAccount {
     private UUID id;
 
     // 外部身份平台标识（可选），例如："supabase" / "clerk" / issuer URI。
-    @Column(name = "auth_provider")
+    @Column(name = "auth_provider", length = 255)
     private String authProvider;
 
     // 外部身份平台 subject(sub)。用于把 JWT sub 映射到本地用户 UUID。
-    @Column(name = "auth_subject", unique = true)
+    @Column(name = "auth_subject", unique = true, length = 255)
     private String authSubject;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String username;
 
-    @Column(unique = true)
+    @Column(unique = true, length = 320)
     private String email;
 
-    @Column(name = "avatar_url")
+    @Column(name = "avatar_url", length = 2048)
     private String avatarUrl;
 
-    @Column(name = "bio")
+    @Column(name = "bio", length = 500)
     private String bio;
 
-    @Column(name = "role")
+    @Column(name = "role", length = 50)
     private String role;
 
     @Column(name = "credit_balance")
