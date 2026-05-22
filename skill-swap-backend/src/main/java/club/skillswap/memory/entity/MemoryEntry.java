@@ -37,13 +37,13 @@ public class MemoryEntry {
     @Column(nullable = false, length = 220, unique = true)
     private String slug;
 
-    @Column(columnDefinition = "text", length = 500)
+    @Column(columnDefinition = "text")
     private String summary;
 
-    @Column(name = "cover_url", columnDefinition = "text", length = 2048)
+    @Column(name = "cover_url", columnDefinition = "text")
     private String coverUrl;
 
-    @Column(columnDefinition = "text", length = 10000)
+    @Column(columnDefinition = "text")
     private String content;
 
     @Column(nullable = false, length = 30)

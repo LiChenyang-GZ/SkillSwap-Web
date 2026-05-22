@@ -26,7 +26,7 @@ public class Workshop {
 
     @Column(length = 200)
     private String title;
-    @Column(columnDefinition = "text", length = 5000)
+    @Column(columnDefinition = "text")
     private String description;
     @Column(length = 100)
     private String category;
@@ -72,7 +72,7 @@ public class Workshop {
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
 
-    @Column(name = "review_comment", columnDefinition = "text", length = 1000)
+    @Column(name = "review_comment", columnDefinition = "text")
     private String reviewComment;
 
     @Column(name = "approved_at")
@@ -88,16 +88,16 @@ public class Workshop {
     @Column(name = "contact_number", length = 20)
     private String contactNumber;
 
-    @Column(name = "materials_provided", columnDefinition = "text", length = 2000)
+    @Column(name = "materials_provided", columnDefinition = "text")
     private String materialsProvided;
 
-    @Column(name = "materials_needed_from_club", columnDefinition = "text", length = 2000)
+    @Column(name = "materials_needed_from_club", columnDefinition = "text")
     private String materialsNeededFromClub;
 
-    @Column(name = "venue_requirements", columnDefinition = "text", length = 2000)
+    @Column(name = "venue_requirements", columnDefinition = "text")
     private String venueRequirements;
 
-    @Column(name = "other_important_info", columnDefinition = "text", length = 2000)
+    @Column(name = "other_important_info", columnDefinition = "text")
     private String otherImportantInfo;
 
     @Column(name = "details_confirmed")
@@ -109,7 +109,7 @@ public class Workshop {
     @Column(name = "submitter_email", length = 320)
     private String submitterEmail;
 
-    @Column(name = "image_url", columnDefinition = "text", length = 2048)
+    @Column(name = "image_url", columnDefinition = "text")
     private String imageUrl;
 
     @Column(name = "week_number")
@@ -118,7 +118,7 @@ public class Workshop {
     @Column(name = "member_responsible", length = 100)
     private String memberResponsible;
 
-    @Column(name = "members_present", columnDefinition = "text", length = 2000)
+    @Column(name = "members_present", columnDefinition = "text")
     private String membersPresent;
 
     @Column(name = "event_submitted")

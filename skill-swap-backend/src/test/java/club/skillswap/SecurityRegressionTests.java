@@ -44,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SecurityRegressionTests {
 
     private static final String TEST_BLOB_URL = "https://skillswapstorage.blob.core.windows.net/media/test.png";
+    private static final String TEST_WEBP_BLOB_URL = "https://skillswapstorage.blob.core.windows.net/media/test.webp";
 
     private static final String WORKSHOP_JSON = """
             {
@@ -98,6 +99,17 @@ class SecurityRegressionTests {
                         .file(validPngFile("avatar.png"))
                         .contentType(MediaType.MULTIPART_FORM_DATA)
                         .with(memberJwt("member-valid-png-upload")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void memberCanUploadValidWebp() throws Exception {
+        when(azureBlobStorageService.uploadImage(any(), anyString(), anyString())).thenReturn(TEST_WEBP_BLOB_URL);
+
+        mockMvc.perform(multipart("/api/v1/users/me/avatar")
+                        .file(validWebpFile("avatar.webp"))
+                        .contentType(MediaType.MULTIPART_FORM_DATA)
+                        .with(memberJwt("member-valid-webp-upload")))
                 .andExpect(status().isOk());
     }
 
@@ -359,5 +371,26 @@ class SecurityRegressionTests {
                 MediaType.IMAGE_PNG_VALUE,
                 java.util.Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=")
         );
+    }
+
+    private MockMultipartFile validWebpFile(String fileName) {
+        return new MockMultipartFile(
+                "file",
+                fileName,
+                "image/webp",
+                validLosslessWebpBody()
+        );
+    }
+
+    private byte[] validLosslessWebpBody() {
+        return new byte[]{
+                'R', 'I', 'F', 'F',
+                18, 0, 0, 0,
+                'W', 'E', 'B', 'P',
+                'V', 'P', '8', 'L',
+                5, 0, 0, 0,
+                0x2F, 0, 0, 0, 0,
+                0
+        };
     }
 }

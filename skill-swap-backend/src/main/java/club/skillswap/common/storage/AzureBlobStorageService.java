@@ -81,6 +81,7 @@ public class AzureBlobStorageService {
         try {
             return blobUrl + "?" + generateReadSas(blobClient, Duration.ofDays(sasValidDays));
         } catch (RuntimeException ex) {
+            log.warn("Failed to generate Azure Blob SAS URL for {}: {}", blobUrl, ex.getMessage(), ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to generate Azure Blob SAS URL.");
         }
     }

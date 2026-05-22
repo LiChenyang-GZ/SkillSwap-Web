@@ -26,7 +26,7 @@ public class MemoryMedia {
     @JoinColumn(name = "memory_entry_id", nullable = false)
     private MemoryEntry entry;
 
-    @Column(name = "media_url", nullable = false, columnDefinition = "text", length = 2048)
+    @Column(name = "media_url", nullable = false, columnDefinition = "text")
     private String mediaUrl;
 
     @Column(name = "sort_order", nullable = false)
