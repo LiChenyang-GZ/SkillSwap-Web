@@ -1813,7 +1813,7 @@ Known status codes used by service/controller logic:
 | Memory edit locks | Draft update/delete requires active lock ownership; lock conflicts return `423 Locked`. |
 | Memory media upload | File required; content type must start with `image/`; size must be within configured max. |
 
-Frontend validation also exists for create workshop, admin review, profile, and memory flows, but backend validation is the source of truth for API consumers.
+Frontend validation also exists for create workshop, admin review, profile, and memory flows, but backend validation is the source of truth for API consumers. Current frontend upload controls use a stricter browser/UI allowlist of PNG/JPG/WEBP/GIF; the backend rules in this section describe the current API behaviour until separate backend upload hardening is implemented.
 
 ## 11. File Upload And Media API Behaviour
 
@@ -1837,6 +1837,7 @@ Restrictions:
 
 - Default application-level image limit is 10 MB through `app.upload.max-image-bytes`.
 - Servlet multipart limits are configured separately.
+- Current frontend upload controls accept PNG/JPG/WEBP/GIF for avatar, workshop cover, and memory image UI flows.
 - Avatar upload accepts only explicit image content types: PNG, JPG/JPEG, WEBP, GIF, SVG.
 - Workshop and memory media upload accept content types that start with `image/`.
 - No image dimension validation, malware scanning, or content moderation was found.

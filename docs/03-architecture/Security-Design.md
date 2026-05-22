@@ -245,6 +245,7 @@ Implemented validation includes:
 Limitations:
 
 - Upload validation is based primarily on content type and size. No malware scanning, image content validation, content moderation, or image dimension validation was identified.
+- Frontend upload controls currently accept PNG/JPG/WEBP/GIF and exclude SVG from the file picker/validation path, but this is not a security boundary. Backend upload validation still needs its own SVG rejection and file signature hardening in a separate backend change.
 - Some request validation is implemented in service code rather than uniformly through DTO annotations.
 
 ### Error Handling
@@ -297,9 +298,9 @@ Values prefixed with `VITE_` are compiled into the frontend bundle and must be t
 
 ### Client-Side Limitations
 
-The frontend decodes JWT payloads for client-side profile/cache fallback behaviour. This decoding is not token validation and is not a security control.
+The frontend decodes JWT payloads for client-side profile/cache coordination. This decoding is not token validation and is not a security control.
 
-The frontend stores user profile/cache data in browser storage. The inspected code does not explicitly store Clerk bearer tokens in local storage, but Clerk's internal session storage behaviour is managed by Clerk and should be reviewed against Clerk production configuration.
+The inspected application code does not explicitly persist Clerk bearer tokens or user profile PII in `localStorage`. Browser storage is still used for limited non-token UI state such as theme preference, transient authentication error messages, and notification navigation targets. Clerk's internal session storage behaviour is managed by Clerk and should be reviewed against Clerk production configuration.
 
 Frontend checks for admin UI state are convenience checks only. Backend authorization is required for all protected operations.
 
@@ -606,7 +607,7 @@ No GDPR, CPRA, HIPAA, SOC 2, ISO 27001, or other compliance status should be cla
 | Manual SSH-based deployment risk | Compromised CI secrets or deployment mistakes could affect the VM. | SSH private key is stored as a GitHub secret and deployment is automated. | SSH key scope, VM user privileges, and key rotation are not documented. | Use least-privilege deploy user, rotate keys, consider OIDC or managed deployment, and document emergency access. |
 | Limited rollback/versioning | Failed deployment may be harder to roll back deterministically. | Containerized deployment can pull and run images. | Workflow pushes and deploys only `latest`. | Publish immutable image tags using commit SHA and document rollback commands. |
 | Storage container environment mismatch | Uploaded files may go to the wrong container or fall back to defaults. | Backend has configurable Azure Blob container property. | Deployment workflow variable name differs from backend property naming. | Align environment variable names and add startup logging that reports non-sensitive storage configuration. |
-| Missing upload malware scanning | Malicious files could be uploaded if accepted by content type and size checks. | Backend restricts uploads by size and content type. | No malware scanning or deep content validation was identified. | Add scanning, safer MIME detection, file extension normalization, and stricter image validation. |
+| Missing upload malware scanning / deep file validation | Malicious or scriptable files could be uploaded if accepted by content type and size checks. | Backend restricts uploads by size and content type; frontend upload controls exclude SVG from current UI flows. | Frontend controls are bypassable, and no malware scanning, signature validation, or deep content validation was identified. | Add backend SVG rejection, safer MIME detection, file extension normalization, image signature validation, scanning, and stricter image validation. |
 | Missing admin audit logging | Unauthorized or mistaken admin actions may be hard to investigate. | Admin actions are protected by role checks. | No structured audit log for admin moderation actions was identified. | Record actor, action, target, timestamp, and outcome for admin operations. |
 
 ## 18. Security Assumptions
@@ -652,7 +653,7 @@ The current design relies on the following assumptions:
 Future work should be tracked separately from implemented controls:
 
 - Add backend or Nginx rate limiting for API write endpoints, uploads, and authentication-adjacent flows.
-- Add stricter file upload validation, including MIME sniffing, extension controls, image parsing, and malware scanning.
+- Add stricter backend file upload validation, including SVG rejection for uploaded images, MIME sniffing, extension controls, image parsing, and malware scanning.
 - Use private blob containers and signed URLs for media that should not be public.
 - Add structured audit logging for admin actions.
 - Align frontend and backend admin role normalization.
