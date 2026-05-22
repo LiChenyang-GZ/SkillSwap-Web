@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
 import type { WorkshopUpsertPayload } from '../../../lib/api';
 import type { Workshop } from '../../../types/workshop';
 import { adminWorkshopService } from '../../../shared/service/workshop/adminWorkshopService';
@@ -205,7 +204,7 @@ export function useAdminReviewMutations({
     }
   };
 
-  const handleExportParticipantsExcel = (workshop: Workshop) => {
+  const handleExportParticipantsCsv = (workshop: Workshop) => {
     const participants = workshop.participants ?? [];
     const participantCount = participants.length || workshop.currentParticipants || 0;
 
@@ -215,39 +214,80 @@ export function useAdminReviewMutations({
     }
 
     const exportedAt = new Date().toISOString();
-    const rows =
-      participants.length > 0
-        ? participants.map((participant, index) => ({
-            No: index + 1,
-            Workshop: workshop.title,
-            Status: workshop.status,
-            Date: workshop.date,
-            Time: workshop.time,
-            ParticipantName: participant.username || 'Unknown',
-            ParticipantEmail: participant.email || '',
-            ExportedAt: exportedAt,
-          }))
-        : [
-            {
-              No: '',
-              Workshop: workshop.title,
-              Status: workshop.status,
-              Date: workshop.date,
-              Time: workshop.time,
-              ParticipantName: '',
-              ParticipantEmail: '',
-              ExportedAt: exportedAt,
-              Note: `${participantCount} participant(s) joined, but detail list is not available in API response.`,
-            },
-          ];
+    const headers = [
+      'No',
+      'Workshop',
+      'Status',
+      'Date',
+      'Time',
+      'ParticipantName',
+      'ParticipantEmail',
+      'ExportedAt',
+      'Note',
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Participants');
+    type CsvCell = string | number | null | undefined;
+    const rows: CsvCell[][] =
+      participants.length > 0
+        ? participants.map((participant, index) => [
+            index + 1,
+            workshop.title,
+            workshop.status,
+            workshop.date,
+            workshop.time,
+            participant.username || 'Unknown',
+            participant.email || '',
+            exportedAt,
+            '',
+          ])
+        : [[
+            '',
+            workshop.title,
+            workshop.status,
+            workshop.date,
+            workshop.time,
+            '',
+            '',
+            exportedAt,
+            `${participantCount} participant(s) joined, but detail list is not available in API response.`,
+          ]];
+
+    // Defuse CSV/formula injection after leading whitespace, then escape per RFC 4180.
+    const escapeCsvCell = (value: CsvCell): string => {
+      if (value === null || value === undefined) return '';
+      let str = String(value);
+      if (/^\s*[=+\-@]/.test(str)) {
+        str = `'${str}`;
+      }
+      const needsQuoting = /[",\r\n]/.test(str);
+      const escaped = str.replace(/"/g, '""');
+      return needsQuoting ? `"${escaped}"` : escaped;
+    };
+
+    const csvLines = [
+      headers.join(','),
+      ...rows.map((row) => row.map(escapeCsvCell).join(',')),
+    ];
+    // UTF-8 BOM so Excel detects encoding for non-ASCII names.
+    const UTF8_BOM = '\ufeff';
+    const csvContent = UTF8_BOM + csvLines.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
 
     const safeTitle = workshop.title.replace(/[\\/:*?"<>|]/g, '').trim() || 'workshop';
-    const fileName = `${safeTitle.slice(0, 40)}-participants.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+    const fileName = `${safeTitle.slice(0, 40)}-participants.csv`;
+
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+
     toast.success('Participant list exported.');
   };
 
@@ -257,6 +297,6 @@ export function useAdminReviewMutations({
     handleApprove,
     handleReject,
     handleCancel,
-    handleExportParticipantsExcel,
+    handleExportParticipantsCsv,
   };
 }

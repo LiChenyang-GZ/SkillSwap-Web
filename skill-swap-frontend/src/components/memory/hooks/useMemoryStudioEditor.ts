@@ -7,7 +7,12 @@ import type { MemoryUploadQueueItem } from "../models/memoryActionModel";
 import { MEMORY_EMPTY_DOC } from "../constants/memoryUiConstants";
 import { parseMemoryDocument } from "../utils/memoryDocument";
 import { getMemoryErrorMessage, getMemoryErrorStatus } from "../utils/memoryError";
-import { IMAGE_UPLOAD_MAX_BYTES, IMAGE_UPLOAD_TOO_LARGE_MESSAGE } from "../../../shared/constants/uploadLimits";
+import {
+  IMAGE_UPLOAD_ALLOWED_MIME_TYPES,
+  IMAGE_UPLOAD_MAX_BYTES,
+  IMAGE_UPLOAD_TOO_LARGE_MESSAGE,
+  IMAGE_UPLOAD_UNSUPPORTED_MESSAGE,
+} from "../../../shared/constants/uploadLimits";
 
 interface UseMemoryStudioEditorParams {
   getAuthToken: () => Promise<string | null>;
@@ -82,8 +87,9 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
   };
 
   const validateImageFile = (file: File): boolean => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Only image files are supported.");
+    const contentType = String(file.type || "").toLowerCase();
+    if (!IMAGE_UPLOAD_ALLOWED_MIME_TYPES.has(contentType)) {
+      toast.error(IMAGE_UPLOAD_UNSUPPORTED_MESSAGE);
       return false;
     }
     if (file.size > IMAGE_UPLOAD_MAX_BYTES) {

@@ -954,7 +954,7 @@ Confidence labels:
   - Set `AZURE_STORAGE_CONNECTION_STRING=<AZURE_STORAGE_CONNECTION_STRING>`.
   - Set `AZURE_STORAGE_MEDIA_CONTAINER=<BLOB_CONTAINER>` for the backend implementation.
   - Align deployment workflow/docs/code variable names before relying on production uploads.
-  - Retry with a supported image under the configured size limit.
+  - Retry with a PNG/JPG/WEBP/GIF image under the configured size limit when using the current frontend UI.
 - Prevention notes:
   - Track the known storage container variable-name mismatch until it is fixed.
 - Source / confidence: Verified from code/docs.

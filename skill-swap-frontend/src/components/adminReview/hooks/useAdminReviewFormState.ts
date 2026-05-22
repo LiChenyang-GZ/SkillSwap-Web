@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import type { Workshop } from '../../../types/workshop';
+import {
+  IMAGE_UPLOAD_ALLOWED_MIME_TYPES,
+  IMAGE_UPLOAD_MAX_BYTES,
+  IMAGE_UPLOAD_TOO_LARGE_MESSAGE,
+  IMAGE_UPLOAD_UNSUPPORTED_MESSAGE,
+} from '../../../shared/constants/uploadLimits';
 import { WorkshopFormState, emptyWorkshopForm } from '../models/adminReviewFormModel';
 import type { AdminReviewFieldErrors } from '../models/adminReviewValidationModel';
 import { buildWorkshopFormState, normalizeFormState } from '../utils/adminReviewUtils';
@@ -74,6 +81,17 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
 
   const handleImageFileSelection = useCallback((file: File | null) => {
     if (!file) return;
+
+    const contentType = String(file.type || '').toLowerCase();
+    if (!IMAGE_UPLOAD_ALLOWED_MIME_TYPES.has(contentType)) {
+      toast.error(IMAGE_UPLOAD_UNSUPPORTED_MESSAGE);
+      return;
+    }
+
+    if (file.size > IMAGE_UPLOAD_MAX_BYTES) {
+      toast.error(IMAGE_UPLOAD_TOO_LARGE_MESSAGE);
+      return;
+    }
 
     clearLocalImagePreview();
     const previewUrl = URL.createObjectURL(file);
