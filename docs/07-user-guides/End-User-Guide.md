@@ -110,7 +110,7 @@ Profile management is available from `Dashboard`.
 | Field | User Editable In Current UI | Notes |
 |---|---|---|
 | Display name | Yes | Required. Cannot be blank. |
-| Avatar | Yes | PNG/JPG/WEBP/GIF/SVG are supported. |
+| Avatar | Yes | Current UI accepts PNG/JPG/WEBP/GIF image files within the configured upload size limit. |
 | Email | No | Displayed as read-only in the profile dialog. |
 | Bio | Partially supported | Backend supports bio, and the profile card can display it, but the current Dashboard dialog does not edit bio. |
 | Skills | Partially supported | Backend has skills endpoints, but the current Dashboard dialog does not expose skill editing. |
@@ -204,7 +204,7 @@ Partially supported: regular users can submit and view hosted workshops, but the
 | Workshop cover image | Not supported for regular users | Admins upload workshop cover images during review. |
 | Memory page media | Admin-only | Managed through Memory Studio. |
 
-Avatar images must be supported image formats and within the configured upload size limit.
+Avatar images must use one of the currently accepted UI formats (PNG/JPG/WEBP/GIF) and remain within the configured upload size limit.
 
 ### View Notifications
 

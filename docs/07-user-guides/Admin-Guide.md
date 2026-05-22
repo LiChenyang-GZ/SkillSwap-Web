@@ -133,6 +133,7 @@ Upload constraints:
 
 | Constraint | Status |
 |---|---|
+| Current UI formats | PNG/JPG/WEBP/GIF |
 | Image-only upload | Enforced by backend |
 | Upload size limit | Enforced by backend configuration |
 | Storage target | Azure Blob Storage implementation verified |
@@ -183,9 +184,9 @@ Cancellation constraints verified in code:
 1. Open `Admin Review`.
 2. Select an approved or completed workshop.
 3. Review the `Participants` section when available.
-4. Select `Export Excel` to export a participant list.
+4. Select `Export CSV` to export a participant list.
 
-Partially supported: the frontend can export participant data returned by the API. If only a participant count is available and participant details are missing, the exported file includes a note that detailed participant records were not available from the current API response.
+Partially supported: the frontend can export participant data returned by the API as a `.csv` file. CSV cells are escaped before download, including defusing values whose first non-whitespace character could be interpreted as a spreadsheet formula. If only a participant count is available and participant details are missing, the exported file includes a note that detailed participant records were not available from the current API response.
 
 ### Backend-Only Workshop Delete
 
@@ -268,7 +269,7 @@ Published and archived entries are read-only in the editor until moved to draft.
 
 Upload constraints:
 
-- Only image files are supported.
+- Current UI accepts PNG/JPG/WEBP/GIF image files.
 - Files must fit within the configured upload size limit.
 - Images are stored through the backend media upload service.
 
@@ -381,7 +382,7 @@ Admins can correct some data through existing screens:
 | `Only pending workshops can be approved/rejected` | Admin action attempted on a non-pending workshop. | Re-check status and use another action if supported. |
 | `Completed or cancelled workshops cannot be edited` | Business rule prevents editing. | Do not edit through UI; document any correction request for technical review. |
 | `Workshops cannot be cancelled after they start` | Cancellation attempted too late. | Escalate if a data correction is still required. |
-| Image upload rejected | File is missing, too large, or not an image. | Use a valid image within the configured limit. |
+| Image upload rejected | File is missing, too large, or not an accepted image format. | Use a PNG/JPG/WEBP/GIF image within the configured limit. |
 | Memory locked by another admin | Another admin holds the draft edit lock. | Wait for release/expiry or coordinate with that admin. |
 | Memory slug/title conflict | Generated slug already exists. | Change the title and save again. |
 | No participants exported | No participant details are available. | Confirm participant count and reload details; export only when data is available. |
