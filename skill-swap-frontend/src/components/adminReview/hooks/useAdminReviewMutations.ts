@@ -204,7 +204,7 @@ export function useAdminReviewMutations({
     }
   };
 
-  const handleExportParticipantsExcel = (workshop: Workshop) => {
+  const handleExportParticipantsCsv = (workshop: Workshop) => {
     const participants = workshop.participants ?? [];
     const participantCount = participants.length || workshop.currentParticipants || 0;
 
@@ -252,11 +252,11 @@ export function useAdminReviewMutations({
             `${participantCount} participant(s) joined, but detail list is not available in API response.`,
           ]];
 
-    // Defuse CSV/formula injection (=, +, -, @, tab, CR) and escape per RFC 4180.
+    // Defuse CSV/formula injection after leading whitespace, then escape per RFC 4180.
     const escapeCsvCell = (value: CsvCell): string => {
       if (value === null || value === undefined) return '';
       let str = String(value);
-      if (/^[=+\-@\t\r]/.test(str)) {
+      if (/^\s*[=+\-@]/.test(str)) {
         str = `'${str}`;
       }
       const needsQuoting = /[",\r\n]/.test(str);
@@ -269,7 +269,8 @@ export function useAdminReviewMutations({
       ...rows.map((row) => row.map(escapeCsvCell).join(',')),
     ];
     // UTF-8 BOM so Excel detects encoding for non-ASCII names.
-    const csvContent = '﻿' + csvLines.join('\r\n');
+    const UTF8_BOM = '\ufeff';
+    const csvContent = UTF8_BOM + csvLines.join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
 
     const safeTitle = workshop.title.replace(/[\\/:*?"<>|]/g, '').trim() || 'workshop';
@@ -296,6 +297,6 @@ export function useAdminReviewMutations({
     handleApprove,
     handleReject,
     handleCancel,
-    handleExportParticipantsExcel,
+    handleExportParticipantsCsv,
   };
 }
