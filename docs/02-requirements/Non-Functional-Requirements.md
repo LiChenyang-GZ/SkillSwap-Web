@@ -27,7 +27,7 @@ The requirements were verified against the current repository and existing docum
 | NFR-010 | Admin capabilities must be protected by role-based authorization. | Must | Code | Admin services check for `ROLE_ADMIN` or equivalent authority before executing privileged actions. |
 | NFR-011 | CORS must be restricted to configured frontend origins rather than permitting all origins. | Must | Code | CORS configuration lists explicit allowed origins and allowed methods. |
 | NFR-012 | Sensitive runtime configuration must be injected through environment variables or secret stores rather than documented as plain secrets. | Must | Existing documentation and code | Deployment docs describe GitHub Actions/Vercel secret injection; requirements docs do not include secret values. |
-| NFR-013 | File uploads must validate type and size before storage. | Must | Code | Upload endpoints reject missing files, non-image content where applicable, and oversized files. |
+| NFR-013 | File uploads must validate type, detected image content, and size before storage. | Must | Code | Upload endpoints reject missing files, unsupported formats, SVG files, declared/detected type mismatches, non-image content, and oversized files. |
 | NFR-014 | Public Markdown rendering must sanitize raw HTML content. | Must | Code | Memory Markdown renderer uses `rehype-sanitize` with a configured schema. |
 | NFR-015 | Legacy local development JWT/dev-login flows must remain disabled unless deliberately reintroduced. | Must | Existing documentation | Auth docs state `/dev` login and local HS256 JWT flows are removed. |
 
@@ -112,7 +112,7 @@ The requirements were verified against the current repository and existing docum
 | NFR-055 | Backend deployment artifacts should be containerized. | Must | Code and workflow | Dockerfile copies the built backend JAR into a Java runtime image. |
 | NFR-056 | Runtime secrets must be configured outside source control. | Must | Existing documentation | Deployment docs identify secret variables by name only; no values are required in repository docs. |
 | NFR-057 | Frontend deployment should be handled through static hosting integration. | Should | Existing documentation | Deployment docs describe Vercel build/deploy behavior. |
-| NFR-058 | Deployment configuration naming should be consistent across backend properties, workflow, and documentation. | Must | Code and existing documentation | Known mismatch between Azure Blob container variable names is tracked as a constraint requiring alignment. |
+| NFR-058 | Deployment configuration naming should be consistent across backend properties, workflow, and documentation. | Must | Code and existing documentation | Backend properties and the current deployment workflow use `AZURE_STORAGE_MEDIA_CONTAINER`; future changes should keep docs and workflow aligned. |
 | NFR-059 | Database migration execution strategy should be clarified. | Should | Code | SQL migrations and Flyway configuration exist, while current application profiles disable Flyway at runtime. |
 
 ## Observability, Logging, And Troubleshooting Requirements
@@ -141,10 +141,10 @@ The requirements were verified against the current repository and existing docum
 |---|---|---|
 | KC-001 | Current deployment documentation describes a single backend VM. | Do not assume horizontal scaling or high availability. |
 | KC-002 | High availability is documented as not enabled for the database. | Availability expectations should match current project scale. |
-| KC-003 | Backend test coverage appears limited to a context-load test. | Non-functional quality gates should be strengthened before production-critical use. |
+| KC-003 | Backend test coverage now includes security regression tests and backend CI, but remains incomplete across all domains. | Non-functional quality gates should continue to be strengthened before production-critical use. |
 | KC-004 | Frontend test/lint CI checks were not verified in workflow files reviewed. | Client-side regressions may not be automatically caught in CI. |
 | KC-005 | Flyway migrations exist but application profiles currently disable Flyway. | Migration process needs clarification before handover. |
-| KC-006 | Azure Blob container variable names differ between code and workflow/docs. | Storage deployment configuration should be aligned. |
+| KC-006 | Azure Blob container naming has been aligned in the current workflow and backend property, but live storage access still requires verification. | Do not assume production container access or SAS/public-read behaviour without checking the deployed environment. |
 | KC-007 | Feedback/reviews are not exposed, and the credit economy is disabled. | These should not be presented as completed capabilities. |
 | KC-008 | Version-based memory optimistic locking is not active in current code. | Concurrency claims should refer to edit locks only. |
 | KC-009 | Public user profile access is unclear due to controller comment/security config mismatch. | Access expectation should be verified before documenting as public. |

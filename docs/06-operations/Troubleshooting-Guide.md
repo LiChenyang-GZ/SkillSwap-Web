@@ -130,7 +130,7 @@ Notes:
 
 - The backend requires Java 17.
 - The Gradle wrapper is configured for Gradle 8.14.3.
-- `build` and `test` may require database configuration because the Spring context starts with datasource configuration and a startup DB smoke check.
+- `build` and `test` require Docker for Testcontainers PostgreSQL because the backend test task activates the `test` profile.
 
 ### API
 
@@ -428,7 +428,7 @@ Confidence labels:
 
 ### 7.3 Backend Missing Environment Variables
 
-- Symptom: Backend starts with wrong config, upload endpoints fail, or auth uses unexpected issuer/JWKS.
+- Symptom: Backend fails startup, starts with wrong config, upload endpoints fail, or auth uses unexpected issuer/JWKS.
 - Likely causes:
   - `skill-swap-backend/.env` is missing.
   - Variable names do not match Spring properties.
@@ -437,7 +437,7 @@ Confidence labels:
   - For local `bootRun`, check the loaded `.env` key names printed by Gradle without sharing values.
   - Confirm backend storage variables include `AZURE_STORAGE_CONNECTION_STRING` and `AZURE_STORAGE_MEDIA_CONTAINER`.
   - Confirm datasource variables use Spring names such as `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` when overriding runtime config.
-  - Confirm auth variables include `CLERK_ISSUER_URI` and `CLERK_JWKS_URI` when not using the configured development fallback.
+  - Confirm auth variables include `CLERK_ISSUER_URI` and `CLERK_JWKS_URI`; current backend startup requires both.
 - Resolution steps:
   - Add local values to ignored backend env files.
   - Restart `bootRun` after env changes.
@@ -942,21 +942,19 @@ Confidence labels:
 - Likely causes:
   - Missing `AZURE_STORAGE_CONNECTION_STRING`.
   - Wrong or missing `AZURE_STORAGE_MEDIA_CONTAINER`.
-  - File is empty, too large, or not an accepted image.
+  - File is empty, too large, SVG, has an unsupported format, or has a declared/detected content mismatch.
   - Azure Blob service cannot be reached.
-  - Production workflow passes `AZURE_STORAGE_MEMORIES_CONTAINER`, while backend code reads `AZURE_STORAGE_MEDIA_CONTAINER`.
 - Diagnostic steps:
   - Check backend logs for Azure Blob configuration or upload errors.
   - Confirm the request is `multipart/form-data` with field `file`.
-  - Confirm file size and content type.
+  - Confirm file size, declared content type, and actual image format.
   - Inspect Docker env/configuration without printing secret values.
 - Resolution steps:
   - Set `AZURE_STORAGE_CONNECTION_STRING=<AZURE_STORAGE_CONNECTION_STRING>`.
   - Set `AZURE_STORAGE_MEDIA_CONTAINER=<BLOB_CONTAINER>` for the backend implementation.
-  - Align deployment workflow/docs/code variable names before relying on production uploads.
   - Retry with a PNG/JPG/WEBP/GIF image under the configured size limit when using the current frontend UI.
 - Prevention notes:
-  - Track the known storage container variable-name mismatch until it is fixed.
+  - Keep the workflow, backend property, and docs aligned on `AZURE_STORAGE_MEDIA_CONTAINER`.
 - Source / confidence: Verified from code/docs.
 
 ### 11.2 Blob URL Not Returned or Not Displayed
@@ -1051,7 +1049,7 @@ Confidence labels:
 - Likely causes:
   - GitHub Actions secret missing.
   - `docker run -e` variable name does not match backend property.
-  - Storage container variable mismatch.
+  - Storage container variable is absent or points to the wrong container.
 - Diagnostic steps:
   - Inspect the GitHub Actions deploy step logs for masked secret presence and command failure.
   - Run `docker inspect <CONTAINER_NAME>` and check configured environment variable names without sharing values.
@@ -1204,7 +1202,7 @@ Confidence labels:
   - Compile error.
   - Test/context-load failure.
   - Java/Gradle dependency resolution failure.
-  - Backend requires database configuration for tests/startup context.
+  - Backend tests cannot start Testcontainers PostgreSQL because Docker is unavailable or unhealthy.
 - Diagnostic steps:
   - Open the failed Actions run.
   - Inspect the first failed build step.
@@ -1413,7 +1411,7 @@ Confidence labels:
 - Symptom: Upload succeeds locally but fails in production.
 - Likely causes:
   - Production container missing Azure Blob variables.
-  - Workflow uses `AZURE_STORAGE_MEMORIES_CONTAINER` while backend reads `AZURE_STORAGE_MEDIA_CONTAINER`.
+  - `AZURE_STORAGE_MEDIA_CONTAINER` points to a different container than local development.
   - Blob container access differs between environments.
   - File size/content type differs.
 - Diagnostic steps:
@@ -1543,11 +1541,11 @@ Avoid in this guide:
 - Live Vercel project settings cannot be verified from the repository.
 - Live DNS, TLS certificate state, Nginx config files, and VM state require direct production access.
 - Runtime Flyway migration is disabled in inspected Spring profiles; schema setup/migration process requires maintainer verification.
-- The deployment workflow/docs and backend code use different Azure Blob container variable names: workflow/docs mention `AZURE_STORAGE_MEMORIES_CONTAINER`, while backend code reads `AZURE_STORAGE_MEDIA_CONTAINER`.
+- The deployment workflow and backend code now use `AZURE_STORAGE_MEDIA_CONTAINER`, but live container existence, access level, and SAS/public URL behaviour still require verification.
 - Frontend automated test/lint/typecheck scripts were not found in `package.json`.
-- Backend test coverage visible in the repository is limited to a Spring context-load test.
+- Backend test coverage visible in the repository now includes security regression tests and CI, but not full domain/API/frontend coverage.
 - Some behaviors require verification against production configuration, especially Clerk, CORS, storage container access, database schema, DNS, and Vercel settings.
-- `docs/03-architecture/Security-Design.md` and `docs/08-testing/` were referenced by planning/runbook docs but were not present in the inspected worktree at the time of this review.
+- Older planning references to `docs/08-testing/` are still stale if encountered; current testing notes are in `docs/TEST_PLAN.md`.
 
 ## 19. Verification Notes
 

@@ -345,7 +345,7 @@ The deployment docs and backend properties use different Azure Blob container en
 ### Users and Skills
 
 - A local `user_account` can be created the first time a valid JWT-backed user profile is resolved.
-- Profile updates can change username, avatar URL, bio, and skills.
+- Profile updates can change username, bio, and skills; avatar URL changes are made through the dedicated avatar upload flow.
 - Updating skills through the profile update path clears and replaces the JPA `skills` collection.
 - Adding a skill normalizes the skill name to lowercase and avoids duplicate skill names for the current in-memory collection.
 - Removing a skill deletes matching skill rows through the JPA collection and orphan removal.
@@ -392,7 +392,7 @@ Relevant non-sensitive configuration:
 | Development profile | Uses PostgreSQL dialect, `ddl-auto=none`, and Flyway location configuration, but Flyway is disabled. |
 | Flyway | Dependencies, Gradle plugin configuration, and migration files exist. Runtime Flyway execution is disabled in inspected profiles. Manual Flyway usage or operational migration process requires verification. |
 | Connection pooling | HikariCP pool size and timeout settings are profile-specific. |
-| Upload limits | Multipart limits and `app.upload.max-image-bytes` enforce image upload size limits. |
+| Upload validation | Multipart limits, `app.upload.max-image-bytes`, and backend image validation enforce upload size and supported image type constraints before media URLs are stored. |
 | JWT | Issuer/JWKS/algorithm settings are environment-driven. |
 | Blob storage | Azure Blob connection string, container, and SAS validity are environment-driven. Values are omitted. |
 

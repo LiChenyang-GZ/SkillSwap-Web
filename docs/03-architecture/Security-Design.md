@@ -75,7 +75,7 @@ flowchart LR
 
 | Classification | Examples in current design |
 | --- | --- |
-| Implemented security controls | JWT bearer authentication, stateless API sessions, backend route protection, service-layer admin checks, upload size/content-type checks, structured exception handling, Markdown sanitization. |
+| Implemented security controls | JWT bearer authentication, stateless API sessions, backend route protection, controller/service admin checks, upload size/type/signature checks, structured exception handling, Markdown sanitization. |
 | Configuration-based controls | Clerk issuer/JWKS settings, RS256 JWT validation configuration, CORS origin list, production datasource SSL mode, multipart limits, Azure Blob Storage container/SAS settings. |
 | Operational practices | GitHub Actions secret injection, Vercel environment variables, SSH-based VM deployment, Nginx/Certbot HTTPS setup, Docker log rotation. |
 | Known limitations | No documented rate limiting, WAF, centralized security monitoring, automated secret rotation, vulnerability scanning, signed images, formal retention policy, or formal penetration testing. |
@@ -117,7 +117,7 @@ The repository contains configuration for local development and production-style
 - The backend reads JWT issuer, JWKS, database, storage, and Clerk secret configuration from environment variables in deployed environments.
 - No active `X-Mock-User` workshop creation backdoor remains; local development should use Clerk-issued JWTs like production.
 
-The default backend application configuration includes fallback development values for Clerk issuer/JWKS configuration. Production deployments should provide explicit production values through environment variables and should not rely on defaults.
+The default backend application configuration no longer includes Clerk issuer/JWKS fallback values. Backend startup validates that `CLERK_ISSUER_URI` and `CLERK_JWKS_URI` are provided, so local and production environments must configure explicit values that match the Clerk frontend project.
 
 ## 5. JWT Validation
 
@@ -128,21 +128,22 @@ The backend uses Spring Security OAuth2 Resource Server with a custom `NimbusJwt
 Verified from backend security configuration:
 
 - JWTs are read from the `Authorization` header as bearer tokens.
-- The backend can validate tokens using a configured JWKS endpoint:
+- The backend validates tokens using a configured JWKS endpoint:
 
   ```text
   <CLERK_JWKS_URI>
   ```
 
-- If a JWKS endpoint is not configured, the decoder can be built from the configured issuer location:
+- The backend also requires the configured issuer:
 
   ```text
   <CLERK_ISSUER_URI>
   ```
 
 - The default backend configuration sets the expected signing algorithm to `RS256`.
-- If an issuer is configured, Spring's default issuer validator is applied.
+- Spring's default issuer validator is applied.
 - Sessions are configured as stateless for API requests.
+- Startup fails if either issuer or JWKS configuration is blank.
 
 ### Framework-Handled Behaviour
 
@@ -180,7 +181,7 @@ Authorization is enforced through a combination of:
 - Local database role mapping from the `user_account.role` field.
 - Ownership and visibility checks in service methods.
 
-The backend enables method security. The inspected controller code includes at least one `@PreAuthorize("hasRole('ADMIN')")` admin endpoint. Most admin enforcement is implemented in service-layer checks rather than controller annotations.
+The backend enables method security. Admin workshop and admin memory controllers use class-level `@PreAuthorize("hasRole('ADMIN')")`, and service methods still perform admin checks for privileged operations. `GET /api/v1/admin/hello` also uses `@PreAuthorize("hasRole('ADMIN')")`.
 
 ### User Roles
 
@@ -198,15 +199,14 @@ These values are normalized by backend code and mapped to `ROLE_ADMIN`.
 Implemented admin controls include:
 
 - Admin-only hello/test endpoint through method security.
-- Admin workshop listing and moderation actions through service-layer `requireAdmin` checks.
+- Admin workshop listing, detail, moderation actions, delete, and image upload through controller and service admin checks.
 - Workshop delete through an explicit admin check in the workshop service.
-- Admin memory listing, creation, update, deletion, locking, and media upload through service-layer admin checks.
+- Admin memory listing, creation, update, deletion, locking, and media upload through controller and service admin checks.
 
 Partially supported / Requires verification:
 
 - Admin provisioning appears to be a maintainer or database-level process rather than a complete in-app admin user management workflow.
 - The frontend checks for `role === "admin"` for admin UI state, while the backend also accepts `role_admin`. This may cause UI visibility differences for users whose database role is stored as `role_admin`.
-- The admin workshop detail route uses the general workshop detail service path, which applies visibility and sensitive-field checks but does not show the same explicit `requireAdmin` call as other admin workshop methods. The intended access semantics for this endpoint should be verified.
 
 ### Frontend Role Checks
 
@@ -239,13 +239,15 @@ Implemented validation includes:
 - Service-level validation for workshop status transitions and memory entry fields.
 - Upload checks for required file presence.
 - Upload size limits for image uploads.
-- Upload content type checks for avatar, workshop, and memory media uploads.
+- Upload validation for declared content type, detected image content, and safe extension normalization.
+- SVG rejection for avatar, workshop, and memory media uploads.
+- Azure Blob HTTPS URL validation for memory cover/media URL fields against the configured storage account.
 - Multipart upload limits in Spring configuration.
 
 Limitations:
 
-- Upload validation is based primarily on content type and size. No malware scanning, image content validation, content moderation, or image dimension validation was identified.
-- Frontend upload controls currently accept PNG/JPG/WEBP/GIF and exclude SVG from the file picker/validation path, but this is not a security boundary. Backend upload validation still needs its own SVG rejection and file signature hardening in a separate backend change.
+- No malware scanning, content moderation, or image dimension validation was identified.
+- Backend upload validation detects supported image signatures and rejects SVG, but this is not a replacement for malware scanning or deeper media safety controls.
 - Some request validation is implemented in service code rather than uniformly through DTO annotations.
 
 ### Error Handling
@@ -262,7 +264,7 @@ Implemented CORS configuration includes:
 
 - Explicit allowed origins for local development and documented deployed frontend origins.
 - Allowed methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
-- Allowed request headers: all.
+- Allowed request headers: `Authorization`, `Content-Type`, `Accept`, `Origin`, and `X-Requested-With`.
 - Credentials allowed.
 - Exposed response headers include `Authorization` and `Content-Type`.
 
@@ -466,7 +468,7 @@ Requires verification:
 
 - Whether the active production container is public-read or private.
 - Whether production uses plain public blob URLs or SAS URLs.
-- Whether the deployment environment variable naming matches the backend property name. The deployment workflow currently uses a container-related variable name that differs from the backend property name documented in application configuration.
+- Whether the live deployment container name and access level match the current workflow expectation.
 
 ### Limitations
 
@@ -474,7 +476,6 @@ The repository does not show implemented:
 
 - Malware scanning for uploaded files.
 - Private-container signed URL flow as the documented production default.
-- File content validation beyond size and content type.
 - Content moderation for uploaded images.
 - Lifecycle retention policy for uploaded files.
 
@@ -597,8 +598,8 @@ No GDPR, CPRA, HIPAA, SOC 2, ISO 27001, or other compliance status should be cla
 | Risk | Impact | Existing mitigation | Current limitation | Recommended future improvement |
 | --- | --- | --- | --- | --- |
 | Leaked backend secrets | Database, Clerk, storage, or VM access could be compromised. | Production secrets are expected to be stored in GitHub Actions, Vercel, and runtime environment variables. `.env` files and key files are ignored by module ignore rules. | Automated rotation is not documented. Some local/dev configuration hygiene issues exist. | Add a documented secret rotation process, remove diagnostic password preview logging, and review least-privilege credentials. |
-| Incorrect Clerk production configuration | Valid users may be rejected, or tokens from the wrong issuer could be accepted if production falls back to development values. | Backend validates JWTs using configured issuer/JWKS and RS256. | Default development issuer/JWKS values exist in application configuration. Live Clerk settings require verification. | Add production config validation that fails startup when production Clerk values are missing or mismatched. |
-| JWT issuer mismatch | Authenticated API calls fail with 401 responses. | Spring issuer validation is configured when issuer URI is supplied. | Exact production token template and issuer values are external to the repository. | Add deployment smoke tests that verify a production Clerk token against `/api/v1/users/me`. |
+| Incorrect Clerk production configuration | Valid users may be rejected, or tokens from the wrong issuer could be accepted if configuration points to the wrong Clerk instance. | Backend validates JWTs using configured issuer/JWKS and RS256 and fails startup when issuer/JWKS values are blank. | Exact production token template and issuer values are external to the repository. | Add deployment smoke tests that verify a production Clerk token against `/api/v1/users/me`. |
+| JWT issuer mismatch | Authenticated API calls fail with 401 responses. | Spring issuer validation is configured with the required issuer URI. | Exact production token template and issuer values are external to the repository. | Add deployment smoke tests that verify a production Clerk token against `/api/v1/users/me`. |
 | Publicly exposed backend port | Clients could bypass Nginx HTTPS controls and reach the backend directly. | Deployment docs state only SSH, HTTP, and HTTPS are exposed publicly. | Docker maps host port `8080`; protection depends on live NSG/firewall state. | Bind backend only to localhost/private network or explicitly block `8080` at host and cloud firewall layers. |
 | Public blob access | Anyone with a blob URL can read public media. | Public-read media is documented for user-facing uploaded images. Backend writes require storage credentials. | Private containers or signed URLs are not documented as the active default. | Use private containers and short-lived signed URLs for non-public media. |
 | Weak admin role mapping | Incorrect database role values could grant or hide admin capabilities. | Backend maps local roles to `ROLE_ADMIN` and performs service-layer checks. | Admin provisioning process and audit trail are not fully documented. Frontend admin UI checks only `admin`. | Add explicit admin management process, audit logs, role tests, and align frontend/backend role normalization. |
@@ -606,8 +607,8 @@ No GDPR, CPRA, HIPAA, SOC 2, ISO 27001, or other compliance status should be cla
 | Missing formal monitoring/alerting | Security incidents and availability issues may be detected late. | Application and Docker logs exist; health endpoint exists. | No centralized logging, alerting, or SIEM is documented. | Add centralized logs, metrics, alerting, and security-relevant dashboards. |
 | Manual SSH-based deployment risk | Compromised CI secrets or deployment mistakes could affect the VM. | SSH private key is stored as a GitHub secret and deployment is automated. | SSH key scope, VM user privileges, and key rotation are not documented. | Use least-privilege deploy user, rotate keys, consider OIDC or managed deployment, and document emergency access. |
 | Limited rollback/versioning | Failed deployment may be harder to roll back deterministically. | Containerized deployment can pull and run images. | Workflow pushes and deploys only `latest`. | Publish immutable image tags using commit SHA and document rollback commands. |
-| Storage container environment mismatch | Uploaded files may go to the wrong container or fall back to defaults. | Backend has configurable Azure Blob container property. | Deployment workflow variable name differs from backend property naming. | Align environment variable names and add startup logging that reports non-sensitive storage configuration. |
-| Missing upload malware scanning / deep file validation | Malicious or scriptable files could be uploaded if accepted by content type and size checks. | Backend restricts uploads by size and content type; frontend upload controls exclude SVG from current UI flows. | Frontend controls are bypassable, and no malware scanning, signature validation, or deep content validation was identified. | Add backend SVG rejection, safer MIME detection, file extension normalization, image signature validation, scanning, and stricter image validation. |
+| Storage container drift | Uploaded files may go to the wrong container if workflow, backend properties, or live environment drift. | Backend has configurable Azure Blob container property and the current workflow injects `AZURE_STORAGE_MEDIA_CONTAINER`. | Live container name and access level require verification. | Add startup logging that reports non-sensitive storage configuration and include upload smoke tests after deployment. |
+| Missing upload malware scanning / media safety controls | Malicious content could still be uploaded despite image signature validation. | Backend restricts uploads by size, allowed raster formats, declared/detected type match, safe extension, and SVG rejection. | No malware scanning, image dimension limits, content moderation, or deep media safety pipeline was identified. | Add malware scanning, dimension limits, content moderation, and stricter image safety validation. |
 | Missing admin audit logging | Unauthorized or mistaken admin actions may be hard to investigate. | Admin actions are protected by role checks. | No structured audit log for admin moderation actions was identified. | Record actor, action, target, timestamp, and outcome for admin operations. |
 
 ## 18. Security Assumptions
@@ -653,7 +654,7 @@ The current design relies on the following assumptions:
 Future work should be tracked separately from implemented controls:
 
 - Add backend or Nginx rate limiting for API write endpoints, uploads, and authentication-adjacent flows.
-- Add stricter backend file upload validation, including SVG rejection for uploaded images, MIME sniffing, extension controls, image parsing, and malware scanning.
+- Add malware scanning, image dimension limits, and content moderation for uploaded media.
 - Use private blob containers and signed URLs for media that should not be public.
 - Add structured audit logging for admin actions.
 - Align frontend and backend admin role normalization.
@@ -665,7 +666,6 @@ Future work should be tracked separately from implemented controls:
 - Add a documented backup and restore procedure for PostgreSQL.
 - Add a documented secret rotation process.
 - Remove local/dev hardcoded credentials and diagnostic password preview logging.
-- Add startup validation for required production secrets and Clerk configuration.
 - Add deployment smoke tests for Clerk JWT validation and protected API access.
 - Consider binding the backend container only to localhost or a private Docker network behind Nginx.
 - Document admin provisioning, emergency access, and permission review processes.
@@ -686,7 +686,8 @@ The following were verified from repository code/configuration:
 - Service-layer ownership and visibility checks for workshops, notifications, and memory editing.
 - CORS configuration.
 - DTO and service-level validation patterns.
-- Multipart upload limits and upload content type/size checks.
+- Multipart upload limits and upload type/signature/size checks.
+- Azure Blob HTTPS URL validation for memory cover and media URLs.
 - Azure Blob Storage upload/delete service implementation.
 - Frontend Clerk provider integration.
 - Frontend API client bearer-token usage.
@@ -730,7 +731,7 @@ The following require live environment or provider-dashboard verification:
 - Certbot renewal status and active certificate configuration.
 - Azure NSG and host firewall rules, especially whether port `8080` is unreachable publicly.
 - Azure Blob Storage container access level and whether SAS URLs are enabled in production.
-- Alignment between deployment environment variable names and backend Azure Blob configuration.
+- Live Azure Blob container name, access level, and SAS/public URL behaviour.
 - Production PostgreSQL SSL enforcement, backup settings, and restore testing.
 - Branch protection and workflow approval rules in GitHub.
 - Admin provisioning and permission review process.

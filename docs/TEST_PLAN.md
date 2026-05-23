@@ -107,7 +107,9 @@ This document covers only what is specific to SkillSwap:
 - [ ] to be detailed when previous module merges
 
 ### PR #6 -- admin + Health + integration + security route matrix
-- [ ] to be detailed when previous module merges
+- [x] Added `SecurityRegressionTests` covering admin endpoint denial for members/anonymous users, admin workshop detail protection, non-admin workshop delete denial, avatar URL PATCH ignoring, Azure Blob URL validation for memory cover URLs, and SVG/fake image rejection for avatar/workshop/memory uploads.
+- [x] Added focused tests for CORS allowed headers/origins, JWT config startup validation, Azure Blob returned URL/SAS failure behaviour, Azure Blob URL validation, and image upload validation.
+- [ ] Add remaining end-to-end API contract tests for non-security workshop, notification, memory lock, and user profile edge cases.
 
 ## Behavioral Inconsistencies Found
 
@@ -123,7 +125,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - Review `AzureBlobStorageService` for testability; it currently creates clients internally.
 - Consider centralizing authenticated user ID resolution, currently repeated across services/controllers.
 - Consider synchronous async executor test configuration when notification integration tests begin.
-- Add a GitHub Actions workflow running `./gradlew test` on `ubuntu-latest` for backend PRs. Docker is pre-installed on the `ubuntu-latest` runner image, so Testcontainers will work without extra setup. Current state: no backend test CI job exists; tests run only locally.
+- Continue broadening backend test coverage beyond the current security regression and infrastructure tests.
 
 ## Decisions Log
 

@@ -64,7 +64,7 @@ The requirements were drafted from the current repository, including the Project
 | ID | Requirement | Priority | Source | Acceptance Criteria |
 |---|---|---|---|---|
 | FR-006 | Authenticated users must be able to retrieve their current profile. | Must | Code | `/api/v1/users/me` returns profile data for a valid authenticated user. |
-| FR-007 | Authenticated users should be able to update profile fields supported by the backend, including username, avatar URL, bio, and skills. | Should | Code | PATCH updates persist to the local user account and response reflects the changed profile. |
+| FR-007 | Authenticated users should be able to update profile fields supported by the backend, including username, bio, and skills. | Should | Code | PATCH updates persist to the local user account and response reflects the changed profile; avatar changes use the dedicated avatar upload endpoint. |
 | FR-008 | Authenticated users should be able to upload an avatar image. | Should | Code | Avatar upload accepts supported image types, stores the image, updates the profile avatar URL, and rejects invalid/oversized files. |
 | FR-009 | Authenticated users should be able to add or remove skills from their profile. | Should | Code | Skill add/delete endpoints update the current user's skill collection. |
 | FR-010 | User profile stats should include hosted and attended workshop counts. Rating and review count are partially supported with default values. | Should | Code | Profile response includes hosted and attended counts; rating/review count should be treated as placeholder until a review module exists. |
@@ -112,7 +112,7 @@ The requirements were drafted from the current repository, including the Project
 | FR-032 | Admin users must be able to upload workshop images. | Must | Code | Admin image upload validates file presence/type/size, stores the image, updates workshop image URL, and removes prior known image URLs where possible. |
 | FR-033 | Admin users must be able to upload memory media. | Must | Code | Admin memory media upload validates image content, stores the image, and returns a usable media URL. |
 | FR-034 | Authenticated users should be able to upload profile avatars. | Should | Code | Avatar upload validates supported image type/size and updates the current user profile. |
-| FR-035 | The system must reject non-image uploads and oversized uploads for supported image workflows. | Must | Code | Upload APIs return validation or payload-too-large errors for invalid content type or size. |
+| FR-035 | The system must reject unsupported, mismatched, non-image, SVG, and oversized uploads for supported image workflows. | Must | Code | Upload APIs validate file presence, declared/detected image type, safe extension, and size before storage. |
 
 ### Admin Workflows
 
@@ -156,7 +156,7 @@ The requirements were drafted from the current repository, including the Project
 | BR-014 | Memory entry statuses are limited to `draft`, `published`, and `archived`. | Code |
 | BR-015 | Memory slugs are normalized, unique, and capped by implementation-defined length. | Code |
 | BR-016 | Draft memory updates/deletion require an active edit lock owned by the acting admin. | Code |
-| BR-017 | Image uploads are limited to image content and configured maximum size. | Code |
+| BR-017 | Image uploads are limited to supported raster image formats and configured maximum size; SVG and declared/detected type mismatches are rejected. | Code |
 | BR-018 | Admin authority is derived from database role mapping, not from arbitrary frontend state. | Code |
 
 ## Acceptance Criteria Summary

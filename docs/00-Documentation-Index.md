@@ -75,7 +75,7 @@
 - Security: [Security-Design.md §13 Azure Blob Storage Security](docs/03-architecture/Security-Design.md#L435)
 - Local config: [Local-Development-Guide.md §9 Media / File Upload Setup](docs/05-development/Local-Development-Guide.md#L382)
 - Decision: [ADR-005 Use Azure Blob Storage for Media](docs/09-decision-records/ADR-005-Use-Azure-Blob-Storage-for-Media.md)
-- Known pitfall: container variable name mismatch `AZURE_STORAGE_MEDIA_CONTAINER` vs `AZURE_STORAGE_MEMORIES_CONTAINER` (mentioned across multiple documents)
+- Storage variable: backend and current deployment workflow use `AZURE_STORAGE_MEDIA_CONTAINER`; live container access/SAS behaviour still requires environment verification.
 
 ### Database Tables / Fields / Relationships / Indexes / Migrations
 - All in [Database-Design.md](docs/03-architecture/Database-Design.md): ER diagram [§4](docs/03-architecture/Database-Design.md#L76), table catalogue [§5](docs/03-architecture/Database-Design.md#L206), relationships [§6](docs/03-architecture/Database-Design.md#L299), indexes [§12](docs/03-architecture/Database-Design.md#L429), migration/recovery [§14](docs/03-architecture/Database-Design.md#L469)

@@ -20,7 +20,7 @@ Setup instructions below were checked against the repository files. When a step 
 | Gradle | Use Gradle Wrapper 8.14.3 | Required for backend | `skill-swap-backend/gradle/wrapper/gradle-wrapper.properties` |
 | PostgreSQL | Requires verification. Local profile points to PostgreSQL at `localhost:5432` and database `skill_swap_dev`; production docs mention PostgreSQL 16.x. | Required unless using an explicitly configured remote/dev database | `application-dev.properties`, database docs |
 | Docker | Requires verification for local development. A backend Dockerfile exists, but no `docker-compose.yml` or local Docker service stack was found. | Optional | `skill-swap-backend/Dockerfile` |
-| Clerk account / project | Required for real sign-in. Backend has development issuer/JWKS fallback; frontend still requires a Clerk publishable key. | Required for authenticated flows | `main.tsx`, `application.properties` |
+| Clerk account / project | Required for real sign-in. Backend requires explicit issuer/JWKS values; frontend requires a Clerk publishable key. | Required for authenticated flows | `main.tsx`, `application.properties`, `WebSecurityConfiguration.java` |
 | Azure Blob Storage | Required only for local media upload flows unless replaced by a compatible local/test account. | Conditional | `AzureBlobStorageService.java`, `application.properties` |
 
 ## 3. Repository Structure
@@ -71,7 +71,7 @@ cd skill-swap-backend
 Notes:
 
 - `build` is documented in `README.md` and supported by the Gradle project.
-- `build` runs tests. The current backend test is a Spring context-load test, and the application contains a startup database smoke check. If the database is not configured, backend build/test may fail.
+- `build` runs tests. The backend test task activates the `test` profile and uses Testcontainers PostgreSQL, so Docker must be available for the full backend test suite.
 - CI/CD uses `bootJar` to build the deployable JAR. For a compile/package check without the full `build` lifecycle, use the CI-supported task:
 
 Windows:
@@ -248,7 +248,7 @@ Verified profile behavior:
 | Hibernate schema handling | `spring.jpa.hibernate.ddl-auto=none` | `application-dev.properties` |
 | Flyway runtime | Disabled | `application-dev.properties` |
 | Server port | Inherited as `8080` from default `application.properties` unless overridden by `PORT` | `application.properties` |
-| JWT issuer/JWKS | Inherited from default properties, with development Clerk fallback values when env vars are absent | `application.properties` |
+| JWT issuer/JWKS | Must be provided through `CLERK_ISSUER_URI` and `CLERK_JWKS_URI`; blank values fail backend startup | `application.properties`, `WebSecurityConfiguration.java` |
 | Multipart upload limits | 10 MB file size, 12 MB request size in dev | `application-dev.properties` |
 
 Important: running `bootRun` without `--spring.profiles.active=dev` uses the default application properties, which are production-oriented. Use the `dev` profile for local development.
@@ -280,11 +280,11 @@ AZURE_STORAGE_SAS_DAYS=0
 
 `application-dev.properties` reads the local database password from `DEV_DB_PASSWORD`. Keep that value in an untracked local `.env` file or provide it through your shell environment.
 
-### Clerk Development Fallback
+### Clerk Development Configuration
 
-Supported by code/configuration: if `CLERK_ISSUER_URI` and `CLERK_JWKS_URI` are not set, the backend falls back to a configured Clerk development issuer and JWKS endpoint in `application.properties`.
+Current code requires `CLERK_ISSUER_URI` and `CLERK_JWKS_URI`. If either value is missing or blank, backend startup fails during security configuration validation.
 
-This fallback only helps the backend validate tokens from that matching Clerk development instance. The frontend still requires `VITE_CLERK_PUBLISHABLE_KEY`, and the Clerk project must be configured to issue tokens accepted by the backend.
+The frontend still requires `VITE_CLERK_PUBLISHABLE_KEY`, and the Clerk project must be configured to issue tokens accepted by the backend.
 
 Requires verification: frontend code calls `getToken({ template: "signupTemplate" })`. Confirm that the local Clerk project has a JWT template named `signupTemplate` or adjust the frontend/backend token configuration consistently.
 
@@ -370,9 +370,9 @@ Local authentication requirements:
 4. Confirm the frontend token template `signupTemplate` exists or update the code/configuration consistently. Requires verification.
 5. For admin workflows, ensure the authenticated Clerk user maps to a local `user_account` row with role `admin` or `role_admin`.
 
-Backend development fallback:
+Backend development configuration:
 
-- Supported: backend defaults to a development Clerk issuer/JWKS when `CLERK_ISSUER_URI` and `CLERK_JWKS_URI` are absent.
+- Required: provide `CLERK_ISSUER_URI` and `CLERK_JWKS_URI` for the Clerk instance used by the frontend.
 - Not sufficient by itself: frontend still needs `VITE_CLERK_PUBLISHABLE_KEY`, and tokens must be issued by the matching Clerk instance.
 
 No active local username/password login or `/dev` login flow was found. Older local JWT/dev-login code is disabled or documented as deprecated.
@@ -401,13 +401,13 @@ Behavior verified from implementation:
 
 - The backend creates the configured blob container if it does not exist.
 - The backend returns either a plain blob URL or a read-only SAS URL, depending on `AZURE_STORAGE_SAS_DAYS`.
-- Uploads validate that files are images and respect configured/default size limits.
+- Uploads validate that files are PNG/JPG/WEBP/GIF images, reject SVG and declared/detected type mismatches, and respect configured/default size limits.
 
 Requires verification:
 
 - No local filesystem media storage fallback was found.
 - No Azurite/local Blob emulator configuration was found.
-- Production deployment docs/workflow refer to `AZURE_STORAGE_MEMORIES_CONTAINER`, while backend code reads `AZURE_STORAGE_MEDIA_CONTAINER`. Use `AZURE_STORAGE_MEDIA_CONTAINER` for local backend configuration unless the code is changed.
+- Live production container access level and SAS/public URL behaviour must be checked in Azure.
 
 ## 10. Environment Variables
 
@@ -433,8 +433,8 @@ Note: non-`VITE_` variables in frontend `.env` files are not exposed to Vite cli
 | `DB_USER` | Conditional | Used by Gradle Flyway configuration; defaults to `postgres` if absent. | `<DATABASE_USER>` | `build.gradle` |
 | `DB_PASSWORD` | Conditional | Used by default datasource placeholder and Gradle Flyway password. | `<DATABASE_PASSWORD>` | `application.properties`, `build.gradle` |
 | `PORT` | Optional | Backend server port; defaults to `8080`. | `8080` | `application.properties` |
-| `CLERK_ISSUER_URI` | Optional for backend startup; recommended for matching local Clerk | JWT issuer. Backend has dev fallback if absent. | `<CLERK_ISSUER_URI>` | `application.properties` |
-| `CLERK_JWKS_URI` | Optional for backend startup; recommended for matching local Clerk | JWKS endpoint. Backend has dev fallback if absent. | `<CLERK_JWKS_URI>` | `application.properties` |
+| `CLERK_ISSUER_URI` | Required for backend startup | JWT issuer for the Clerk instance used by the frontend. | `<CLERK_ISSUER_URI>` | `application.properties`, `WebSecurityConfiguration.java` |
+| `CLERK_JWKS_URI` | Required for backend startup | JWKS endpoint for JWT validation. | `<CLERK_JWKS_URI>` | `application.properties`, `WebSecurityConfiguration.java` |
 | `CLERK_SECRET_KEY` | Requires verification | Backend property exists, but no direct code usage was found beyond configuration. | `<CLERK_SECRET_KEY>` | `application.properties` |
 | `AZURE_STORAGE_CONNECTION_STRING` | Required for upload flows | Azure Blob Storage connection string. | `<AZURE_STORAGE_CONNECTION_STRING>` | `application.properties`, `AzureBlobStorageService.java` |
 | `AZURE_STORAGE_MEDIA_CONTAINER` | Required for upload flows unless default `media` is acceptable | Azure Blob container name used by backend code. | `<AZURE_STORAGE_MEDIA_CONTAINER>` | `application.properties`, `AzureBlobStorageService.java` |
@@ -452,7 +452,7 @@ These are not required to run the application locally unless you are testing dep
 | `DB_URL` | No | GitHub Actions secret mapped to `SPRING_DATASOURCE_URL` in the deployed container. | `<DATABASE_URL>` | `.github/workflows/deploy.yml` |
 | `DB_USERNAME` | No | GitHub Actions secret mapped to `SPRING_DATASOURCE_USERNAME`. | `<DATABASE_USER>` | `.github/workflows/deploy.yml` |
 | `DB_PASSWORD` | No as production value | GitHub Actions secret mapped to `SPRING_DATASOURCE_PASSWORD`. Use a separate local value for development. | `<DATABASE_PASSWORD>` | `.github/workflows/deploy.yml` |
-| `AZURE_STORAGE_MEMORIES_CONTAINER` | No; requires verification | Deployment workflow sets this name, but backend code reads `AZURE_STORAGE_MEDIA_CONTAINER`. | `<AZURE_STORAGE_MEDIA_CONTAINER>` | `.github/workflows/deploy.yml`, `application.properties` |
+| `AZURE_STORAGE_MEDIA_CONTAINER` | No as a production value | Current backend deployment workflow sets this to `media`; use a local value only when testing uploads locally. | `<AZURE_STORAGE_MEDIA_CONTAINER>` | `.github/workflows/deploy.yml`, `application.properties` |
 | `OPENAI_API_KEY` | No | AI review workflow secret. | `<OPENAI_API_KEY>` | `.github/workflows/ai-pr-review.yml`, `ai-review-inline.yml` |
 | `ANTHROPIC_API_KEY` | No | AI review workflow secret. | `<ANTHROPIC_API_KEY>` | `.github/workflows/ai-pr-review.yml`, `ai-review-inline.yml` |
 | `VITE_API_BASE_URL` | No as production value | Frontend production API URL, configured by hosting provider. Use local `http://localhost:8080` for local development. | `<API_BASE_URL>` | frontend code, cloud docs |
@@ -565,9 +565,10 @@ cd skill-swap-backend
 
 Current test coverage:
 
-- One Spring Boot context-load test exists at `src/test/java/club/skillswap/SkillSwapBackendApplicationTests.java`.
-- `build.gradle` configures JUnit Platform.
-- Requires verification: because the application context includes datasource configuration and a startup DB smoke check, tests may require a valid database configuration.
+- Spring Boot context/profile tests exist at `src/test/java/club/skillswap/SkillSwapBackendApplicationTests.java`.
+- Security regression tests and focused CORS/JWT/storage/upload validation tests exist under `src/test/java/club/skillswap/**`.
+- `build.gradle` configures JUnit Platform and activates the `test` profile for `./gradlew test`.
+- Test datasource configuration uses Testcontainers PostgreSQL through `src/test/resources/application-test.properties`; Docker is required for the full backend test suite.
 
 ## 13. Code Quality and Build Commands
 
@@ -621,7 +622,7 @@ Current test coverage:
 | Backend runtime | Gradle `bootRun` with `dev` profile. | Dockerized Spring Boot JAR behind reverse proxy according to deployment docs/workflow. |
 | Database | Local PostgreSQL profile points to `localhost:5432/skill_swap_dev`, or a configured dev database. | Managed PostgreSQL with deployment secrets. Do not use production credentials locally. |
 | Schema | Requires verification. Migrations and schema scripts exist, but runtime Flyway is disabled. | Requires verification. Deployment docs describe operational DB migration/import separately. |
-| Authentication | Clerk development project/key, backend dev issuer/JWKS fallback if env vars are absent. | Clerk production project and production issuer/JWKS values injected by deployment systems. |
+| Authentication | Clerk development project/key plus explicit backend issuer/JWKS env vars. | Clerk production project and production issuer/JWKS values injected by deployment systems. |
 | Blob storage | Azure Blob configuration needed only for local upload testing. No local storage fallback found. | Azure Blob Storage configured through deployment secrets. |
 | Environment variables | Local ignored `.env.local` and `.env` files. | Vercel/GitHub Actions/runtime secrets. |
 | HTTPS/TLS | Local HTTP unless developer adds their own TLS setup. | HTTPS through hosting/reverse proxy according to deployment docs. |
@@ -658,7 +659,7 @@ Use this checklist after setup:
 - Clerk JWT template `signupTemplate` setup.
 - Admin role provisioning process for local databases.
 - Whether `CLERK_SECRET_KEY` is needed by current backend code, because no direct code usage was found beyond property configuration.
-- Exact production Azure Blob container variable naming, because workflow/docs and backend properties differ.
+- Exact production Azure Blob container access level and SAS/public URL behaviour.
 - Frontend `npm run deploy`, because it references `dist` while Vite outputs `build`.
 
 ### Inferred from Implementation
@@ -673,8 +674,8 @@ Use this checklist after setup:
 - Add a local Docker Compose file for PostgreSQL if the team wants one-command onboarding.
 - Clarify and automate schema setup.
 - Add frontend test/lint/type-check scripts.
-- Add stronger backend tests beyond context load.
-- Align Azure Blob container environment variable names across backend code, docs, and workflow.
+- Add stronger backend tests beyond the current security regression and infrastructure coverage.
+- Keep Azure Blob container environment variable names aligned across backend code, docs, and workflow.
 - Avoid printing sensitive configuration previews from build/runtime tasks.
 
 ## 18. Verification Notes
@@ -691,7 +692,7 @@ Use this checklist after setup:
 - CORS from `CorsConfig.java`.
 - Health check from `HealthController.java`.
 - Media upload behavior from upload controllers/services and `AzureBlobStorageService.java`.
-- Tests from `src/test/java/club/skillswap/SkillSwapBackendApplicationTests.java`.
+- Tests from `src/test/java/club/skillswap/**`, including application context, security regression, CORS, JWT configuration, Azure Blob storage, URL validation, and image upload validation tests.
 - CI/CD build command from `.github/workflows/deploy.yml`.
 - Deployment context from `doc/cloud`, without copying production secrets or connection strings.
 
@@ -707,5 +708,5 @@ Use this checklist after setup:
 - Canonical local database bootstrap and migration process.
 - Whether backend tests should use a test profile or test container in future.
 - Clerk local template/claims configuration.
-- Production storage container variable name alignment.
+- Production storage container access level and SAS/public URL behaviour.
 - Whether existing `.env` files should be replaced with `.env.example` templates for onboarding.

@@ -98,7 +98,7 @@ These secrets are used by `.github/workflows/deploy.yml` for backend deployment.
 Notes:
 
 - `GITHUB_TOKEN` is automatically provided by GitHub Actions and is used for GHCR login in the workflow.
-- The workflow currently sets `AZURE_STORAGE_MEMORIES_CONTAINER="memories"` directly in the `docker run` command. The backend implementation reads `AZURE_STORAGE_MEDIA_CONTAINER` through `app.storage.azure.blob.container`. This mismatch requires verification before relying on media uploads in production.
+- The workflow currently sets `AZURE_STORAGE_MEDIA_CONTAINER="media"` directly in the `docker run` command. Verify that this matches the intended production Azure Blob container.
 
 ### B. Backend Runtime Environment Variables
 
@@ -108,8 +108,7 @@ Notes:
 | `SPRING_DATASOURCE_USERNAME` | PostgreSQL username | Yes | Injected from GitHub secret `DB_USERNAME` | `<DB_USERNAME>` |
 | `SPRING_DATASOURCE_PASSWORD` | PostgreSQL password | Yes | Injected from GitHub secret `DB_PASSWORD` | `<DB_PASSWORD>` |
 | `AZURE_STORAGE_CONNECTION_STRING` | Azure Blob Storage connection string | Yes for upload flows | Injected from GitHub secret | `<AZURE_STORAGE_CONNECTION_STRING>` |
-| `AZURE_STORAGE_MEMORIES_CONTAINER` | Blob container name used by current workflow and cloud docs | Requires verification | Hard-coded in current workflow as `memories` | `<AZURE_STORAGE_MEMORIES_CONTAINER>` |
-| `AZURE_STORAGE_MEDIA_CONTAINER` | Blob container name read by backend implementation | Yes for intended Azure Blob container selection; not currently injected by workflow | `application.properties` placeholder / deployment environment | `<AZURE_STORAGE_MEDIA_CONTAINER>` |
+| `AZURE_STORAGE_MEDIA_CONTAINER` | Blob container name read by backend implementation | Yes for intended Azure Blob container selection | Hard-coded in current workflow as `media`; can be overridden if workflow changes | `<AZURE_STORAGE_MEDIA_CONTAINER>` |
 | `AZURE_STORAGE_SAS_DAYS` | Optional SAS URL validity setting for blob URLs | Optional | `application.properties` placeholder / deployment environment | `<AZURE_STORAGE_SAS_DAYS>` |
 | `CLERK_ISSUER_URI` | JWT issuer for Clerk | Yes for production auth | Injected from GitHub secret | `<CLERK_ISSUER_URI>` |
 | `CLERK_JWKS_URI` | JWKS endpoint for JWT validation | Yes for production auth | Injected from GitHub secret | `<CLERK_JWKS_URI>` |
@@ -203,7 +202,7 @@ docker run -d \
   -e SPRING_DATASOURCE_USERNAME="<DB_USERNAME>" \
   -e SPRING_DATASOURCE_PASSWORD="<DB_PASSWORD>" \
   -e AZURE_STORAGE_CONNECTION_STRING="<AZURE_STORAGE_CONNECTION_STRING>" \
-  -e AZURE_STORAGE_MEMORIES_CONTAINER="<AZURE_STORAGE_MEMORIES_CONTAINER>" \
+  -e AZURE_STORAGE_MEDIA_CONTAINER="media" \
   -e CLERK_ISSUER_URI="<CLERK_ISSUER_URI>" \
   -e CLERK_JWKS_URI="<CLERK_JWKS_URI>" \
   -e CLERK_SECRET_KEY="<CLERK_SECRET_KEY>" \
@@ -212,7 +211,7 @@ docker run -d \
 docker image prune -f
 ```
 
-Requires verification: the backend code reads `AZURE_STORAGE_MEDIA_CONTAINER`, while the current workflow injects `AZURE_STORAGE_MEMORIES_CONTAINER`. Align the variable name before treating this as verified media upload configuration.
+Requires verification: confirm the live Azure Blob container named by `AZURE_STORAGE_MEDIA_CONTAINER` exists, has the intended access level, and matches the media URLs returned by the backend.
 
 ## 8. Automated Frontend Deployment
 
@@ -460,7 +459,7 @@ Recommended future improvement: add immutable image tags such as commit SHA tags
 - Limited monitoring or alerting is documented in the repository.
 - Deployment depends on GitHub Actions availability.
 - Deployment depends on Azure VM SSH availability.
-- Production media upload configuration requires verification because workflow/docs use `AZURE_STORAGE_MEMORIES_CONTAINER`, while backend implementation reads `AZURE_STORAGE_MEDIA_CONTAINER`.
+- Production media upload configuration still requires live verification for container existence, access level, and SAS/public URL behaviour.
 - The frontend Vercel project settings are documented, but the live Vercel dashboard configuration is not verifiable from the repository.
 
 ## 15. Verification Notes
@@ -499,7 +498,7 @@ Recommended future improvement: add immutable image tags such as commit SHA tags
 
 - Live production URLs and current DNS records.
 - Current Vercel project build/output settings.
-- Exact active Azure Blob container variable used in production.
+- Exact active Azure Blob container name, access level, and SAS/public URL behaviour in production.
 - Whether all migration/manual SQL changes have been applied to the production database.
 - Current Clerk production configuration and enabled OAuth providers.
 - Any monitoring, alerting, or backup systems configured outside the repository.
