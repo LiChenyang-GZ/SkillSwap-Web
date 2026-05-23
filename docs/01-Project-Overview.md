@@ -184,12 +184,12 @@ The current deployment status is verified from repository documentation and work
 - CI/CD: `.github/workflows/deploy.yml` triggers on pushes to `main`, builds the backend JAR, pushes a Docker image to GHCR, and redeploys over SSH.
 - PR review operations: `.github/workflows/ai-review-inline.yml` and `.github/workflows/ai-pr-review.yml` provide comment-triggered AI review workflows.
 
-Deployment caveat for handover: the backend reads the Azure Blob container from `AZURE_STORAGE_MEDIA_CONTAINER`, while the deployment workflow and cloud docs refer to `AZURE_STORAGE_MEMORIES_CONTAINER`. Unless another production override exists outside the repository, this naming mismatch should be aligned so the intended container is used consistently.
+Deployment note for handover: the backend reads the Azure Blob container from `AZURE_STORAGE_MEDIA_CONTAINER`, and the current backend deployment workflow now injects that variable with the `media` container. Live container access level and SAS/public URL behaviour still require production verification.
 
 ## 10. Limitations And Future Improvements
 
-- Add stronger automated test coverage. The backend currently contains a basic Spring context-load test, but the repository does not show broad unit, integration, API contract, or frontend test coverage.
-- Align deployment configuration names for Azure Blob container selection across backend properties, GitHub Actions, and documentation.
+- Add stronger automated test coverage. The backend now includes security regression tests and backend CI, but broader unit, API contract, and frontend coverage still need expansion.
+- Keep deployment configuration documentation aligned with backend properties and GitHub Actions when storage or auth variables change.
 - Decide whether memory editing should remain lock-based or reintroduce version-based optimistic locking. The current source supports edit locks, while historical migrations show a removed `version` column.
 - Reconcile outdated documentation paths and older auth references. The current docs indicate Clerk is the active flow and older dev login/JWT flows are deprecated.
 - Improve configuration hygiene before public handover by reviewing environment-specific values in property files and ensuring secrets are only supplied through environment variables or secret stores.

@@ -15,7 +15,7 @@ Repository and documentation evidence:
 - User avatar, admin workshop image, and admin memory media flows call Azure Blob Storage upload methods.
 - PostgreSQL stores media URL references rather than binary file contents.
 - The backend can return plain blob URLs or read-only SAS URLs depending on configuration.
-- Existing docs note a mismatch: deployment docs/workflow mention `AZURE_STORAGE_MEMORIES_CONTAINER`, while backend properties read `AZURE_STORAGE_MEDIA_CONTAINER`.
+- Current backend properties and deployment workflow use `AZURE_STORAGE_MEDIA_CONTAINER` for the blob container setting.
 
 ## Decision
 We decided to use Azure Blob Storage for uploaded SkillSwap media.
@@ -67,13 +67,13 @@ The backend uploads media to Blob Storage, stores returned URLs in PostgreSQL, a
 - Storage credentials must be protected and injected through environment variables or secret stores.
 - Public-read blob access, if enabled, means anyone with a media URL can read the object.
 - The active public/private access model and SAS usage require live environment verification.
-- The container environment variable mismatch can cause uploads to target an unexpected default or container if not corrected.
+- The active container name and access model still depend on deployed environment configuration.
 - No malware scanning, content moderation, lifecycle policy, or formal media retention process was found.
 
 ### Future Considerations
-- Align `AZURE_STORAGE_MEDIA_CONTAINER` and `AZURE_STORAGE_MEMORIES_CONTAINER` across code, workflow, and docs.
+- Keep `AZURE_STORAGE_MEDIA_CONTAINER` aligned across code, workflow, and docs if the media container name changes.
 - Use private containers and short-lived signed URLs for non-public media.
-- Add stronger upload validation, MIME detection, file extension normalization, and malware scanning if uploads become broader.
+- Add malware scanning, content moderation, image dimension limits, and formal media safety controls if uploads become broader.
 - Document media retention, cleanup, and orphaned-object handling.
 - Consider a CDN only if media volume or latency needs justify it.
 

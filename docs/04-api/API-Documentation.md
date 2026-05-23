@@ -1,6 +1,6 @@
 # SkillSwap REST API Documentation
 
-Last reviewed: 2026-05-21
+Last reviewed: 2026-05-23
 
 ## 1. Document Purpose
 
@@ -44,7 +44,7 @@ Authorization: Bearer <JWT_TOKEN>
 
 The active security configuration is `skill-swap-backend/src/main/java/club/skillswap/common/config/WebSecurityConfiguration.java`.
 
-The backend validates JWTs with a configured issuer and/or JWKS endpoint through Spring Security OAuth2 Resource Server. Project documentation and frontend code identify Clerk as the current identity provider. The active implementation is generic issuer/JWKS JWT validation and current properties support Clerk configuration.
+The backend validates JWTs with configured issuer and JWKS endpoint values through Spring Security OAuth2 Resource Server. Project documentation and frontend code identify Clerk as the current identity provider. Backend startup now requires non-blank `CLERK_ISSUER_URI` and `CLERK_JWKS_URI`.
 
 ### Local User Mapping
 
@@ -76,7 +76,7 @@ Admin-only endpoints are under:
 - `/api/v1/admin/**`
 - `DELETE /api/v1/workshops/{id}`
 
-The backend enforces admin access in service methods using the authenticated user's authorities. `GET /api/v1/admin/hello` additionally uses `@PreAuthorize("hasRole('ADMIN')")`.
+The backend enforces admin access through method security and service checks. Admin workshop and admin memory controllers use class-level `@PreAuthorize("hasRole('ADMIN')")`; admin services also call `requireAdmin` for privileged operations. `GET /api/v1/admin/hello` uses `@PreAuthorize("hasRole('ADMIN')")`.
 
 ### Unauthenticated And Unauthorized Behaviour
 
@@ -133,7 +133,7 @@ Inferred from DTO types and Jackson defaults:
 | POST | `/api/v1/workshops/{id}/leave` | Leave joined workshop | Yes | Member | None | `ApiMessageDto` | `WorkshopController` |
 | GET | `/api/v1/admin/workshops` | Admin list all workshops | Yes | Admin | None | `WorkshopResponseDto[]` | `AdminWorkshopController` |
 | GET | `/api/v1/admin/workshops/pending` | Admin list pending workshops | Yes | Admin | None | `WorkshopResponseDto[]` | `AdminWorkshopController` |
-| GET | `/api/v1/admin/workshops/{id}` | Workshop detail through admin route | Yes | Admin intended; not fully enforced | None | `WorkshopResponseDto` | `AdminWorkshopController` |
+| GET | `/api/v1/admin/workshops/{id}` | Workshop detail through admin route | Yes | Admin | None | `WorkshopResponseDto` | `AdminWorkshopController` |
 | PUT | `/api/v1/admin/workshops/{id}` | Admin update editable workshop details | Yes | Admin | `WorkshopCreateRequestDto` | `WorkshopResponseDto` | `AdminWorkshopController` |
 | POST | `/api/v1/admin/workshops/{id}/approve` | Approve pending workshop | Yes | Admin | None | `ApiMessageDto` | `AdminWorkshopController` |
 | POST | `/api/v1/admin/workshops/{id}/reject` | Reject pending workshop | Yes | Admin | `WorkshopReviewRequestDto` optional | `ApiMessageDto` | `AdminWorkshopController` |
@@ -279,8 +279,8 @@ Error cases:
 - Request headers: `Authorization: Bearer <JWT_TOKEN>`, `Content-Type: application/json`.
 - Request body schema: `UpdateProfileRequestDto`.
 - Successful response: `200 UserProfileDto`.
-- Source: `UserController`, `UserService`; directly verified.
-- Inferred from implementation: all request fields are optional, but blank `username` is rejected if supplied.
+- Source: `UserController`, `UpdateProfileRequestDto`, `UserService`; directly verified.
+- Inferred from implementation: all request fields are optional, blank `username` is rejected if supplied, and unknown fields such as `avatarUrl` are ignored.
 
 Example request:
 
@@ -310,7 +310,7 @@ Example response:
 
 Error cases:
 
-- `400`: blank username or invalid skill values in service-level validation.
+- `400`: blank username, invalid skill values, or DTO length/list-size validation failure.
 - `401`: missing/invalid authentication.
 
 #### POST `/api/v1/users/me/avatar`
@@ -350,7 +350,7 @@ Example response:
 
 Error cases:
 
-- `400`: missing file or unsupported avatar format.
+- `400`: missing file, unsupported image format, SVG upload, or declared/detected image type mismatch.
 - `413`: image too large.
 - `502`: Azure Blob upload failure.
 
@@ -846,7 +846,7 @@ Error cases:
 
 ### 7.4 Admin Workshop Review
 
-Admin workshop endpoints require `Authorization: Bearer <JWT_TOKEN>`. Most admin workshop operations also call service-level admin checks. Exception: `GET /api/v1/admin/workshops/{id}` is on an admin route but delegates to the normal workshop detail service without calling `requireAdmin`; document this endpoint as admin-intended but requiring verification.
+Admin workshop endpoints require `Authorization: Bearer <JWT_TOKEN>` and `ROLE_ADMIN`. The admin workshop controller uses class-level `@PreAuthorize("hasRole('ADMIN')")`, and the service layer also checks admin authority for privileged operations.
 
 #### GET `/api/v1/admin/workshops`
 
@@ -902,11 +902,11 @@ Error cases: `401`, `403`, `500`.
 
 - Purpose: retrieve a workshop detail view for admin review.
 - Authentication: required.
-- Role requirement: Requires verification. Despite the admin route path, the current controller delegates to `workshopService.getWorkshopById(...)`, which applies normal workshop visibility rules rather than a service-level admin check.
+- Role requirement: admin.
 - Path parameters: `id` as workshop ID.
 - Request body: none.
 - Successful response: `200 WorkshopResponseDto`.
-- Source: `AdminWorkshopController`, `WorkshopServiceImpl`; directly verified.
+- Source: `AdminWorkshopController`, `WorkshopServiceImpl.getWorkshopByIdForAdmin`; directly verified.
 - Inferred from implementation: admin detail includes participant details because `mapToDtoForViewer` includes participants for admin callers.
 
 Example request:
@@ -939,8 +939,8 @@ Example response:
 Error cases:
 
 - `401`: missing/invalid authentication.
-- `404`: workshop not found, or restricted workshop hidden by normal visibility rules.
-- `403`: not explicitly thrown by this endpoint's current service path for non-admin callers; admin-only enforcement requires verification.
+- `403`: caller is not admin.
+- `404`: workshop not found.
 
 #### PUT `/api/v1/admin/workshops/{id}`
 
@@ -1090,7 +1090,7 @@ Example response:
 
 Error cases:
 
-- `400`: missing file or non-image upload.
+- `400`: missing file, unsupported image format, SVG upload, or declared/detected image type mismatch.
 - `413`: image too large.
 - `401`, `403`, `404`.
 - `502`: Azure Blob access/upload failure.
@@ -1365,7 +1365,7 @@ Example response:
 
 Error cases:
 
-- `400`: missing title, duplicate slug, unsupported status, missing body.
+- `400`: missing title, duplicate slug, unsupported status, missing body, invalid field length, or non-Azure Blob `coverUrl`/`mediaUrls`.
 - `401`, `403`.
 
 #### PUT `/api/v1/admin/memories/{id}`
@@ -1398,7 +1398,7 @@ Example response: `MemoryEntryResponseDto` with updated fields.
 
 Error cases:
 
-- `400`: duplicate slug, unsupported status, missing body.
+- `400`: duplicate slug, unsupported status, missing body, invalid field length, or non-Azure Blob `coverUrl`/`mediaUrls`.
 - `401`, `403`.
 - `404`: memory not found.
 - `423`: draft not locked by caller or locked by another admin.
@@ -1520,7 +1520,7 @@ Example response:
 
 Error cases:
 
-- `400`: missing file or non-image upload.
+- `400`: missing file, unsupported image format, SVG upload, or declared/detected image type mismatch.
 - `413`: image too large.
 - `401`, `403`.
 - `502`: Azure Blob access/upload failure.
@@ -1658,10 +1658,11 @@ Unused active-code DTO: `WorkshopStatusUpdateResponseDto` exists, but no current
 
 | Field | Type | Required | Description | Source |
 |---|---|---|---|---|
-| `username` | string | No | New username. Blank values rejected if supplied. | Service validation |
-| `avatarUrl` | string | No | Direct avatar URL update. | DTO/service |
-| `bio` | string | No | Profile bio. | DTO/service |
-| `skills` | string[] | No | Replaces the current skill collection when supplied. | Service inferred |
+| `username` | string | No | New username, max 100 characters. Blank values rejected if supplied. | DTO/service validation |
+| `bio` | string | No | Profile bio, max 255 characters. | DTO validation |
+| `skills` | string[] | No | Replaces the current skill collection when supplied; max 50 skills, each max 100 characters. | DTO/service validation |
+
+Unknown JSON fields are ignored. `avatarUrl` is no longer part of `UpdateProfileRequestDto`; avatar changes must use `POST /api/v1/users/me/avatar`.
 
 #### `SkillRequestDto`
 
@@ -1718,9 +1719,9 @@ Unused active-code DTO: `WorkshopStatusUpdateResponseDto` exists, but no current
 |---|---|---|---|---|
 | `title` | string | Required on create | Memory title. | Service validation |
 | `slug` | string | No | Slug candidate; normalized and capped at 220 characters. Generated from title when omitted. | Service |
-| `coverUrl` | string | No | Cover image URL. | DTO/service |
-| `content` | string | No | Markdown/content body. | DTO/service |
-| `mediaUrls` | string[] | No | Replaces stored media URL list when supplied. | Service |
+| `coverUrl` | string | No | Cover image URL; when supplied, must be an HTTPS Azure Blob URL for the configured storage account. | DTO/service |
+| `content` | string | No | Markdown/content body, max 10000 characters. | DTO validation |
+| `mediaUrls` | string[] | No | Replaces stored media URL list when supplied; max 50 URLs, each max 2048 characters and validated as an HTTPS Azure Blob URL for the configured storage account. | DTO/service |
 | `status` | string | No | `draft`, `published`, or `archived`; defaults to `draft`. | Service |
 | `publishedAt` | date-time | No | Publication time; set automatically when publishing without a supplied value. | Service |
 
@@ -1792,8 +1793,10 @@ Known status codes used by service/controller logic:
 
 | DTO | Rules |
 |---|---|
-| `WorkshopCreateRequestDto` | `hostName`, `title`, `category`, `contactNumber` non-blank; `duration`, `date`, `time`, `isOnline`, `detailsConfirmed` required; `duration`, `maxParticipants`, `weekNumber` positive when provided; `contactNumber` must match `^0\d{9}$`; `detailsConfirmed` must be true. |
+| `WorkshopCreateRequestDto` | `hostName`, `title`, `category`, `contactNumber` non-blank; field length limits for text fields; `duration`, `date`, `time`, `isOnline`, `detailsConfirmed` required; `duration`, `maxParticipants`, `weekNumber` positive when provided; `contactNumber` must match `^0\d{9}$`; `detailsConfirmed` must be true. |
+| `UpdateProfileRequestDto` | `username` max 100; `bio` max 255; `skills` max 50 items; each skill max 100; unknown fields ignored. |
 | `SkillRequestDto` | `skillName` non-blank and max 100 chars; `skillLevel` max 50 chars. |
+| `MemoryEntryRequestDto` | `title` max 200; `slug` max 220; `coverUrl` max 2048; `content` max 10000; `mediaUrls` max 50 items; each media URL max 2048; `status` max 30. |
 
 ### Backend Service-Level Validation
 
@@ -1807,13 +1810,13 @@ Known status codes used by service/controller logic:
 | Workshop attendance | Join requires effective status `upcoming`, capacity availability, attendance still open, and no duplicate participation. |
 | Host hide | Only host can hide, and only rejected/cancelled workshops can be hidden. |
 | Profile update | Blank supplied username is rejected. Skills are normalized and blank skill names are rejected. |
-| Avatar upload | File required; content type must be one of PNG/JPG/JPEG/WEBP/GIF/SVG; size must be within configured max. |
-| Workshop image upload | File required; content type must start with `image/`; size must be within configured max. |
-| Memory create/update | Request body required; title required on create; slug is normalized and must be unique; status must be `draft`, `published`, or `archived`. |
+| Avatar upload | File required; detected image type must be PNG/JPG/JPEG/WEBP/GIF; SVG is rejected; declared and detected types must match when a declared type is present; size must be within configured max. |
+| Workshop image upload | Same image validation as avatar upload; stored extension and blob `Content-Type` come from the detected safe image type. |
+| Memory create/update | Request body required; title required on create; slug is normalized and must be unique; status must be `draft`, `published`, or `archived`; `coverUrl` and `mediaUrls` must be HTTPS Azure Blob URLs for the configured account when supplied. |
 | Memory edit locks | Draft update/delete requires active lock ownership; lock conflicts return `423 Locked`. |
-| Memory media upload | File required; content type must start with `image/`; size must be within configured max. |
+| Memory media upload | Same image validation as avatar upload; stored extension and blob `Content-Type` come from the detected safe image type. |
 
-Frontend validation also exists for create workshop, admin review, profile, and memory flows, but backend validation is the source of truth for API consumers. Current frontend upload controls use a stricter browser/UI allowlist of PNG/JPG/WEBP/GIF; the backend rules in this section describe the current API behaviour until separate backend upload hardening is implemented.
+Frontend validation also exists for create workshop, admin review, profile, and memory flows, but backend validation is the source of truth for API consumers.
 
 ## 11. File Upload And Media API Behaviour
 
@@ -1837,9 +1840,10 @@ Restrictions:
 
 - Default application-level image limit is 10 MB through `app.upload.max-image-bytes`.
 - Servlet multipart limits are configured separately.
-- Current frontend upload controls accept PNG/JPG/WEBP/GIF for avatar, workshop cover, and memory image UI flows.
-- Avatar upload accepts only explicit image content types: PNG, JPG/JPEG, WEBP, GIF, SVG.
-- Workshop and memory media upload accept content types that start with `image/`.
+- Supported image formats are PNG, JPG/JPEG, WEBP, and GIF.
+- SVG uploads are rejected.
+- When the client declares a content type, it must match the detected image content.
+- Stored file extensions and blob `Content-Type` headers are derived from the validated image type.
 - No image dimension validation, malware scanning, or content moderation was found.
 
 ## 12. Admin API Behaviour
@@ -1856,7 +1860,7 @@ Admin authority source:
 Admin workshop operations:
 
 - List all workshops and pending workshops.
-- View detailed workshop data and participant details when called as an admin. Admin enforcement on `GET /api/v1/admin/workshops/{id}` requires verification because the current service path does not call `requireAdmin`.
+- View detailed workshop data and participant details through the admin-only detail route.
 - Update editable workshop fields.
 - Approve or reject pending workshops.
 - Cancel eligible workshops before start.
@@ -1914,8 +1918,8 @@ Verified controls:
 - Role-based admin authority derived from local database role mapping.
 - Service-level ownership checks for host-only workshop actions and notification recipient scoping.
 - Sensitive workshop fields are omitted unless caller is admin or facilitator.
-- CORS configuration uses explicit allowed origins, allows `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`, allows credentials, accepts all request headers, and exposes `Authorization` and `Content-Type`.
-- File upload endpoints validate file presence, content type, and size before storage.
+- CORS configuration uses explicit allowed origins, allows `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, and `OPTIONS`, allows credentials, accepts only the configured request headers, and exposes `Authorization` and `Content-Type`.
+- File upload endpoints validate file presence, size, safe declared/detected image type, and SVG rejection before storage.
 - Global exception handler avoids returning stack traces for unhandled production-style errors.
 
 Security caveats:
@@ -1923,7 +1927,7 @@ Security caveats:
 - No custom Spring Security JSON error body was found for authentication failures.
 - No rate limiting was found.
 - No CSRF protection is enabled; this is consistent with stateless bearer-token APIs, but clients should still handle tokens carefully.
-- No file scanning or image dimension validation was found.
+- No malware scanning, content moderation, or image dimension validation was found.
 - CORS origins include local development and configured deployed frontend origins in code; this document intentionally does not list real deployed URLs.
 - HTTPS/TLS is an operational deployment assumption from documentation, not enforced by controller code.
 
@@ -1936,12 +1940,11 @@ Current implementation limitations:
 - Frontend search/filtering appears to be client-side.
 - Error format is mostly consistent for application exceptions, but Spring Security authentication failures may differ.
 - `GET /api/v1/users/{id}` has a controller comment/frontend usage mismatch with active security rules.
-- `GET /api/v1/admin/workshops/{id}` is admin-intended by path/frontend usage but does not currently enforce `requireAdmin` in the service path.
 - `UserProfileDto.fromEntity(...)` and `UserService.getUserProfileWithStats(...)` return inconsistent `creditBalance` defaults.
 - Memory update defaults omitted `status` to `draft`, which can surprise API consumers.
 - Workshop delete is implemented but operational/UI usage requires verification.
 - No admin user management, audit log, feedback/review, or transaction endpoints were found.
-- File upload validation is limited to content type and size.
+- Upload validation does not include malware scanning, content moderation, or image dimension limits.
 - API versioning exists only as `/api/v1`; no deprecation or compatibility policy was found.
 
 Recommended future improvements:
@@ -1951,7 +1954,6 @@ Recommended future improvements:
 - Add pagination/filtering to large list endpoints.
 - Standardize all success and error response envelopes where useful.
 - Resolve the public/private contract for `GET /api/v1/users/{id}`.
-- Add explicit admin enforcement to `GET /api/v1/admin/workshops/{id}` or move clients to the normal detail endpoint if that behaviour is intentional.
 - Fix the inconsistent profile credit balance mapping or remove credit fields if disabled.
 - Consider a safer HTTP method/body design for skill deletion if API compatibility allows it.
 - Document admin provisioning and role-remapping as an operational process.
@@ -1965,7 +1967,7 @@ Directly verified from backend controllers:
 Directly verified from DTOs:
 
 - Request and response field names for workshops, users, notifications, memories, common messages, upload responses, and error responses.
-- Bean Validation annotations for workshop create/update and skill requests.
+- Bean Validation annotations for workshop create/update, profile update, memory entry, and skill requests.
 
 Directly verified from services:
 
@@ -1995,5 +1997,4 @@ Requires further verification:
 - Exact production CORS origin list and storage container binding.
 - Active database schema and migration application status.
 - Whether `GET /api/v1/users/{id}` should be public or protected.
-- Whether `GET /api/v1/admin/workshops/{id}` should enforce admin-only access.
 - Whether workshop deletion should be exposed in admin UI or restricted to technical maintenance.

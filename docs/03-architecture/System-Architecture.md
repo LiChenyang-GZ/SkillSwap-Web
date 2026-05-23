@@ -374,12 +374,14 @@ The code does not show a separate super-admin, staff hierarchy, audit reviewer, 
 
 ### Storage Behaviour
 
-The active upload services call `AzureBlobStorageService.uploadImage`. The service:
+The active upload services validate images before calling `AzureBlobStorageService.uploadImage`. The upload flow:
 
-- Validates that storage configuration is present.
+- Rejects missing files, unsupported formats, SVG files, oversized files, and declared/detected type mismatches.
+- Normalizes the stored file extension from the detected image type.
+- Validates that storage configuration and a safe content type are present.
 - Creates the target blob container if needed.
 - Uploads the file stream.
-- Sets blob content type headers.
+- Sets blob content type headers from the validated image type.
 - Returns a blob URL, optionally with a read-only SAS query string if configured.
 - Provides deletion helpers for known blob URLs.
 
@@ -399,7 +401,7 @@ The frontend resolves stored media URLs through `resolveAssetUrl` and displays t
 
 Blob read access depends on storage configuration. The backend can return plain blob URLs or SAS URLs based on configuration. Public-read versus private-container behaviour should be verified in the active deployment environment.
 
-The deployment workflow and application properties use different environment variable names for the Azure container setting in the inspected files. The exact production container binding therefore requires verification.
+The current deployment workflow injects `AZURE_STORAGE_MEDIA_CONTAINER="media"`, matching the backend property name. The exact live container access level and SAS/public-read behaviour still require production verification.
 
 ## 9. Core Request and Data Flows
 
@@ -615,8 +617,8 @@ Detailed ADRs under `docs/09-decision-records/` capture the current choices for 
 | Backup and recovery | Deployment docs discuss database backup/import procedures, but automated backup policy is not verified in code | Requires verification |
 | Queueing | Async notifications use Spring async execution, not a durable external message queue | Current limitation |
 | Cache/search | No Redis, CDN-backed API cache, or dedicated search service found | Current limitation |
-| Test coverage | Build files include test dependencies, but architecture-level automated coverage was not verified in this review | Requires verification |
-| Storage configuration | Deployment workflow and application properties appear to use different Azure container environment variable names | Requires verification |
+| Test coverage | Backend security regression and infrastructure tests now exist, but architecture-level coverage remains incomplete | Requires verification |
+| Storage configuration | Current workflow and backend properties use `AZURE_STORAGE_MEDIA_CONTAINER`; live container access still requires verification | Requires verification |
 | Configuration hygiene | Build/runtime scripts should avoid printing sensitive configuration previews | Future improvement |
 
 ### Future Improvements
@@ -627,9 +629,9 @@ These are not currently implemented unless separately verified:
 - Add structured application metrics, tracing, and alerting.
 - Confirm and document automated PostgreSQL backup and restore procedures.
 - Enable and standardise Flyway migrations for schema changes.
-- Add stronger automated integration tests around authentication, admin review, media upload, and memory locks.
+- Add broader automated integration tests around non-security workshop, notification, profile, memory lock, and frontend workflows.
 - Add a durable queue for notification workflows if volume or reliability needs increase.
-- Align Azure Blob container environment variable names across workflow, properties, and documentation.
+- Keep Azure Blob container environment variable names aligned across workflow, properties, and documentation when storage configuration changes.
 - Add ADRs for major architectural decisions.
 
 ## 14. Known Limitations and Assumptions

@@ -64,11 +64,11 @@ Clerk handles user sign-in, sign-up, OAuth-related flows, browser session manage
 - SkillSwap depends on Clerk availability, configuration, and pricing.
 - Development and production Clerk instances can issue different user IDs, so `auth_subject` mappings may need operational care.
 - The frontend token template and enabled OAuth providers are configured outside the repository and require dashboard verification.
-- Production must explicitly configure matching Clerk frontend and backend values; falling back to development issuer/JWKS values would be unsafe.
+- Backend startup now requires explicit issuer and JWKS configuration; production must still ensure those values match the Clerk frontend project.
 - `CLERK_SECRET_KEY` is present in deployment configuration, but direct backend service usage was not identified during the repository review.
 
 ### Future Considerations
-- Add startup validation that fails production startup if Clerk issuer/JWKS values are missing or point to development settings.
+- Keep startup validation and deployment smoke tests in place so missing or mismatched Clerk issuer/JWKS values fail early.
 - Document admin provisioning and `auth_subject` remapping as an operational process.
 - Add integration tests for Clerk JWT validation and protected API access.
 - Revisit provider choice only if product, compliance, pricing, or user-management needs outgrow Clerk.
