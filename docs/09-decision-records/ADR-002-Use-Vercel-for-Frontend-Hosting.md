@@ -84,4 +84,4 @@ Vercel serves the static SPA, provides HTTPS, handles Git-based deployments, and
 - `skill-swap-frontend/package.json`
 - `skill-swap-frontend/vite.config.ts`
 - `skill-swap-frontend/vercel.json`
-- `skill-swap-frontend/src/lib/api.ts`
+- `skill-swap-frontend/src/shared/api.ts`

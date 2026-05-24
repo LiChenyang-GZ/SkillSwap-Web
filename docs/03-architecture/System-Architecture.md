@@ -1,6 +1,6 @@
 # System Architecture
 
-Last reviewed: 2026-05-21
+Last reviewed: 2026-05-24
 
 ## 1. Document Purpose
 
@@ -77,7 +77,7 @@ The frontend is a React 18, TypeScript, and Vite application located under `skil
 | Main shell | `App.tsx` lazy-loads major screens and renders the selected page | Code |
 | Application context | `contexts/AppContext.tsx` exposes the global `AppProvider`/`useApp` API and composes focused internal hooks under `contexts/app` for routing helpers, theme state, workshop cache/actions, notification unread count, and user profile actions | Code |
 | Feature structure | Feature folders under `components`, with screens, hooks, components, constants, models, and utilities | Code |
-| Shared API services | `shared/service` and `lib/api.ts` contain backend API wrappers and mapping helpers | Code |
+| Shared API services | `shared/api.ts` and `shared/service` contain the base API helper, response mapping helpers, and domain-specific backend API wrappers | Code |
 
 ### Routing Structure
 
@@ -103,7 +103,7 @@ The frontend uses an internal page identifier and browser history mapping patter
 
 | Feature area | Frontend implementation | Status |
 |---|---|---|
-| Authentication | Clerk provider, auth screen, auth redirects, session token handling | Supported |
+| Authentication | Clerk provider, auth screen, post-login route resolution, session token handling | Supported |
 | Workshop discovery | Explore workshop screen, filters, detail page, public API service | Supported |
 | Workshop creation | Create workshop screen, validation helpers, create API service | Supported |
 | Attendance | Join and leave actions through workshop mutation service | Supported |
@@ -121,7 +121,7 @@ The frontend uses service modules rather than calling `fetch` directly from most
 
 | Concern | Implementation | Source |
 |---|---|---|
-| Base API helper | `apiCall<T>()` in `lib/api.ts` | Code |
+| Base API helper | `apiCall<T>()` in `shared/api.ts` | Code |
 | Base URL | Environment-driven API base URL with a local fallback | Code |
 | Authenticated requests | Adds `Authorization: Bearer <token>` when a Clerk token is available | Code |
 | JSON requests | Sets `Content-Type: application/json` when request body is not `FormData` | Code |
