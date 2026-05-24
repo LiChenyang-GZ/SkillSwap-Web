@@ -2,6 +2,7 @@ import type { User } from "../../../types/user";
 import type { Workshop } from "../../../types/workshop";
 import type { HostingDisplayStatus, HostingStatusMeta } from "../models/dashboardStatusModel";
 import type { DashboardWorkshopView } from "../models/dashboardViewModel";
+import { copySorted } from "../../../shared/utils/copySorted";
 import {
   isUserWorkshopVisible,
   normalizeAdminWorkshopStatus,
@@ -96,11 +97,11 @@ export const getWorkshopStartMillis = (workshop: Workshop) => {
 };
 
 export const sortByStartAsc = (list: Workshop[]) => {
-  return list.toSorted((a, b) => getWorkshopStartMillis(a) - getWorkshopStartMillis(b));
+  return copySorted(list, (a, b) => getWorkshopStartMillis(a) - getWorkshopStartMillis(b));
 };
 
 export const sortByStartDesc = (list: Workshop[]) => {
-  return list.toSorted((a, b) => getWorkshopStartMillis(b) - getWorkshopStartMillis(a));
+  return copySorted(list, (a, b) => getWorkshopStartMillis(b) - getWorkshopStartMillis(a));
 };
 
 export const totalPages = (count: number, pageSize: number) => Math.max(1, Math.ceil(count / pageSize));

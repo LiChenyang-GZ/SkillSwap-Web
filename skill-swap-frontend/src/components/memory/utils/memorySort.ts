@@ -1,8 +1,9 @@
 import type { MemoryEntry } from "../../../types/memory";
+import { copySorted } from "../../../shared/utils/copySorted";
 import type { DisplayMemoryEntry } from "../models/memoryViewModel";
 
 export function sortPublishedMemories(entries: MemoryEntry[]): MemoryEntry[] {
-  return entries.toSorted((a, b) => {
+  return copySorted(entries, (a, b) => {
     const aTime = new Date(a.publishedAt || a.updatedAt || a.createdAt || 0).getTime();
     const bTime = new Date(b.publishedAt || b.updatedAt || b.createdAt || 0).getTime();
     return bTime - aTime;

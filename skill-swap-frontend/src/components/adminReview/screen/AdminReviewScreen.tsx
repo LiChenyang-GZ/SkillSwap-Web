@@ -22,7 +22,10 @@ function AdminReviewDetailSection({
   getAuthToken,
   query,
 }: AdminReviewDetailSectionProps) {
-  const form = useAdminReviewFormState({ selectedWorkshop: query.selectedWorkshop });
+  const form = useAdminReviewFormState({
+    selectedWorkshop: query.selectedWorkshop,
+    selectedHasDetail: query.selectedHasDetail,
+  });
   const mutations = useAdminReviewMutations({
     isAuthenticated,
     getAuthToken,
@@ -74,9 +77,7 @@ function AdminReviewDetailSection({
 export function AdminReviewScreen() {
   const { isAuthenticated, getAuthToken, setCurrentPage } = useApp();
   const query = useAdminReviewQuery({ isAuthenticated, getAuthToken });
-  const detailFormKey = query.selectedWorkshop
-    ? `${query.selectedWorkshop.id}:${query.selectedHasDetail ? 'detail' : 'summary'}`
-    : 'empty';
+  const detailFormKey = query.selectedWorkshop?.id ?? 'empty';
 
   if (!isAuthenticated) {
     return (

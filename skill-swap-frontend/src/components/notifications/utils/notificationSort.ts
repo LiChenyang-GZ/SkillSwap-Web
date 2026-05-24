@@ -1,4 +1,5 @@
 import type { NotificationItem } from "../../../types/notification";
+import { copySorted } from "../../../shared/utils/copySorted";
 import type { NotificationSortDirection, NotificationSortableItem } from "../models/notificationSortModel";
 
 function resolveTimestampValue(item: NotificationSortableItem): number {
@@ -10,7 +11,7 @@ export function sortNotifications(
   direction: NotificationSortDirection = "desc"
 ): NotificationItem[] {
   const sign = direction === "desc" ? -1 : 1;
-  return notifications.toSorted((a, b) => {
+  return copySorted(notifications, (a, b) => {
     return sign * (resolveTimestampValue(a) - resolveTimestampValue(b));
   });
 }

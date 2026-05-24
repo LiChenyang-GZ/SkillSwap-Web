@@ -13,6 +13,7 @@ import { buildWorkshopFormState, normalizeFormState } from '../utils/adminReview
 
 interface UseAdminReviewFormStateParams {
   selectedWorkshop: Workshop | null;
+  selectedHasDetail: boolean;
 }
 
 interface AdminReviewFormReducerState {
@@ -25,6 +26,7 @@ interface AdminReviewFormReducerState {
 }
 
 type AdminReviewFormAction =
+  | { type: 'reset-from-workshop'; selectedWorkshop: Workshop | null }
   | { type: 'change-field'; field: keyof WorkshopFormState; value: string | boolean }
   | { type: 'set-image-file'; file: File | null }
   | { type: 'select-image-file'; file: File; previewUrl: string }
@@ -47,6 +49,8 @@ function adminReviewFormReducer(
   action: AdminReviewFormAction
 ): AdminReviewFormReducerState {
   switch (action.type) {
+    case 'reset-from-workshop':
+      return buildInitialFormState(action.selectedWorkshop);
     case 'change-field': {
       const nextFieldErrors = { ...state.fieldErrors };
       delete nextFieldErrors[action.field];
@@ -102,10 +106,15 @@ function adminReviewFormReducer(
   }
 }
 
-export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewFormStateParams) {
+const buildFormHydrationKey = (selectedWorkshop: Workshop | null, selectedHasDetail: boolean) =>
+  selectedWorkshop ? `${selectedWorkshop.id}:${selectedHasDetail ? 'detail' : 'summary'}` : 'empty';
+
+export function useAdminReviewFormState({ selectedWorkshop, selectedHasDetail }: UseAdminReviewFormStateParams) {
   const [state, dispatch] = useReducer(adminReviewFormReducer, selectedWorkshop, buildInitialFormState);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const localImagePreviewUrlRef = useRef<string | null>(null);
+  const formHydrationKey = buildFormHydrationKey(selectedWorkshop, selectedHasDetail);
+  const hydratedFormKeyRef = useRef(formHydrationKey);
 
   const isDirty = useMemo(() => {
     if (!selectedWorkshop) return false;
@@ -114,22 +123,33 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
     return JSON.stringify(baseline) !== JSON.stringify(current);
   }, [selectedWorkshop, state.formData]);
 
-  const clearLocalImagePreview = useCallback(() => {
+  const revokeLocalImagePreview = useCallback(() => {
     if (localImagePreviewUrlRef.current) {
       URL.revokeObjectURL(localImagePreviewUrlRef.current);
       localImagePreviewUrlRef.current = null;
     }
-    dispatch({ type: 'clear-image-preview' });
   }, []);
+
+  const clearLocalImagePreview = useCallback(() => {
+    revokeLocalImagePreview();
+    dispatch({ type: 'clear-image-preview' });
+  }, [revokeLocalImagePreview]);
+
+  useEffect(() => {
+    if (hydratedFormKeyRef.current === formHydrationKey) {
+      return;
+    }
+
+    hydratedFormKeyRef.current = formHydrationKey;
+    revokeLocalImagePreview();
+    dispatch({ type: 'reset-from-workshop', selectedWorkshop });
+  }, [formHydrationKey, revokeLocalImagePreview, selectedWorkshop]);
 
   useEffect(() => {
     return () => {
-      if (localImagePreviewUrlRef.current) {
-        URL.revokeObjectURL(localImagePreviewUrlRef.current);
-        localImagePreviewUrlRef.current = null;
-      }
+      revokeLocalImagePreview();
     };
-  }, []);
+  }, [revokeLocalImagePreview]);
 
   const handleInputChange = useCallback((field: keyof WorkshopFormState, value: string | boolean) => {
     dispatch({ type: 'change-field', field, value });

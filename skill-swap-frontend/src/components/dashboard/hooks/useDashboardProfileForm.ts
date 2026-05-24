@@ -48,6 +48,10 @@ export function useDashboardProfileForm({
   };
 
   const handleEditProfileOpenChange = (open: boolean) => {
+    if (open === isEditProfileOpen) {
+      return;
+    }
+
     resetEditProfileDraft();
     setIsEditProfileOpen(open);
   };
@@ -118,6 +122,10 @@ export function useDashboardProfileForm({
   };
 
   const openEditProfileDialog = () => {
+    if (isEditProfileOpen) {
+      return;
+    }
+
     resetEditProfileDraft();
     setIsEditProfileOpen(true);
   };

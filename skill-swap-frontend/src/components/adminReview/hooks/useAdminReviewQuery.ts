@@ -11,6 +11,7 @@ import {
   ADMIN_REVIEW_TARGET_WORKSHOP_STORAGE_KEY,
 } from '../constants/adminReviewUiConstants';
 import { resolveAdminDisplayStatus } from '../utils/adminReviewUtils';
+import { copySorted } from '../../../shared/utils/copySorted';
 
 interface UseAdminReviewQueryParams {
   isAuthenticated: boolean;
@@ -75,7 +76,7 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
       ? workshops
       : workshops.filter((workshop) => resolveAdminDisplayStatus(workshop) === statusFilter);
 
-  const sortedWorkshops = filteredWorkshops.toSorted((a, b) => {
+  const sortedWorkshops = copySorted(filteredWorkshops, (a, b) => {
     const aTime = new Date(`${a.date || '0000-01-01'}T${a.time || '00:00'}`).getTime();
     const bTime = new Date(`${b.date || '0000-01-01'}T${b.time || '00:00'}`).getTime();
     return bTime - aTime;
