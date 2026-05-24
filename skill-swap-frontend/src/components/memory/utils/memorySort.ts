@@ -2,7 +2,7 @@ import type { MemoryEntry } from "../../../types/memory";
 import type { DisplayMemoryEntry } from "../models/memoryViewModel";
 
 export function sortPublishedMemories(entries: MemoryEntry[]): MemoryEntry[] {
-  return [...entries].sort((a, b) => {
+  return entries.toSorted((a, b) => {
     const aTime = new Date(a.publishedAt || a.updatedAt || a.createdAt || 0).getTime();
     const bTime = new Date(b.publishedAt || b.updatedAt || b.createdAt || 0).getTime();
     return bTime - aTime;

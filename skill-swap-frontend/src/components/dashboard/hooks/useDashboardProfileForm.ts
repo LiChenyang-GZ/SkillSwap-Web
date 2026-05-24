@@ -28,10 +28,6 @@ export function useDashboardProfileForm({
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setEditUsername(user?.username ?? "");
-  }, [user?.username]);
-
-  useEffect(() => {
     return () => {
       if (pendingAvatarPreviewUrl) {
         URL.revokeObjectURL(pendingAvatarPreviewUrl);
@@ -52,9 +48,7 @@ export function useDashboardProfileForm({
   };
 
   const handleEditProfileOpenChange = (open: boolean) => {
-    if (!open) {
-      resetEditProfileDraft();
-    }
+    resetEditProfileDraft();
     setIsEditProfileOpen(open);
   };
 

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import type { SetStateAction } from "react";
 import type { Workshop } from "../../../types/workshop";
 import { DASHBOARD_PAGE_SIZE } from "../constants/dashboardUiConstants";
 import { paginateWorkshops, totalPages } from "../utils/dashboardWorkshopUtils";
@@ -14,9 +15,9 @@ export function useDashboardPagination({
   sortedAttendedWorkshops,
   sortedHostingWorkshops,
 }: UseDashboardPaginationParams) {
-  const [upcomingPage, setUpcomingPage] = useState(1);
-  const [attendedPage, setAttendedPage] = useState(1);
-  const [hostingPage, setHostingPage] = useState(1);
+  const [requestedUpcomingPage, setRequestedUpcomingPage] = useState(1);
+  const [requestedAttendedPage, setRequestedAttendedPage] = useState(1);
+  const [requestedHostingPage, setRequestedHostingPage] = useState(1);
 
   const upcomingTotalPages = useMemo(
     () => totalPages(sortedUpcomingWorkshops.length, DASHBOARD_PAGE_SIZE),
@@ -31,17 +32,30 @@ export function useDashboardPagination({
     [sortedHostingWorkshops.length]
   );
 
-  useEffect(() => {
-    setUpcomingPage((page) => Math.min(page, upcomingTotalPages));
-  }, [upcomingTotalPages]);
+  const upcomingPage = Math.min(requestedUpcomingPage, upcomingTotalPages);
+  const attendedPage = Math.min(requestedAttendedPage, attendedTotalPages);
+  const hostingPage = Math.min(requestedHostingPage, hostingTotalPages);
 
-  useEffect(() => {
-    setAttendedPage((page) => Math.min(page, attendedTotalPages));
-  }, [attendedTotalPages]);
+  const setUpcomingPage = (nextPage: SetStateAction<number>) => {
+    setRequestedUpcomingPage((previous) => {
+      const next = typeof nextPage === "function" ? nextPage(previous) : nextPage;
+      return Math.max(1, next);
+    });
+  };
 
-  useEffect(() => {
-    setHostingPage((page) => Math.min(page, hostingTotalPages));
-  }, [hostingTotalPages]);
+  const setAttendedPage = (nextPage: SetStateAction<number>) => {
+    setRequestedAttendedPage((previous) => {
+      const next = typeof nextPage === "function" ? nextPage(previous) : nextPage;
+      return Math.max(1, next);
+    });
+  };
+
+  const setHostingPage = (nextPage: SetStateAction<number>) => {
+    setRequestedHostingPage((previous) => {
+      const next = typeof nextPage === "function" ? nextPage(previous) : nextPage;
+      return Math.max(1, next);
+    });
+  };
 
   const pagedUpcomingWorkshops = useMemo(() => {
     return paginateWorkshops(sortedUpcomingWorkshops, upcomingPage, DASHBOARD_PAGE_SIZE);

@@ -84,12 +84,20 @@ export function MemoryStudioScreen() {
   );
   const isDraftContext = !selectedEntry || locking.activeStatus === "draft";
   const hasUnsavedDraftChanges = isDraftContext && documentText !== baseDocumentText;
+  const syncSelectedEntryDocument = useCallback(
+    (nextDocumentText: string | null, nextStatus: MemoryEntry["status"]) => {
+      if (nextDocumentText !== null) {
+        setDocumentText(nextDocumentText);
+      }
+      setSelectedStatus(nextStatus);
+    },
+    [setDocumentText, setSelectedStatus]
+  );
 
   useMemoryStudioDocumentSync({
     selectedEntry,
     hasUnsavedDraftChanges,
-    setDocumentText,
-    setSelectedStatus,
+    onSyncSelectedEntry: syncSelectedEntryDocument,
   });
 
   useEffect(() => {

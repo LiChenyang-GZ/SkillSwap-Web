@@ -10,7 +10,7 @@ export function sortNotifications(
   direction: NotificationSortDirection = "desc"
 ): NotificationItem[] {
   const sign = direction === "desc" ? -1 : 1;
-  return [...notifications].sort((a, b) => {
+  return notifications.toSorted((a, b) => {
     return sign * (resolveTimestampValue(a) - resolveTimestampValue(b));
   });
 }

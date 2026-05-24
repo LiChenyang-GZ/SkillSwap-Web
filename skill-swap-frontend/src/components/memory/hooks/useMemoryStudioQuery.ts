@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { MemoryEntry } from "../../../types/memory";
 import { memoryAdminService } from "../../../shared/service/memory/memoryAdminService";
@@ -12,6 +12,13 @@ interface UseMemoryStudioQueryParams {
 export function useMemoryStudioQuery({ hasSession, getAuthToken }: UseMemoryStudioQueryParams) {
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const hasLoadedEntriesForSessionRef = useRef(false);
+  const hasSessionRef = useRef(hasSession);
+
+  if (hasSessionRef.current !== hasSession) {
+    hasSessionRef.current = hasSession;
+    hasLoadedEntriesForSessionRef.current = false;
+  }
 
   const loadEntries = useCallback(async (): Promise<MemoryEntry[] | null> => {
     const token = await getAuthToken();
@@ -19,6 +26,7 @@ export function useMemoryStudioQuery({ hasSession, getAuthToken }: UseMemoryStud
     setIsLoading(true);
     try {
       const data = await memoryAdminService.getAllForAdmin(token);
+      hasLoadedEntriesForSessionRef.current = true;
       setEntries(data);
       return data;
     } catch (error) {
@@ -32,14 +40,13 @@ export function useMemoryStudioQuery({ hasSession, getAuthToken }: UseMemoryStud
 
   useEffect(() => {
     if (!hasSession) {
-      setEntries([]);
       return;
     }
     void loadEntries();
   }, [hasSession, loadEntries]);
 
   return {
-    entries,
+    entries: hasSession && hasLoadedEntriesForSessionRef.current ? entries : [],
     setEntries,
     isLoading,
     loadEntries,

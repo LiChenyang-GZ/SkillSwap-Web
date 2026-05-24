@@ -36,25 +36,26 @@ const getErrorStatus = (error: unknown) => (error as { status?: number })?.statu
 
 export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminReviewQueryParams) {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
-  const [selectedId, setSelectedIdState] = useState<string | null>(null);
+  const [selectedIdState, setSelectedIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [loadedDetailIds, setLoadedDetailIdsState] = useState<Record<string, boolean>>({});
   const [detailLoadErrors, setDetailLoadErrors] = useState<Record<string, string | undefined>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<AdminReviewStatusFilter>(() =>
+  const [statusFilter, setStatusFilterState] = useState<AdminReviewStatusFilter>(() =>
     readStoredTargetWorkshopId() ? 'all' : ADMIN_REVIEW_DEFAULT_STATUS_FILTER
   );
-  const [currentPage, setCurrentPageState] = useState(1);
+  const [requestedPage, setRequestedPage] = useState(1);
   const [targetWorkshopId, setTargetWorkshopIdState] = useState<string | null>(() => readStoredTargetWorkshopId());
 
   const detailInFlightRef = useRef<Set<string>>(new Set());
-  const selectedIdRef = useRef<string | null>(selectedId);
+  const selectedIdRef = useRef<string | null>(selectedIdState);
   const targetWorkshopIdRef = useRef<string | null>(targetWorkshopId);
   const loadedDetailIdsRef = useRef<Record<string, boolean>>({});
+  const statusFilterRef = useRef<AdminReviewStatusFilter>(statusFilter);
   const hasSession = isAuthenticated;
 
-  const setSelectedId = useCallback((workshopId: string | null) => {
+  const setSelectedIdValue = useCallback((workshopId: string | null) => {
     selectedIdRef.current = workshopId;
     setSelectedIdState(workshopId);
   }, []);
@@ -74,13 +75,26 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
       ? workshops
       : workshops.filter((workshop) => resolveAdminDisplayStatus(workshop) === statusFilter);
 
-  const sortedWorkshops = [...filteredWorkshops].sort((a, b) => {
+  const sortedWorkshops = filteredWorkshops.toSorted((a, b) => {
     const aTime = new Date(`${a.date || '0000-01-01'}T${a.time || '00:00'}`).getTime();
     const bTime = new Date(`${b.date || '0000-01-01'}T${b.time || '00:00'}`).getTime();
     return bTime - aTime;
   });
 
   const totalPages = Math.max(1, Math.ceil(sortedWorkshops.length / ADMIN_REVIEW_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const selectedId =
+    selectedIdState && sortedWorkshops.some((workshop) => workshop.id === selectedIdState)
+      ? selectedIdState
+      : targetWorkshopId
+        ? null
+        : sortedWorkshops[0]?.id ?? null;
+
+  selectedIdRef.current = selectedId;
+  targetWorkshopIdRef.current = targetWorkshopId;
+  loadedDetailIdsRef.current = loadedDetailIds;
+  statusFilterRef.current = statusFilter;
+
   const start = (currentPage - 1) * ADMIN_REVIEW_PAGE_SIZE;
   const pagedWorkshops = sortedWorkshops.slice(start, start + ADMIN_REVIEW_PAGE_SIZE);
   const selectedWorkshop = sortedWorkshops.find((workshop) => workshop.id === selectedId) || null;
@@ -177,7 +191,7 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
         : null;
 
       if (currentTargetWorkshopId && !targetWorkshop) {
-        setSelectedId(null);
+        setSelectedIdValue(null);
         setErrorMessage('The workshop from this notification could not be found. It may have been deleted.');
       } else if (nextWorkshops.length > 0) {
         const fallbackId = nextWorkshops[0].id;
@@ -188,14 +202,14 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
               ? currentSelectedId
               : fallbackId;
 
-        setSelectedId(nextSelectedId);
+        setSelectedIdValue(nextSelectedId);
         if (targetDetail && nextSelectedId === targetDetail.id) {
           setWorkshops((prev) => prev.map((workshop) => (workshop.id === targetDetail.id ? { ...workshop, ...targetDetail } : workshop)));
         } else {
           void loadWorkshopDetail(nextSelectedId);
         }
       } else {
-        setSelectedId(null);
+        setSelectedIdValue(null);
       }
     } catch (error) {
       console.error('Failed to load admin workshops:', error);
@@ -213,7 +227,24 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
     } finally {
       setIsLoading(false);
     }
-  }, [getAuthToken, isAuthenticated, loadWorkshopDetail, setLoadedDetailIds, setSelectedId]);
+  }, [getAuthToken, isAuthenticated, loadWorkshopDetail, setLoadedDetailIds, setSelectedIdValue]);
+
+  const setStatusFilter = useCallback((nextStatusFilter: AdminReviewStatusFilter) => {
+    setStatusFilterState(nextStatusFilter);
+    setRequestedPage(1);
+    if (hasSession) {
+      const mode = nextStatusFilter === 'pending' ? 'pending' : 'all';
+      void loadWorkshops(mode);
+    }
+  }, [hasSession, loadWorkshops]);
+
+  const selectWorkshop = useCallback((workshopId: string | null) => {
+    setTargetWorkshopId(null);
+    setSelectedIdValue(workshopId);
+    if (workshopId) {
+      void loadWorkshopDetail(workshopId);
+    }
+  }, [loadWorkshopDetail, setSelectedIdValue, setTargetWorkshopId]);
 
   const refreshWorkshops = useCallback(() => {
     const mode = statusFilter === 'pending' ? 'pending' : 'all';
@@ -223,12 +254,12 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
   useEffect(() => {
     if (!hasSession) {
       setWorkshops([]);
-      setSelectedId(null);
+      setSelectedIdValue(null);
       setLoadedDetailIds({});
       setDetailLoadErrors({});
       setErrorMessage(null);
     }
-  }, [hasSession, setLoadedDetailIds, setSelectedId]);
+  }, [hasSession, setLoadedDetailIds, setSelectedIdValue]);
 
   useEffect(() => {
     if (targetWorkshopId) {
@@ -240,32 +271,18 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
     if (!hasSession) {
       return;
     }
-    const mode = statusFilter === 'pending' ? 'pending' : 'all';
+    const mode = statusFilterRef.current === 'pending' ? 'pending' : 'all';
     void loadWorkshops(mode);
-  }, [hasSession, statusFilter, loadWorkshops]);
+  }, [hasSession, loadWorkshops]);
 
   useEffect(() => {
-    if (!selectedId) return;
-    void loadWorkshopDetail(selectedId);
-  }, [selectedId, isAuthenticated, loadWorkshopDetail]);
-
-  useEffect(() => {
-    if (sortedWorkshops.length === 0) {
-      setSelectedId(null);
+    if (!hasSession || !selectedId) {
       return;
     }
-    const stillExists = sortedWorkshops.some((workshop) => workshop.id === selectedId);
-    if (!stillExists) {
-      if (targetWorkshopId) {
-        return;
-      }
-      setSelectedId(sortedWorkshops[0].id);
-    }
-  }, [sortedWorkshops, selectedId, targetWorkshopId, setSelectedId]);
-
-  useEffect(() => {
-    setCurrentPageState(1);
-  }, [statusFilter]);
+    // The selected id is derived from the current list, so list changes can select
+    // a new workshop without going through selectWorkshop.
+    void loadWorkshopDetail(selectedId);
+  }, [hasSession, selectedId, loadWorkshopDetail]);
 
   useEffect(() => {
     if (!targetWorkshopId || sortedWorkshops.length === 0) return;
@@ -274,8 +291,8 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
     if (targetIndex === -1) return;
 
     const targetId = sortedWorkshops[targetIndex].id;
-    setSelectedId(targetId);
-    setCurrentPageState(Math.floor(targetIndex / ADMIN_REVIEW_PAGE_SIZE) + 1);
+    setSelectedIdValue(targetId);
+    setRequestedPage(Math.floor(targetIndex / ADMIN_REVIEW_PAGE_SIZE) + 1);
     setTargetWorkshopId(null);
 
     requestAnimationFrame(() => {
@@ -284,13 +301,7 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
-  }, [sortedWorkshops, targetWorkshopId, setSelectedId, setTargetWorkshopId]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPageState(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  }, [sortedWorkshops, targetWorkshopId, setSelectedIdValue, setTargetWorkshopId]);
 
   return {
     workshops,
@@ -310,11 +321,8 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
     selectedDetailError,
     refreshWorkshops,
     loadWorkshopDetail,
-    setSelectedId: (workshopId: string | null) => {
-      setTargetWorkshopId(null);
-      setSelectedId(workshopId);
-    },
-    goToPrevPage: () => setCurrentPageState((prev) => Math.max(1, prev - 1)),
-    goToNextPage: () => setCurrentPageState((prev) => Math.min(totalPages, prev + 1)),
+    setSelectedId: selectWorkshop,
+    goToPrevPage: () => setRequestedPage((prev) => Math.max(1, prev - 1)),
+    goToNextPage: () => setRequestedPage((prev) => Math.min(totalPages, prev + 1)),
   };
 }

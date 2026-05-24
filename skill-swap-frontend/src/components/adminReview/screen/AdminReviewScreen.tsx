@@ -9,9 +9,19 @@ import { useAdminReviewFormState } from '../hooks/useAdminReviewFormState';
 import { useAdminReviewMutations } from '../hooks/useAdminReviewMutations';
 import { useAdminReviewQuery } from '../hooks/useAdminReviewQuery';
 
-export function AdminReviewScreen() {
-  const { isAuthenticated, getAuthToken, setCurrentPage } = useApp();
-  const query = useAdminReviewQuery({ isAuthenticated, getAuthToken });
+type AdminReviewQueryState = ReturnType<typeof useAdminReviewQuery>;
+
+interface AdminReviewDetailSectionProps {
+  isAuthenticated: boolean;
+  getAuthToken: () => Promise<string | null>;
+  query: AdminReviewQueryState;
+}
+
+function AdminReviewDetailSection({
+  isAuthenticated,
+  getAuthToken,
+  query,
+}: AdminReviewDetailSectionProps) {
   const form = useAdminReviewFormState({ selectedWorkshop: query.selectedWorkshop });
   const mutations = useAdminReviewMutations({
     isAuthenticated,
@@ -28,6 +38,45 @@ export function AdminReviewScreen() {
     setWorkshops: query.setWorkshops,
     refreshWorkshops: query.refreshWorkshops,
   });
+
+  return (
+    <AdminReviewDetailPanel
+      isLoading={query.isLoading}
+      isDetailLoading={query.isDetailLoading}
+      isSaving={mutations.isSaving}
+      selectedWorkshop={query.selectedWorkshop}
+      selectedHasDetail={query.selectedHasDetail}
+      selectedDetailError={query.selectedDetailError}
+      formData={form.formData}
+      formError={form.formError}
+      rejectComment={form.rejectComment}
+      localImagePreviewUrl={form.localImagePreviewUrl}
+      imageFileInputRef={form.imageFileInputRef}
+      isDirty={form.isDirty}
+      onRetryLoadDetails={() => {
+        if (query.selectedWorkshop?.id) {
+          void query.loadWorkshopDetail(query.selectedWorkshop.id, true);
+        }
+      }}
+      onInputChange={form.handleInputChange}
+      getFieldError={form.getFieldError}
+      onRejectCommentChange={form.setRejectComment}
+      onImageFileSelection={form.handleImageFileSelection}
+      onSave={mutations.handleSave}
+      onCancel={mutations.handleCancel}
+      onReject={mutations.handleReject}
+      onApprove={mutations.handleApprove}
+      onExportParticipantsCsv={mutations.handleExportParticipantsCsv}
+    />
+  );
+}
+
+export function AdminReviewScreen() {
+  const { isAuthenticated, getAuthToken, setCurrentPage } = useApp();
+  const query = useAdminReviewQuery({ isAuthenticated, getAuthToken });
+  const detailFormKey = query.selectedWorkshop
+    ? `${query.selectedWorkshop.id}:${query.selectedHasDetail ? 'detail' : 'summary'}:${query.selectedWorkshop.status}:${query.selectedWorkshop.rejectionNote || ''}`
+    : 'empty';
 
   if (!isAuthenticated) {
     return (
@@ -78,33 +127,11 @@ export function AdminReviewScreen() {
             onNextPage={query.goToNextPage}
           />
 
-          <AdminReviewDetailPanel
-            isLoading={query.isLoading}
-            isDetailLoading={query.isDetailLoading}
-            isSaving={mutations.isSaving}
-            selectedWorkshop={query.selectedWorkshop}
-            selectedHasDetail={query.selectedHasDetail}
-            selectedDetailError={query.selectedDetailError}
-            formData={form.formData}
-            formError={form.formError}
-            rejectComment={form.rejectComment}
-            localImagePreviewUrl={form.localImagePreviewUrl}
-            imageFileInputRef={form.imageFileInputRef}
-            isDirty={form.isDirty}
-            onRetryLoadDetails={() => {
-              if (query.selectedWorkshop?.id) {
-                void query.loadWorkshopDetail(query.selectedWorkshop.id, true);
-              }
-            }}
-            onInputChange={form.handleInputChange}
-            getFieldError={form.getFieldError}
-            onRejectCommentChange={form.setRejectComment}
-            onImageFileSelection={form.handleImageFileSelection}
-            onSave={mutations.handleSave}
-            onCancel={mutations.handleCancel}
-            onReject={mutations.handleReject}
-            onApprove={mutations.handleApprove}
-            onExportParticipantsCsv={mutations.handleExportParticipantsCsv}
+          <AdminReviewDetailSection
+            key={detailFormKey}
+            isAuthenticated={isAuthenticated}
+            getAuthToken={getAuthToken}
+            query={query}
           />
         </div>
       </div>

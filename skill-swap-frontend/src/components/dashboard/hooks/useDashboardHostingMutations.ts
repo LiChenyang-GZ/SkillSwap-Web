@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { workshopMutationService } from "../../../shared/service/workshop/workshopMutationService";
 import type { User } from "../../../types/user";
@@ -21,21 +21,17 @@ export function useDashboardHostingMutations({
   user,
   workshops,
 }: UseDashboardHostingMutationsParams) {
-  const [hiddenHostedWorkshopIds, setHiddenHostedWorkshopIds] = useState<string[]>([]);
+  const [dismissedHostedWorkshopIds, setDismissedHostedWorkshopIds] = useState<string[]>([]);
   const [hidingWorkshopIds, setHidingWorkshopIds] = useState<string[]>([]);
 
   const hostedWorkshopIds = useMemo(() => {
     return workshops.filter((workshop) => isHostedByCurrentUser(workshop, user)).map((workshop) => workshop.id);
   }, [user, workshops]);
 
-  useEffect(() => {
+  const hiddenHostedWorkshopIds = useMemo(() => {
     const currentHostingIds = new Set(hostedWorkshopIds);
-    setHiddenHostedWorkshopIds((prev) => {
-      const next = prev.filter((id) => currentHostingIds.has(id));
-      const unchanged = next.length === prev.length && next.every((id, index) => id === prev[index]);
-      return unchanged ? prev : next;
-    });
-  }, [hostedWorkshopIds]);
+    return dismissedHostedWorkshopIds.filter((id) => currentHostingIds.has(id));
+  }, [dismissedHostedWorkshopIds, hostedWorkshopIds]);
 
   const hideHostedWorkshopFromView = async (workshopId: string) => {
     const token = await getAuthToken();
@@ -47,7 +43,7 @@ export function useDashboardHostingMutations({
     setHidingWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
     try {
       await workshopMutationService.hideHostingWorkshop(workshopId, token);
-      setHiddenHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
+      setDismissedHostedWorkshopIds((prev) => (prev.includes(workshopId) ? prev : [...prev, workshopId]));
       toast.success(DASHBOARD_HIDE_SUCCESS_MESSAGE);
     } catch (error) {
       const message = error instanceof Error ? error.message : DASHBOARD_HIDE_FAILURE_MESSAGE;

@@ -96,11 +96,11 @@ export const getWorkshopStartMillis = (workshop: Workshop) => {
 };
 
 export const sortByStartAsc = (list: Workshop[]) => {
-  return [...list].sort((a, b) => getWorkshopStartMillis(a) - getWorkshopStartMillis(b));
+  return list.toSorted((a, b) => getWorkshopStartMillis(a) - getWorkshopStartMillis(b));
 };
 
 export const sortByStartDesc = (list: Workshop[]) => {
-  return [...list].sort((a, b) => getWorkshopStartMillis(b) - getWorkshopStartMillis(a));
+  return list.toSorted((a, b) => getWorkshopStartMillis(b) - getWorkshopStartMillis(a));
 };
 
 export const totalPages = (count: number, pageSize: number) => Math.max(1, Math.ceil(count / pageSize));
