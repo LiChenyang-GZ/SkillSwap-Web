@@ -44,6 +44,7 @@ export function HomePage() {
   // Quick stats
   const stats = [
     {
+      id: 'upcoming-workshops',
       title: 'Upcoming Workshops',
       value: upcomingWorkshops.length,
       icon: Award,
@@ -51,6 +52,7 @@ export function HomePage() {
       bgColor: 'bg-primary/10',
     },
     {
+      id: 'workshops-attended',
       title: 'Workshops Attended',
       value: user?.totalWorkshopsAttended ?? 0,
       icon: BookOpen,
@@ -58,6 +60,7 @@ export function HomePage() {
       bgColor: 'bg-secondary/10',
     },
     {
+      id: 'workshops-hosted',
       title: 'Workshops Hosted',
       value: user?.totalWorkshopsHosted ?? 0,
       icon: Target,
@@ -103,10 +106,10 @@ export function HomePage() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-          {stats.map((stat, index) => {
+          {stats.map((stat) => {
             const Icon = stat.icon;
             return (
-              <Card key={index} className="hover:shadow-md transition-shadow">
+              <Card key={stat.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>

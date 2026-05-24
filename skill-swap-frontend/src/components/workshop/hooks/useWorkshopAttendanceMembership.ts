@@ -16,39 +16,43 @@ export function useWorkshopAttendanceMembership({
   enabled = true,
 }: UseWorkshopAttendanceMembershipParams) {
   const [isAttendingByMembership, setIsAttendingByMembership] = useState(false);
-  const controllerRef = useRef<AbortController | null>(null);
+  const activeControllers = useRef<Set<AbortController>>(new Set()).current;
   const setMembershipOptimistic = useCallback((isAttending: boolean) => {
     setIsAttendingByMembership(isAttending);
   }, []);
 
+  const abortActiveRequests = useCallback(() => {
+    activeControllers.forEach((controller) => controller.abort());
+    activeControllers.clear();
+  }, [activeControllers]);
+
   const refreshMembership = useCallback(async () => {
+    abortActiveRequests();
+
     if (!enabled) {
-      controllerRef.current?.abort();
-      controllerRef.current = null;
       setIsAttendingByMembership(false);
       return true;
     }
 
     if (!isAuthenticated) {
-      controllerRef.current?.abort();
-      controllerRef.current = null;
       setIsAttendingByMembership(false);
       return true;
     }
 
-    const token = await getAuthToken();
-    if (!token) {
-      controllerRef.current?.abort();
-      controllerRef.current = null;
-      setIsAttendingByMembership(false);
-      return true;
-    }
-
-    controllerRef.current?.abort();
     const controller = new AbortController();
-    controllerRef.current = controller;
+    activeControllers.add(controller);
 
     try {
+      const token = await getAuthToken();
+      if (controller.signal.aborted) {
+        return false;
+      }
+
+      if (!token) {
+        setIsAttendingByMembership(false);
+        return true;
+      }
+
       const attendingWorkshops = await workshopQueryService.getAttending(
         token,
         controller.signal
@@ -67,15 +71,16 @@ export function useWorkshopAttendanceMembership({
         return false;
       }
       return false;
+    } finally {
+      activeControllers.delete(controller);
     }
-  }, [enabled, isAuthenticated, getAuthToken, workshopId]);
+  }, [abortActiveRequests, activeControllers, enabled, isAuthenticated, getAuthToken, workshopId]);
 
   useEffect(() => {
     void refreshMembership();
-    return () => {
-      controllerRef.current?.abort();
-    };
-  }, [refreshMembership]);
+
+    return abortActiveRequests;
+  }, [abortActiveRequests, refreshMembership]);
 
   return {
     isAttendingByMembership,
