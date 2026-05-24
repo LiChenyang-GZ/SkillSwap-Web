@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useCreateWorkshopAction } from "../../shared/hooks/workshop/useCreateWorkshopAction";
-import { workshopMutationService } from "../../shared/service/workshop/workshopMutationService";
-import { workshopQueryService } from "../../shared/service/workshop/workshopQueryService";
-import type { CreditTransaction } from "../../types/creditTransaction";
-import type { User } from "../../types/user";
-import type { Workshop } from "../../types/workshop";
+import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
+import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
+import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
+import type { CreditTransaction } from "../types/creditTransaction";
+import type { User } from "../types/user";
+import type { Workshop } from "../types/workshop";
 import type { GetAuthToken, RefreshDataMode } from "./appContextTypes";
 import { resolveRefreshModeByPage } from "./appRoutes";
 

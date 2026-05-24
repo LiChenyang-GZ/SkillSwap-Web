@@ -23,19 +23,19 @@ import type {
   AppContextType,
   AuthTab,
   RecentProfileCache,
-} from "./app/appContextTypes";
+} from "./appContextTypes";
 import {
   normalizePath,
   pageFromPath,
   pathFromPage,
   resolvePostLoginPage,
-} from "./app/appRoutes";
-import { useCurrentUserProfileActions } from "./app/useCurrentUserProfileActions";
-import { useNotificationUnreadCount } from "./app/useNotificationUnreadCount";
-import { useThemeMode } from "./app/useThemeMode";
-import { useWorkshopState } from "./app/useWorkshopState";
+} from "./appRoutes";
+import { useCurrentUserProfileActions } from "./useCurrentUserProfileActions";
+import { useNotificationUnreadCount } from "./useNotificationUnreadCount";
+import { useThemeMode } from "./useThemeMode";
+import { useWorkshopState } from "./useWorkshopState";
 
-export type { GetAuthToken } from "./app/appContextTypes";
+export type { GetAuthToken } from "./appContextTypes";
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 

@@ -1,7 +1,7 @@
 import { AlertCircle, Check, Download, Globe, MapPin, RefreshCw, Upload, Users, X } from 'lucide-react';
 import type { RefObject } from 'react';
 import type { Workshop } from '../../../types/workshop';
-import { workshopCategories } from '../../../constants/workshop';
+import { workshopCategories } from '../../workshop/constants/workshopCategories';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';

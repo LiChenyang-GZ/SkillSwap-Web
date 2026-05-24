@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { notificationQueryService } from "../../shared/service/notification/notificationQueryService";
+import { notificationQueryService } from "../shared/service/notification/notificationQueryService";
 import type { GetAuthToken } from "./appContextTypes";
 
 interface UseNotificationUnreadCountParams {
