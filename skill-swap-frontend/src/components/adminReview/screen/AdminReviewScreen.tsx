@@ -75,7 +75,7 @@ export function AdminReviewScreen() {
   const { isAuthenticated, getAuthToken, setCurrentPage } = useApp();
   const query = useAdminReviewQuery({ isAuthenticated, getAuthToken });
   const detailFormKey = query.selectedWorkshop
-    ? `${query.selectedWorkshop.id}:${query.selectedHasDetail ? 'detail' : 'summary'}:${query.selectedWorkshop.status}:${query.selectedWorkshop.rejectionNote || ''}`
+    ? `${query.selectedWorkshop.id}:${query.selectedHasDetail ? 'detail' : 'summary'}`
     : 'empty';
 
   if (!isAuthenticated) {

@@ -18,13 +18,18 @@ export const useNotificationUnreadCount = ({
   const authGenerationRef = useRef(0);
   const isAuthenticatedRef = useRef(isAuthenticated);
 
-  if (isAuthenticatedRef.current !== isAuthenticated) {
+  useEffect(() => {
+    if (isAuthenticatedRef.current === isAuthenticated) {
+      return;
+    }
+
     authGenerationRef.current += 1;
     isAuthenticatedRef.current = isAuthenticated;
     if (!isAuthenticated) {
       notificationsInFlightRef.current = null;
+      setNotificationsUnreadCount(0);
     }
-  }
+  }, [isAuthenticated]);
 
   const resetNotificationsUnreadCount = useCallback(() => {
     authGenerationRef.current += 1;

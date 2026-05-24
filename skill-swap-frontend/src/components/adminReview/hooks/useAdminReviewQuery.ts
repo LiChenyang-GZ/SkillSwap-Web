@@ -90,16 +90,18 @@ export function useAdminReviewQuery({ isAuthenticated, getAuthToken }: UseAdminR
         ? null
         : sortedWorkshops[0]?.id ?? null;
 
-  selectedIdRef.current = selectedId;
-  targetWorkshopIdRef.current = targetWorkshopId;
-  loadedDetailIdsRef.current = loadedDetailIds;
-  statusFilterRef.current = statusFilter;
-
   const start = (currentPage - 1) * ADMIN_REVIEW_PAGE_SIZE;
   const pagedWorkshops = sortedWorkshops.slice(start, start + ADMIN_REVIEW_PAGE_SIZE);
   const selectedWorkshop = sortedWorkshops.find((workshop) => workshop.id === selectedId) || null;
   const selectedHasDetail = selectedWorkshop ? !!loadedDetailIds[selectedWorkshop.id] : false;
   const selectedDetailError = selectedWorkshop ? detailLoadErrors[selectedWorkshop.id] ?? null : null;
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+    targetWorkshopIdRef.current = targetWorkshopId;
+    loadedDetailIdsRef.current = loadedDetailIds;
+    statusFilterRef.current = statusFilter;
+  }, [selectedId, targetWorkshopId, loadedDetailIds, statusFilter]);
 
   const loadWorkshopDetail = useCallback(async (workshopId: string, force = false) => {
     if (!isAuthenticated || !workshopId) return;
