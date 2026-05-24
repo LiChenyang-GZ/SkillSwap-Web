@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Workshop } from '../../../types/workshop';
 import { toBackendWorkshopId } from '../../../lib/api';
 import { workshopQueryService } from '../../../shared/service/workshop/workshopQueryService';
@@ -23,16 +23,23 @@ export function useWorkshopDetailQuery({
   getAuthToken,
   upsertWorkshop,
 }: UseWorkshopDetailQueryParams) {
-  const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorStatus, setErrorStatus] = useState<number | null>(null);
+  const [fetchedWorkshop, setFetchedWorkshop] = useState<Workshop | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const lastFetchKeyRef = useRef<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
-  const hasLocalSnapshotRef = useRef(false);
   const upsertWorkshopRef = useRef(upsertWorkshop);
   const normalizedWorkshopId = toBackendWorkshopId(workshopId);
   const detailFetchKey = `${isAuthenticated ? 'auth' : 'anon'}:${normalizedWorkshopId}`;
+  const localWorkshop = useMemo(
+    () => workshops.find((item) => toBackendWorkshopId(String(item.id)) === normalizedWorkshopId) || null,
+    [normalizedWorkshopId, workshops]
+  );
+  const hasLocalSnapshot = Boolean(localWorkshop);
+  const workshop =
+    localWorkshop ||
+    (fetchedWorkshop && toBackendWorkshopId(String(fetchedWorkshop.id)) === normalizedWorkshopId ? fetchedWorkshop : null);
   const refreshWorkshop = useCallback(() => {
     setRefreshNonce((previous) => previous + 1);
   }, []);
@@ -42,27 +49,9 @@ export function useWorkshopDetailQuery({
   }, [upsertWorkshop]);
 
   useEffect(() => {
-    const found = workshops.find((item) => toBackendWorkshopId(String(item.id)) === normalizedWorkshopId);
-    hasLocalSnapshotRef.current = Boolean(found);
-    if (found) {
-      setWorkshop(found);
-      setIsLoading(false);
-      setErrorStatus(null);
-      return;
-    }
-
-    // Prevent showing stale details from previous workshop while next detail request is loading.
-    setWorkshop((previous) =>
-      previous && toBackendWorkshopId(String(previous.id)) === normalizedWorkshopId ? previous : null
-    );
-    setIsLoading(true);
-  }, [normalizedWorkshopId, workshops]);
-
-  useEffect(() => {
     let effectController: AbortController | null = null;
 
     const loadWorkshop = async (force = false) => {
-      const hasLocalSnapshot = hasLocalSnapshotRef.current;
       const hasActiveSameKeyRequest =
         lastFetchKeyRef.current === detailFetchKey &&
         controllerRef.current !== null &&
@@ -88,19 +77,19 @@ export function useWorkshopDetailQuery({
         const latest = await workshopQueryService.getById(workshopId, token, controller.signal);
         if (!controller.signal.aborted) {
           if (latest) {
-            setWorkshop(latest);
+            setFetchedWorkshop(latest);
             upsertWorkshopRef.current(latest);
             setErrorStatus(null);
           } else {
-            setWorkshop(null);
+            setFetchedWorkshop(null);
           }
         }
       } catch (error) {
         if ((error as { name?: string })?.name !== 'AbortError') {
           if (force) {
-            setWorkshop(null);
+            setFetchedWorkshop(null);
             setErrorStatus(getErrorStatus(error));
-          } else if (!hasLocalSnapshotRef.current) {
+          } else if (!hasLocalSnapshot) {
             setErrorStatus(getErrorStatus(error));
           }
           console.warn('Failed to refresh workshop details', error);
@@ -117,11 +106,11 @@ export function useWorkshopDetailQuery({
     return () => {
       effectController?.abort();
     };
-  }, [detailFetchKey, normalizedWorkshopId, refreshNonce, isAuthenticated, getAuthToken, workshopId]);
+  }, [detailFetchKey, refreshNonce, isAuthenticated, getAuthToken, workshopId, hasLocalSnapshot]);
 
   return {
     workshop,
-    isLoading,
+    isLoading: !workshop && isLoading,
     errorStatus,
     refreshWorkshop,
   };

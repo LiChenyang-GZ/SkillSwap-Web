@@ -5,15 +5,13 @@ import { buildMemoryDocumentFromEntry } from "../utils/memoryDocument";
 interface UseMemoryStudioDocumentSyncParams {
   selectedEntry: MemoryEntry | null;
   hasUnsavedDraftChanges: boolean;
-  setDocumentText: (text: string) => void;
-  setSelectedStatus: (status: MemoryEntry["status"]) => void;
+  onSyncSelectedEntry: (documentText: string | null, status: MemoryEntry["status"]) => void;
 }
 
 export function useMemoryStudioDocumentSync({
   selectedEntry,
   hasUnsavedDraftChanges,
-  setDocumentText,
-  setSelectedStatus,
+  onSyncSelectedEntry,
 }: UseMemoryStudioDocumentSyncParams) {
   const lastSyncedEntryIdRef = useRef<string | null>(null);
   const skipNextSelectionSyncRef = useRef(false);
@@ -30,16 +28,15 @@ export function useMemoryStudioDocumentSync({
 
     if (skipNextSelectionSyncRef.current) {
       skipNextSelectionSyncRef.current = false;
-      setSelectedStatus(selectedEntry.status || "draft");
+      onSyncSelectedEntry(null, selectedEntry.status || "draft");
       return;
     }
 
     if (!selectionChanged && hasUnsavedDraftChanges && selectedEntry.status === "draft") {
-      setSelectedStatus(selectedEntry.status || "draft");
+      onSyncSelectedEntry(null, selectedEntry.status || "draft");
       return;
     }
 
-    setDocumentText(buildMemoryDocumentFromEntry(selectedEntry));
-    setSelectedStatus(selectedEntry.status || "draft");
-  }, [hasUnsavedDraftChanges, selectedEntry, setDocumentText, setSelectedStatus]);
+    onSyncSelectedEntry(buildMemoryDocumentFromEntry(selectedEntry), selectedEntry.status || "draft");
+  }, [hasUnsavedDraftChanges, onSyncSelectedEntry, selectedEntry]);
 }

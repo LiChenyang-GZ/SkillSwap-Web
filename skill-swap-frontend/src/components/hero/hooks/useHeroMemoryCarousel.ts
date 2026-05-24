@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { MemoryEntry } from "../../../types/memory";
 import { sortPublishedMemories } from "../../memory/utils/memorySort";
 
 export const useHeroMemoryCarousel = (entries: MemoryEntry[]) => {
-  const [carouselStartIndex, setCarouselStartIndex] = useState(0);
+  const [carouselState, setCarouselState] = useState({
+    orderSignature: "",
+    startIndex: 0,
+  });
 
   const featuredMemories = useMemo(() => sortPublishedMemories(entries), [entries]);
   const featuredMemoryOrderSignature = useMemo(
@@ -11,21 +14,10 @@ export const useHeroMemoryCarousel = (entries: MemoryEntry[]) => {
     [featuredMemories]
   );
   const hasCarouselControls = featuredMemories.length > 3;
-
-  useEffect(() => {
-    if (featuredMemories.length === 0) {
-      setCarouselStartIndex(0);
-      return;
-    }
-
-    if (carouselStartIndex >= featuredMemories.length) {
-      setCarouselStartIndex(0);
-    }
-  }, [carouselStartIndex, featuredMemories.length]);
-
-  useEffect(() => {
-    setCarouselStartIndex(0);
-  }, [featuredMemoryOrderSignature]);
+  const carouselStartIndex =
+    carouselState.orderSignature === featuredMemoryOrderSignature && featuredMemories.length > 0
+      ? carouselState.startIndex % featuredMemories.length
+      : 0;
 
   const visibleMemories = useMemo(() => {
     if (featuredMemories.length <= 3) {
@@ -40,12 +32,18 @@ export const useHeroMemoryCarousel = (entries: MemoryEntry[]) => {
 
   const showPreviousMemories = () => {
     if (!hasCarouselControls) return;
-    setCarouselStartIndex((prev) => (prev - 1 + featuredMemories.length) % featuredMemories.length);
+    setCarouselState({
+      orderSignature: featuredMemoryOrderSignature,
+      startIndex: (carouselStartIndex - 1 + featuredMemories.length) % featuredMemories.length,
+    });
   };
 
   const showNextMemories = () => {
     if (!hasCarouselControls) return;
-    setCarouselStartIndex((prev) => (prev + 1) % featuredMemories.length);
+    setCarouselState({
+      orderSignature: featuredMemoryOrderSignature,
+      startIndex: (carouselStartIndex + 1) % featuredMemories.length,
+    });
   };
 
   return {

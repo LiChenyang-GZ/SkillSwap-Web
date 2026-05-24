@@ -18,6 +18,19 @@ export const useNotificationUnreadCount = ({
   const authGenerationRef = useRef(0);
   const isAuthenticatedRef = useRef(isAuthenticated);
 
+  useEffect(() => {
+    if (isAuthenticatedRef.current === isAuthenticated) {
+      return;
+    }
+
+    authGenerationRef.current += 1;
+    isAuthenticatedRef.current = isAuthenticated;
+    if (!isAuthenticated) {
+      notificationsInFlightRef.current = null;
+      setNotificationsUnreadCount(0);
+    }
+  }, [isAuthenticated]);
+
   const resetNotificationsUnreadCount = useCallback(() => {
     authGenerationRef.current += 1;
     isAuthenticatedRef.current = false;
@@ -58,18 +71,7 @@ export const useNotificationUnreadCount = ({
   }, [isAuthenticated, getAuthToken]);
 
   useEffect(() => {
-    if (isAuthenticatedRef.current !== isAuthenticated) {
-      authGenerationRef.current += 1;
-      isAuthenticatedRef.current = isAuthenticated;
-      if (!isAuthenticated) {
-        notificationsInFlightRef.current = null;
-      }
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
     if (!isAuthenticated) {
-      setNotificationsUnreadCount(0);
       return;
     }
 
@@ -86,7 +88,7 @@ export const useNotificationUnreadCount = ({
   }, [currentPage, refreshNotificationsUnreadCount, isAuthenticated]);
 
   return {
-    notificationsUnreadCount,
+    notificationsUnreadCount: isAuthenticated ? notificationsUnreadCount : 0,
     refreshNotificationsUnreadCount,
     resetNotificationsUnreadCount,
   };

@@ -12,6 +12,7 @@ interface UseMemoryStudioQueryParams {
 export function useMemoryStudioQuery({ hasSession, getAuthToken }: UseMemoryStudioQueryParams) {
   const [entries, setEntries] = useState<MemoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedEntriesForSession, setHasLoadedEntriesForSession] = useState(false);
 
   const loadEntries = useCallback(async (): Promise<MemoryEntry[] | null> => {
     const token = await getAuthToken();
@@ -20,6 +21,7 @@ export function useMemoryStudioQuery({ hasSession, getAuthToken }: UseMemoryStud
     try {
       const data = await memoryAdminService.getAllForAdmin(token);
       setEntries(data);
+      setHasLoadedEntriesForSession(true);
       return data;
     } catch (error) {
       console.error(error);
@@ -31,15 +33,17 @@ export function useMemoryStudioQuery({ hasSession, getAuthToken }: UseMemoryStud
   }, [getAuthToken]);
 
   useEffect(() => {
+    setHasLoadedEntriesForSession(false);
     if (!hasSession) {
       setEntries([]);
+      setIsLoading(false);
       return;
     }
     void loadEntries();
   }, [hasSession, loadEntries]);
 
   return {
-    entries,
+    entries: hasSession && hasLoadedEntriesForSession ? entries : [],
     setEntries,
     isLoading,
     loadEntries,

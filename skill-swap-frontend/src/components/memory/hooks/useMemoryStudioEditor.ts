@@ -14,6 +14,8 @@ import {
   IMAGE_UPLOAD_UNSUPPORTED_MESSAGE,
 } from "../../../shared/constants/uploadLimits";
 
+const MEMORY_IMAGE_UPLOAD_CONCURRENCY = 3;
+
 interface UseMemoryStudioEditorParams {
   getAuthToken: () => Promise<string | null>;
 }
@@ -74,18 +76,6 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     updateSelection(next, cursor, cursor);
   };
 
-  const insertTextAtRange = (text: string, start?: number, end?: number) => {
-    const editor = editorRef.current;
-    if (!editor) return;
-
-    const sourceText = editor.value;
-    const selectionStart = start ?? editor.selectionStart;
-    const selectionEnd = end ?? editor.selectionEnd;
-    const next = `${sourceText.slice(0, selectionStart)}${text}${sourceText.slice(selectionEnd)}`;
-    const cursor = selectionStart + text.length;
-    updateSelection(next, cursor, cursor);
-  };
-
   const validateImageFile = (file: File): boolean => {
     const contentType = String(file.type || "").toLowerCase();
     if (!IMAGE_UPLOAD_ALLOWED_MIME_TYPES.has(contentType)) {
@@ -99,20 +89,11 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     return true;
   };
 
-  const uploadAndInsertImage = async (file: File, start?: number, end?: number) => {
-    const token = await getAuthToken();
-    if (!token) {
-      toast.error("Please sign in.");
-      return;
-    }
-
-    setIsUploadingImage(true);
+  const uploadImageMarkdown = async (file: File, token: string) => {
     try {
       const result = await memoryAdminService.uploadMediaByAdmin(file, token);
       const fallbackAlt = file.name ? file.name.replace(/\.[^.]+$/, "") : "image";
-      const markdown = `<div align="center">\n  <img src="${result.url || result.path}" alt="${fallbackAlt || "image"}" width="250" />\n</div>`;
-      insertTextAtRange(markdown, start, end);
-      toast.success("Image uploaded and inserted.");
+      return `<div align="center">\n  <img src="${result.url || result.path}" alt="${fallbackAlt || "image"}" width="250" />\n</div>`;
     } catch (error) {
       console.error(error);
       const status = getMemoryErrorStatus(error);
@@ -123,12 +104,102 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
 
       if (isSizeLimitError) {
         toast.error(IMAGE_UPLOAD_TOO_LARGE_MESSAGE);
-        return;
+        return null;
       }
 
       toast.error(message || "Failed to upload image.");
-    } finally {
-      setIsUploadingImage(false);
+    }
+    return null;
+  };
+
+  const uploadBatchWithLimit = async (batch: MemoryUploadQueueItem[], token: string) => {
+    const uploadedItems: Array<MemoryUploadQueueItem & { markdown: string | null }> = batch.map((item) => ({
+      ...item,
+      markdown: null,
+    }));
+    const workerCount = Math.min(MEMORY_IMAGE_UPLOAD_CONCURRENCY, batch.length);
+
+    const uploadWorker = async (index: number): Promise<void> => {
+      if (index >= batch.length) {
+        return;
+      }
+
+      uploadedItems[index] = {
+        ...batch[index],
+        markdown: await uploadImageMarkdown(batch[index].file, token),
+      };
+      await uploadWorker(index + workerCount);
+    };
+
+    await Promise.all(
+      Array.from({ length: workerCount }, (_, index) => uploadWorker(index))
+    );
+
+    return uploadedItems;
+  };
+
+  const insertUploadedImages = (uploadedItems: Array<MemoryUploadQueueItem & { markdown: string | null }>) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    let nextText = editor.value;
+    let selectionStart = editor.selectionStart;
+    let selectionEnd = editor.selectionEnd;
+    let explicitRangeOffset = 0;
+    let insertedCount = 0;
+
+    uploadedItems.forEach((item) => {
+      if (!item.markdown) {
+        return;
+      }
+
+      const rangeStart = item.start;
+      const rangeEnd = item.end;
+      const hasExplicitRange = typeof rangeStart === "number" && typeof rangeEnd === "number";
+      const insertionStart = hasExplicitRange
+        ? Math.min(Math.max(0, rangeStart + explicitRangeOffset), nextText.length)
+        : selectionStart;
+      const insertionEnd = hasExplicitRange
+        ? Math.min(Math.max(insertionStart, rangeEnd + explicitRangeOffset), nextText.length)
+        : selectionEnd;
+
+      nextText = `${nextText.slice(0, insertionStart)}${item.markdown}${nextText.slice(insertionEnd)}`;
+      selectionStart = insertionStart + item.markdown.length;
+      selectionEnd = selectionStart;
+      insertedCount += 1;
+
+      if (hasExplicitRange) {
+        explicitRangeOffset += item.markdown.length - (insertionEnd - insertionStart);
+      }
+    });
+
+    if (insertedCount === 0) {
+      return;
+    }
+
+    updateSelection(nextText, selectionStart, selectionEnd);
+    toast.success(insertedCount === 1 ? "Image uploaded and inserted." : `${insertedCount} images uploaded and inserted.`);
+  };
+
+  const processUploadBatch = async (): Promise<void> => {
+    const batch = uploadQueueRef.current.splice(0);
+    if (batch.length === 0) {
+      return;
+    }
+
+    const token = await getAuthToken();
+    if (!token) {
+      toast.error("Please sign in.");
+      uploadQueueRef.current = [];
+      return;
+    }
+
+    const uploadedItems = await uploadBatchWithLimit(batch, token);
+
+    insertUploadedImages(uploadedItems);
+
+    if (uploadQueueRef.current.length > 0) {
+      await processUploadBatch();
     }
   };
 
@@ -138,16 +209,16 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     }
 
     uploadQueueRunningRef.current = true;
+    setIsUploadingImage(true);
     try {
-      while (uploadQueueRef.current.length > 0) {
-        const next = uploadQueueRef.current.shift();
-        if (!next) {
-          continue;
-        }
-        await uploadAndInsertImage(next.file, next.start, next.end);
-      }
+      await processUploadBatch();
     } finally {
       uploadQueueRunningRef.current = false;
+      if (uploadQueueRef.current.length > 0) {
+        void runUploadQueue();
+      } else {
+        setIsUploadingImage(false);
+      }
     }
   };
 

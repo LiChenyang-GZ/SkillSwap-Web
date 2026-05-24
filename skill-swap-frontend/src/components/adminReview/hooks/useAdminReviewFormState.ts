@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { toast } from 'sonner';
 import type { Workshop } from '../../../types/workshop';
 import {
@@ -13,70 +13,146 @@ import { buildWorkshopFormState, normalizeFormState } from '../utils/adminReview
 
 interface UseAdminReviewFormStateParams {
   selectedWorkshop: Workshop | null;
+  selectedHasDetail: boolean;
 }
 
-export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewFormStateParams) {
-  const [formData, setFormData] = useState<WorkshopFormState>(emptyWorkshopForm);
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
-  const [localImagePreviewUrl, setLocalImagePreviewUrl] = useState<string | null>(null);
-  const [rejectComment, setRejectComment] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<AdminReviewFieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
+interface AdminReviewFormReducerState {
+  formData: WorkshopFormState;
+  pendingImageFile: File | null;
+  localImagePreviewUrl: string | null;
+  rejectComment: string;
+  fieldErrors: AdminReviewFieldErrors;
+  formError: string | null;
+}
+
+type AdminReviewFormAction =
+  | { type: 'reset-from-workshop'; selectedWorkshop: Workshop | null }
+  | { type: 'change-field'; field: keyof WorkshopFormState; value: string | boolean }
+  | { type: 'set-image-file'; file: File | null }
+  | { type: 'select-image-file'; file: File; previewUrl: string }
+  | { type: 'clear-image-preview' }
+  | { type: 'set-reject-comment'; value: string }
+  | { type: 'set-validation'; errors: AdminReviewFieldErrors; formError: string | null }
+  | { type: 'clear-validation' };
+
+const buildInitialFormState = (selectedWorkshop: Workshop | null): AdminReviewFormReducerState => ({
+  formData: selectedWorkshop ? buildWorkshopFormState(selectedWorkshop) : emptyWorkshopForm,
+  pendingImageFile: null,
+  localImagePreviewUrl: null,
+  rejectComment: selectedWorkshop?.rejectionNote || '',
+  fieldErrors: {},
+  formError: null,
+});
+
+function adminReviewFormReducer(
+  state: AdminReviewFormReducerState,
+  action: AdminReviewFormAction
+): AdminReviewFormReducerState {
+  switch (action.type) {
+    case 'reset-from-workshop':
+      return buildInitialFormState(action.selectedWorkshop);
+    case 'change-field': {
+      const nextFieldErrors = { ...state.fieldErrors };
+      delete nextFieldErrors[action.field];
+      return {
+        ...state,
+        formData: {
+          ...state.formData,
+          [action.field]: action.value,
+        },
+        formError: null,
+        fieldErrors: nextFieldErrors,
+      };
+    }
+    case 'set-image-file':
+      return {
+        ...state,
+        pendingImageFile: action.file,
+      };
+    case 'select-image-file':
+      return {
+        ...state,
+        pendingImageFile: action.file,
+        localImagePreviewUrl: action.previewUrl,
+        formData: {
+          ...state.formData,
+          image: action.previewUrl,
+        },
+      };
+    case 'clear-image-preview':
+      return {
+        ...state,
+        localImagePreviewUrl: null,
+      };
+    case 'set-reject-comment':
+      return {
+        ...state,
+        rejectComment: action.value,
+      };
+    case 'set-validation':
+      return {
+        ...state,
+        fieldErrors: action.errors,
+        formError: action.formError,
+      };
+    case 'clear-validation':
+      return {
+        ...state,
+        fieldErrors: {},
+        formError: null,
+      };
+    default:
+      return state;
+  }
+}
+
+const buildFormHydrationKey = (selectedWorkshop: Workshop | null, selectedHasDetail: boolean) =>
+  selectedWorkshop ? `${selectedWorkshop.id}:${selectedHasDetail ? 'detail' : 'summary'}` : 'empty';
+
+export function useAdminReviewFormState({ selectedWorkshop, selectedHasDetail }: UseAdminReviewFormStateParams) {
+  const [state, dispatch] = useReducer(adminReviewFormReducer, selectedWorkshop, buildInitialFormState);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const localImagePreviewUrlRef = useRef<string | null>(null);
+  const formHydrationKey = buildFormHydrationKey(selectedWorkshop, selectedHasDetail);
+  const hydratedFormKeyRef = useRef(formHydrationKey);
 
   const isDirty = useMemo(() => {
     if (!selectedWorkshop) return false;
     const baseline = normalizeFormState(buildWorkshopFormState(selectedWorkshop));
-    const current = normalizeFormState(formData);
+    const current = normalizeFormState(state.formData);
     return JSON.stringify(baseline) !== JSON.stringify(current);
-  }, [selectedWorkshop, formData]);
+  }, [selectedWorkshop, state.formData]);
 
-  const clearLocalImagePreview = useCallback(() => {
-    setLocalImagePreviewUrl((previousUrl) => {
-      if (previousUrl) {
-        URL.revokeObjectURL(previousUrl);
-      }
-      return null;
-    });
+  const revokeLocalImagePreview = useCallback(() => {
+    if (localImagePreviewUrlRef.current) {
+      URL.revokeObjectURL(localImagePreviewUrlRef.current);
+      localImagePreviewUrlRef.current = null;
+    }
   }, []);
 
+  const clearLocalImagePreview = useCallback(() => {
+    revokeLocalImagePreview();
+    dispatch({ type: 'clear-image-preview' });
+  }, [revokeLocalImagePreview]);
+
   useEffect(() => {
-    if (!selectedWorkshop) {
-      setFormData(emptyWorkshopForm);
-      setPendingImageFile(null);
-      clearLocalImagePreview();
-      setRejectComment('');
-      setFieldErrors({});
-      setFormError(null);
+    if (hydratedFormKeyRef.current === formHydrationKey) {
       return;
     }
 
-    setPendingImageFile(null);
-    clearLocalImagePreview();
-    setFormData(buildWorkshopFormState(selectedWorkshop));
-    setRejectComment(selectedWorkshop.rejectionNote || '');
-    setFieldErrors({});
-    setFormError(null);
-  }, [selectedWorkshop, clearLocalImagePreview]);
+    hydratedFormKeyRef.current = formHydrationKey;
+    revokeLocalImagePreview();
+    dispatch({ type: 'reset-from-workshop', selectedWorkshop });
+  }, [formHydrationKey, revokeLocalImagePreview, selectedWorkshop]);
 
   useEffect(() => {
     return () => {
-      clearLocalImagePreview();
+      revokeLocalImagePreview();
     };
-  }, [clearLocalImagePreview]);
+  }, [revokeLocalImagePreview]);
 
   const handleInputChange = useCallback((field: keyof WorkshopFormState, value: string | boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    setFormError(null);
-    setFieldErrors((previous) => {
-      if (!previous[field]) return previous;
-      const next = { ...previous };
-      delete next[field];
-      return next;
-    });
+    dispatch({ type: 'change-field', field, value });
   }, []);
 
   const handleImageFileSelection = useCallback((file: File | null) => {
@@ -95,37 +171,39 @@ export function useAdminReviewFormState({ selectedWorkshop }: UseAdminReviewForm
 
     clearLocalImagePreview();
     const previewUrl = URL.createObjectURL(file);
-    setLocalImagePreviewUrl(previewUrl);
-    setPendingImageFile(file);
-    setFormData((prev) => ({
-      ...prev,
-      image: previewUrl,
-    }));
+    localImagePreviewUrlRef.current = previewUrl;
+    dispatch({ type: 'select-image-file', file, previewUrl });
   }, [clearLocalImagePreview]);
 
   const setValidationState = useCallback((errors: AdminReviewFieldErrors, nextFormError: string | null) => {
-    setFieldErrors(errors);
-    setFormError(nextFormError);
+    dispatch({ type: 'set-validation', errors, formError: nextFormError });
   }, []);
 
   const clearValidationState = useCallback(() => {
-    setFieldErrors({});
-    setFormError(null);
+    dispatch({ type: 'clear-validation' });
   }, []);
 
   const getFieldError = useCallback(
-    (field: keyof WorkshopFormState) => fieldErrors[field] ?? null,
-    [fieldErrors]
+    (field: keyof WorkshopFormState) => state.fieldErrors[field] ?? null,
+    [state.fieldErrors]
   );
 
+  const setPendingImageFile = useCallback((file: File | null) => {
+    dispatch({ type: 'set-image-file', file });
+  }, []);
+
+  const setRejectComment = useCallback((value: string) => {
+    dispatch({ type: 'set-reject-comment', value });
+  }, []);
+
   return {
-    formData,
-    fieldErrors,
-    formError,
-    pendingImageFile,
+    formData: state.formData,
+    fieldErrors: state.fieldErrors,
+    formError: state.formError,
+    pendingImageFile: state.pendingImageFile,
     setPendingImageFile,
-    localImagePreviewUrl,
-    rejectComment,
+    localImagePreviewUrl: state.localImagePreviewUrl,
+    rejectComment: state.rejectComment,
     setRejectComment,
     imageFileInputRef,
     isDirty,
