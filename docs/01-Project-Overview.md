@@ -153,11 +153,13 @@ Note: the current code does not support a claim of active version-based optimist
 
 ## 8. Documentation And Operational Work Completed
 
-Existing repository documentation supports the resume positioning around technical and operational handover work. User/admin workflows are represented through the implemented product flows and this overview, but no current standalone end-user manual was found in the active documentation set reviewed.
+Existing repository documentation supports the resume positioning around technical and operational handover work. User/admin workflows are represented through the implemented product flows, active user guides under `docs/07-user-guides`, and this overview.
 
 - `doc/cloud/SkillSwap-Cloud-Deployment.md` documents cloud architecture, Azure resources, Vercel frontend deployment, Nginx/TLS, DNS, CI/CD, environment variables, deployment runbook, VM resource management, and architecture decisions.
 - `doc/cloud/SkillSwap-README-Deployment.md` provides a shorter operational deployment summary.
 - `doc/cloud/SkillSwap-Deployment-Interview.md` provides a concise architecture and deployment explanation suitable for interview or portfolio discussion.
+- `docs/04-api/API-Documentation.md` documents the current REST API contract verified against backend controllers, DTOs, services, security configuration, storage services, and frontend service modules.
+- `docs/07-user-guides/Admin-Guide.md` and `docs/07-user-guides/End-User-Guide.md` document current admin and member workflows.
 - `doc/DEV_AUTH_IMPLEMENTATION.md` and `doc/DEV_LOGIN_IMPLEMENTATION.md` clarify the current Clerk-based authentication flow and explicitly deprecate older `/dev` login/JWT flows.
 - `doc/AI_REVIEW_GUIDE.md` documents the AI PR review trigger commands, permissions, review modes, model selection, strict/normal policies, required secrets, and troubleshooting.
 - `doc/sql` and `skill-swap-backend/src/main/resources/db/migration` contain database change scripts and migrations for auth subject support, workshop review flow, notifications, user roles, memory pages, edit locks, and hidden workshop states.
@@ -170,7 +172,7 @@ Operationally, the repository includes:
 - Runbook-style deployment instructions and fallback manual deployment steps.
 - Troubleshooting guidance for AI review workflows and local authentication.
 
-API contract caveat: the current REST contracts are verifiable from controllers, DTOs, frontend service modules, and migrations. Earlier standalone API documentation files appear to be absent from the current working tree, so this overview does not claim that a current, complete API reference document exists.
+API contract caveat: the current REST contracts are verifiable from controllers, DTOs, frontend service modules, and migrations. Keep the API documentation aligned with implementation when endpoint contracts change.
 
 ## 9. Current Deployment Status
 
@@ -191,7 +193,7 @@ Deployment note for handover: the backend reads the Azure Blob container from `A
 - Add stronger automated test coverage. The backend now includes security regression tests and backend CI, but broader unit, API contract, and frontend coverage still need expansion.
 - Keep deployment configuration documentation aligned with backend properties and GitHub Actions when storage or auth variables change.
 - Decide whether memory editing should remain lock-based or reintroduce version-based optimistic locking. The current source supports edit locks, while historical migrations show a removed `version` column.
-- Reconcile outdated documentation paths and older auth references. The current docs indicate Clerk is the active flow and older dev login/JWT flows are deprecated.
+- Keep documentation paths and older auth references aligned with the current Clerk-based frontend and backend flow.
 - Improve configuration hygiene before public handover by reviewing environment-specific values in property files and ensuring secrets are only supplied through environment variables or secret stores.
 - Add API contract documentation generated from the current controllers/DTOs, such as OpenAPI, to reduce drift between implementation and hand-written docs.
 - Clarify the database migration strategy because SQL migrations and Flyway configuration exist, while application profiles currently disable Flyway at runtime.
@@ -225,4 +227,5 @@ Deployment note for handover: the backend reads the Azure Blob container from `A
 - Backend build/runtime configuration in `skill-swap-backend/build.gradle`, `Dockerfile`, and `src/main/resources/application*.properties`.
 - Backend controllers, services, repositories, entities, DTOs, and migrations under `skill-swap-backend/src/main`.
 - Existing cloud, authentication, AI review, and SQL documentation under `doc`.
+- Current structured documentation under `docs`, including API, architecture, development, operations, and user/admin guides.
 - CI/CD and AI review workflow files under `.github/workflows` and scripts under `.github/scripts`.

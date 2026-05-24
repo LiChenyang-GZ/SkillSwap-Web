@@ -1,6 +1,6 @@
 # Local Development Guide
 
-Last reviewed: 2026-05-21
+Last reviewed: 2026-05-24
 
 ## 1. Document Purpose
 
@@ -131,7 +131,6 @@ Example local values:
 ```env
 VITE_CLERK_PUBLISHABLE_KEY=<CLERK_PUBLISHABLE_KEY>
 VITE_API_BASE_URL=http://localhost:8080
-VITE_AUTH_REDIRECT_URL=http://localhost:3000/explore
 VITE_IMAGE_UPLOAD_MAX_BYTES=10485760
 ```
 
@@ -139,7 +138,7 @@ Do not store real production secrets in frontend environment files. Any `VITE_` 
 
 ### How the Frontend Connects to the Backend Locally
 
-The frontend reads `VITE_API_BASE_URL` from `src/lib/api.ts`.
+The frontend reads `VITE_API_BASE_URL` from `src/shared/api.ts`.
 
 If `VITE_API_BASE_URL` is not set, the frontend falls back to:
 
@@ -164,7 +163,7 @@ http://127.0.0.1:5173
 |---|---|---|
 | App crashes with `Missing VITE_CLERK_PUBLISHABLE_KEY` | `main.tsx` throws when the Clerk publishable key is missing. | Add `VITE_CLERK_PUBLISHABLE_KEY=<CLERK_PUBLISHABLE_KEY>` to `.env.local` and restart Vite. |
 | API calls go to the wrong backend | `VITE_API_BASE_URL` is missing or points to production/another server. | Set `VITE_API_BASE_URL=http://localhost:8080`. |
-| OAuth redirect returns to the wrong port | Clerk redirect URL does not match local Vite port. | Configure Clerk and `VITE_AUTH_REDIRECT_URL` for `http://localhost:3000/explore`. |
+| OAuth redirect returns to the wrong port | Clerk redirect URL does not match local Vite port. | Configure the Clerk development application redirect/origin settings for `http://localhost:3000`. |
 
 ## 6. Backend Local Setup
 
@@ -416,8 +415,7 @@ Requires verification:
 | Name | Required for local development? | Purpose | Example placeholder value | Source |
 |---|---|---|---|---|
 | `VITE_CLERK_PUBLISHABLE_KEY` | Yes | Initializes Clerk React SDK. Frontend throws if missing. | `<CLERK_PUBLISHABLE_KEY>` | `src/main.tsx`, `src/vite-env.d.ts` |
-| `VITE_API_BASE_URL` | Recommended | Backend API base URL. Falls back to `http://localhost:8080` if missing. | `http://localhost:8080` | `src/lib/api.ts` |
-| `VITE_AUTH_REDIRECT_URL` | Recommended for Clerk local redirects | Overrides auth redirect target. | `http://localhost:3000/explore` | `src/lib/authRedirect.ts` |
+| `VITE_API_BASE_URL` | Recommended | Backend API base URL. Falls back to `http://localhost:8080` if missing. | `http://localhost:8080` | `src/shared/api.ts` |
 | `VITE_IMAGE_UPLOAD_MAX_BYTES` | Optional | Frontend image size label/limit. Defaults to 10 MB if absent or invalid. | `10485760` | `src/shared/constants/uploadLimits.ts` |
 
 Note: non-`VITE_` variables in frontend `.env` files are not exposed to Vite client code.
@@ -684,7 +682,7 @@ Use this checklist after setup:
 
 - Frontend scripts from `skill-swap-frontend/package.json`: `dev`, `build`, `preview`, `build:now`, `deploy`.
 - Frontend port and output directory from `skill-swap-frontend/vite.config.ts`: dev server port `3000`, build output `build`.
-- Frontend environment usage from `src/main.tsx`, `src/lib/api.ts`, `src/lib/authRedirect.ts`, `src/shared/constants/uploadLimits.ts`, and `src/vite-env.d.ts`.
+- Frontend environment usage from `src/main.tsx`, `src/shared/api.ts`, `src/shared/constants/uploadLimits.ts`, and `src/vite-env.d.ts`.
 - Backend Java version, dependencies, Gradle wrapper, `bootRun`, `test`, `bootJar`, `.env` loading, and Flyway plugin config from `skill-swap-backend/build.gradle` and Gradle wrapper properties.
 - Backend application profiles from `application.properties` and `application-dev.properties`.
 - Database schema evidence from `src/main/resources/db/migration`, `src/main/resources/db/schema.sql`, and `doc/sql`.

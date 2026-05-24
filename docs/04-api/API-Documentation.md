@@ -1,6 +1,6 @@
 # SkillSwap REST API Documentation
 
-Last reviewed: 2026-05-23
+Last reviewed: 2026-05-24
 
 ## 1. Document Purpose
 
@@ -21,7 +21,7 @@ Strict scope note: this document includes only endpoints that exist in the curre
 | Main API domains | Users/profiles, workshops, admin workshop review, notifications, public memories, admin memory studio, media uploads, health check |
 | Persistence | PostgreSQL through JPA/Hibernate |
 | Authentication | JWT bearer authentication through Spring Security OAuth2 Resource Server |
-| Frontend API client | `skill-swap-frontend/src/lib/api.ts` and `skill-swap-frontend/src/shared/service/**` |
+| Frontend API client | `skill-swap-frontend/src/shared/api.ts` and `skill-swap-frontend/src/shared/service/**` |
 
 ### JSON Conventions
 
@@ -242,7 +242,7 @@ Error cases:
 - Request body: none.
 - Successful response: `200 UserProfileDto`.
 - Source: `UserController`, `UserService`; authentication behaviour verified from `WebSecurityConfiguration`.
-- Requires verification: controller comments describe this endpoint as public, and frontend `userAPI.getById` calls it without a token, but active security does not permit `/api/v1/users/{id}` publicly.
+- Requires verification: controller comments describe this endpoint as public, but active security does not permit `/api/v1/users/{id}` publicly.
 
 Example request:
 
@@ -1887,7 +1887,7 @@ Requires verification:
 The frontend uses:
 
 - `VITE_API_BASE_URL` as the API base URL.
-- `apiCall<T>()` in `skill-swap-frontend/src/lib/api.ts` for most requests.
+- `apiCall<T>()` in `skill-swap-frontend/src/shared/api.ts` for most requests.
 - `Authorization: Bearer <JWT_TOKEN>` when a Clerk token is available.
 - JSON `Content-Type` for non-`FormData` requests.
 - `FormData` without forcing JSON headers for uploads.

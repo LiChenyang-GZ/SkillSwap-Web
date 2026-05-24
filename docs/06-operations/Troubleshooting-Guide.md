@@ -330,7 +330,7 @@ Confidence labels:
   - Production build was not redeployed after changing Vercel env.
 - Diagnostic steps:
   - Confirm the env file is under `skill-swap-frontend`.
-  - Confirm variables are named `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_API_BASE_URL`, `VITE_AUTH_REDIRECT_URL`, or `VITE_IMAGE_UPLOAD_MAX_BYTES` as applicable.
+  - Confirm variables are named `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_API_BASE_URL`, or `VITE_IMAGE_UPLOAD_MAX_BYTES` as applicable.
   - Check the Network tab to see the API base URL being used.
 - Resolution steps:
   - Rename variables to use the `VITE_` prefix.
@@ -351,11 +351,10 @@ Confidence labels:
 - Diagnostic steps:
   - Check browser console for Clerk errors.
   - Check the Network tab for `Authorization` headers on protected API calls.
-  - Confirm `VITE_AUTH_REDIRECT_URL` points to the expected frontend URL if configured.
-  - Confirm Clerk project settings match the current local or production frontend URL.
+  - Confirm Clerk project redirect/origin settings match the current local or production frontend URL.
 - Resolution steps:
   - Configure `VITE_CLERK_PUBLISHABLE_KEY`.
-  - Align Clerk redirect URLs with `<FRONTEND_URL>`.
+  - Align Clerk redirect/origin URLs with `<FRONTEND_URL>`.
   - Verify the `signupTemplate` token template or update the frontend/backend token flow consistently.
   - Sign out and sign in again to refresh the session.
 - Prevention notes:

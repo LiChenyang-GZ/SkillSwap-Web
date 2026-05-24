@@ -123,7 +123,6 @@ These values are configured in the Vercel project dashboard and are injected at 
 |---|---|---|---|---|
 | `VITE_API_BASE_URL` | Backend API base URL used by frontend service modules | Yes for production | Vercel environment variables | `<API_BASE_URL>` |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk frontend publishable key | Yes | Vercel environment variables | `<CLERK_PUBLISHABLE_KEY>` |
-| `VITE_AUTH_REDIRECT_URL` | Optional auth redirect override | Optional | Vercel environment variables | `<AUTH_REDIRECT_URL>` |
 | `VITE_IMAGE_UPLOAD_MAX_BYTES` | Optional frontend upload size limit | Optional | Vercel environment variables | `<IMAGE_UPLOAD_MAX_BYTES>` |
 
 ## 7. Automated Backend Deployment
