@@ -1,4 +1,4 @@
-import { API_BASE_URL, resolveAssetUrl } from "../../../lib/api";
+import { API_BASE_URL, resolveAssetUrl } from "../../../shared/api";
 import type { User } from "../../../types/user";
 
 interface ClerkEmailLike {

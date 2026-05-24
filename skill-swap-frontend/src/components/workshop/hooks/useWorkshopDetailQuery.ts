@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Workshop } from '../../../types/workshop';
-import { toBackendWorkshopId } from '../../../lib/api';
+import { toBackendWorkshopId } from '../../../shared/api';
 import { workshopQueryService } from '../../../shared/service/workshop/workshopQueryService';
 
 const getErrorStatus = (error: unknown): number | null => {

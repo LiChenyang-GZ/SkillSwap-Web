@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toBackendWorkshopId } from '../../../lib/api';
+import { toBackendWorkshopId } from '../../../shared/api';
 import { workshopQueryService } from '../../../shared/service/workshop/workshopQueryService';
 
 interface UseWorkshopAttendanceMembershipParams {

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import type { WorkshopUpsertPayload } from '../../../lib/api';
+import type { WorkshopUpsertPayload } from '../../../shared/api';
 import type { User } from '../../../types/user';
 import { createWorkshopService } from '../../service/workshop/createWorkshopService';
 

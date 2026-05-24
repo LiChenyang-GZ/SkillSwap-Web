@@ -1,4 +1,4 @@
-import { apiCall } from "../../../lib/api";
+import { apiCall } from "../../../shared/api";
 import type { MemoryEntry } from "../../../types/memory";
 import { mapMemoryEntry } from "./memoryMapper";
 

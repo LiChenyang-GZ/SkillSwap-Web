@@ -1,5 +1,4 @@
 import { Calendar, Clock, Globe, MapPin, BookOpen } from "lucide-react";
-import type { KeyboardEvent } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
@@ -37,13 +36,6 @@ export function DashboardUpcomingTab({
   onExploreWorkshops,
   isHostedByCurrentUser,
 }: DashboardUpcomingTabProps) {
-  const handleWorkshopCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, workshopId: string) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onOpenWorkshop(workshopId);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -55,13 +47,13 @@ export function DashboardUpcomingTab({
             {pagedUpcomingWorkshops.map((workshop) => (
               <div
                 key={workshop.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onOpenWorkshop(workshop.id)}
-                onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
-                className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/60"
               >
-                <div className="flex-1">
+                <button
+                  type="button"
+                  onClick={() => onOpenWorkshop(workshop.id)}
+                  className="flex-1 text-left bg-transparent"
+                >
                   <h3 className="font-semibold mb-1">{workshop.title}</h3>
                   <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
                     <div className="flex items-center space-x-1">
@@ -99,18 +91,17 @@ export function DashboardUpcomingTab({
                     <span className="text-sm text-muted-foreground">{workshop.facilitator?.name}</span>
                     <Badge variant="secondary">{workshop.category}</Badge>
                   </div>
-                </div>
+                </button>
                 <div className="flex items-center space-x-2">
                   <Badge variant={getUserWorkshopStatusBadgeVariant(workshop)} className={statusBadgeClassName}>
                     {getUserWorkshopStatusLabel(workshop) ?? "Upcoming"}
                   </Badge>
                   {resolveUserWorkshopStatus(workshop) === "upcoming" && !isHostedByCurrentUser(workshop) && (
                     <Button
+                      type="button"
                       variant="outline"
                       size="sm"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
+                      onClick={() => {
                         void onCancelWorkshopAttendance(workshop.id);
                       }}
                     >

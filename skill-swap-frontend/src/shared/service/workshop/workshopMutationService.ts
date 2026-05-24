@@ -1,4 +1,4 @@
-import { apiCall, toBackendWorkshopId } from '../../../lib/api';
+import { apiCall, toBackendWorkshopId } from '../../../shared/api';
 
 export const workshopMutationService = {
   requestApproval: async (workshopId: string, token?: string | null): Promise<void> => {

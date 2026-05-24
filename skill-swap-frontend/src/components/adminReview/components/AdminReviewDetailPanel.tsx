@@ -166,6 +166,7 @@ export function AdminReviewDetailPanel({
                           type="file"
                           accept={IMAGE_UPLOAD_ACCEPT}
                           className="hidden"
+                          aria-label="Upload workshop cover image"
                           onChange={(event) => {
                             const nextFile = event.target.files?.[0] || null;
                             onImageFileSelection(nextFile);

@@ -1,4 +1,4 @@
-import { resolveAssetUrl } from "../../../lib/api";
+import { resolveAssetUrl } from "../../../shared/api";
 import type { MemoryEntry } from "../../../types/memory";
 
 export interface MemoryApiPayload {

@@ -1,4 +1,4 @@
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import { defaultSchema } from "rehype-sanitize";
 
 export const MEMORY_FALLBACK_COVER =
   "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80";
@@ -20,5 +20,3 @@ export const memoryMarkdownSanitizeSchema = {
   ...defaultSchema,
   tagNames: [...(defaultSchema.tagNames || []), "u"],
 };
-
-export const MEMORY_MARKDOWN_REHYPE_PLUGINS = [rehypeSanitize, memoryMarkdownSanitizeSchema] as const;

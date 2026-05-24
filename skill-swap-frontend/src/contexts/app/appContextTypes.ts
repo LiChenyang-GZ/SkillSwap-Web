@@ -1,4 +1,4 @@
-import type { WorkshopUpsertPayload } from "../../lib/api";
+import type { WorkshopUpsertPayload } from "../../shared/api";
 import type { CreditTransaction } from "../../types/creditTransaction";
 import type { User } from "../../types/user";
 import type { Workshop } from "../../types/workshop";

@@ -1,5 +1,4 @@
 import { Calendar, Clock, Target, Trash2, Users } from "lucide-react";
-import type { KeyboardEvent } from "react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
@@ -33,13 +32,6 @@ export function DashboardHostingTab({
   onHideHostedWorkshopFromView,
   onHostWorkshop,
 }: DashboardHostingTabProps) {
-  const handleWorkshopCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, workshopId: string) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onOpenWorkshop(workshopId);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -54,13 +46,13 @@ export function DashboardHostingTab({
               return (
                 <div
                   key={workshop.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onOpenWorkshop(workshop.id)}
-                  onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/60"
                 >
-                  <div className="flex-1">
+                  <button
+                    type="button"
+                    onClick={() => onOpenWorkshop(workshop.id)}
+                    className="flex-1 text-left bg-transparent"
+                  >
                     <h3 className="font-semibold mb-1">{workshop.title}</h3>
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
                       <div className="flex items-center space-x-1">
@@ -82,7 +74,7 @@ export function DashboardHostingTab({
                       <Badge variant="secondary">{workshop.category}</Badge>
                       <Badge variant="outline">{getWorkshopAccessLabel(workshop)}</Badge>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2 ml-4 shrink-0">
                     {statusMeta.removable && (
                       <Button
@@ -92,9 +84,7 @@ export function DashboardHostingTab({
                         aria-label="Remove from hosting list"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
                         disabled={hidingWorkshopIds.includes(workshop.id)}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
+                        onClick={() => {
                           void onHideHostedWorkshopFromView(workshop.id);
                         }}
                       >

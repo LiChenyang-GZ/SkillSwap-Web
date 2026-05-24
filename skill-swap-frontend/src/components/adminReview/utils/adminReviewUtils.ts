@@ -49,7 +49,7 @@ export const resolveAdminDisplayStatus = (workshop: Workshop): Workshop['status'
   return 'approved';
 };
 
-export const parseWorkshopStart = (workshop: Pick<Workshop, 'date' | 'time'>): Date => {
+const parseWorkshopStart = (workshop: Pick<Workshop, 'date' | 'time'>): Date => {
   const dateValue = String(workshop.date || '').trim();
   const timeValue = String(workshop.time || '').trim();
   const datePart = dateValue.includes('T') ? dateValue.split('T')[0] : dateValue;

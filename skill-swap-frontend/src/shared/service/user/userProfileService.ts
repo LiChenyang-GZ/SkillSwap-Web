@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../../../lib/api";
+import { API_BASE_URL } from "../../../shared/api";
 import { IMAGE_UPLOAD_TOO_LARGE_MESSAGE } from "../../constants/uploadLimits";
 
 export interface UserProfileUpdatesPayload {

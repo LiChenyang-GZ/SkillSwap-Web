@@ -1,4 +1,4 @@
-import type { WorkshopUpsertPayload } from '../../../lib/api';
+import type { WorkshopUpsertPayload } from '../../../shared/api';
 import type { CreateWorkshopFormValues } from '../models/createWorkshopFormModel';
 import { normalizeAustralianContactNumber } from './createWorkshopValidation';
 
