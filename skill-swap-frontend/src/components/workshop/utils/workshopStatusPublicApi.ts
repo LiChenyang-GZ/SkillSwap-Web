@@ -10,7 +10,6 @@ export {
   getWorkshopAccessLabel,
   isUserWorkshopUpcoming,
   isUserWorkshopUpcomingOrOngoing,
-  isWorkshopOpenForRegistration,
 } from './workshopStatusLabels';
 
 export type { AdminWorkshopStatus, UserWorkshopStatus, WorkshopBadgeVariant } from '../models/workshopStatusModel';

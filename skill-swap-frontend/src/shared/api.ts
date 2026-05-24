@@ -1,7 +1,6 @@
-// lib/api.ts
+// shared/api.ts
 
 import type { Workshop } from '@/types/workshop';
-import type { User } from '@/types/user';
 
 export interface WorkshopUpsertPayload {
   hostName: string;
@@ -200,37 +199,3 @@ export async function apiCall<T>(
   }
 }
 
-// ----------------------
-// USER API
-// ----------------------
-export const userAPI = {
-  getProfile: async (token?: string | null): Promise<User> => {
-    return apiCall<User>('/api/v1/users/me', {}, token);
-  },
-
-  // 根据 ID 获取用户
-  getById: async (id: string): Promise<User | null> => {
-    const data = await apiCall<User>(`/api/v1/users/${id}`);
-    return data;
-  },
-
-  updateProfile: async (updates: Partial<User>, token?: string | null): Promise<User> => {
-    return apiCall<User>('/api/v1/users/me', {
-      method: 'PATCH',
-      body: JSON.stringify(updates),
-    }, token);
-  },
-};
-
-// ----------------------
-// TRANSACTION API
-// ----------------------
-export const transactionAPI = {
-  getAll: async () => {
-    throw new Error('transactionAPI.getAll requires a backend endpoint and is not implemented.');
-  },
-
-  add: async (_tx: any) => {
-    throw new Error('transactionAPI.add requires a backend endpoint and is not implemented.');
-  },
-};

@@ -1,4 +1,4 @@
-import { apiCall } from '../../../lib/api';
+import { apiCall } from '../../../shared/api';
 import type { NotificationItem } from '../../../types/notification';
 import { mapNotificationItem } from './notificationMapper';
 

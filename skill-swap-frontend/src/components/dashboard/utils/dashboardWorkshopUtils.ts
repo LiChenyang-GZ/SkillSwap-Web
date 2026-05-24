@@ -9,7 +9,7 @@ import {
   resolveUserWorkshopStatus,
 } from "../../workshop/utils/workshopStatusPublicApi";
 
-export const parseWorkshopStartTime = (workshop: Workshop) => {
+const parseWorkshopStartTime = (workshop: Workshop) => {
   const rawDate = String(workshop.date || "").trim();
   const rawTime = String(workshop.time || "").trim();
 
@@ -28,7 +28,7 @@ export const parseWorkshopStartTime = (workshop: Workshop) => {
   return parsed;
 };
 
-export const resolveHostingDisplayStatus = (workshop: Workshop): HostingDisplayStatus => {
+const resolveHostingDisplayStatus = (workshop: Workshop): HostingDisplayStatus => {
   const adminStatus = normalizeAdminWorkshopStatus(workshop.status);
 
   if (
@@ -85,22 +85,22 @@ export const getHostingStatusMeta = (workshop: Workshop): HostingStatusMeta => {
   return { label: "Completed", variant: "outline", removable: false };
 };
 
-export const dedupeWorkshopsById = (list: Workshop[]) => {
+const dedupeWorkshopsById = (list: Workshop[]) => {
   const byId = new Map<string, Workshop>();
   list.forEach((workshop) => byId.set(workshop.id, workshop));
   return Array.from(byId.values());
 };
 
-export const getWorkshopStartMillis = (workshop: Workshop) => {
+const getWorkshopStartMillis = (workshop: Workshop) => {
   const start = parseWorkshopStartTime(workshop);
   return start ? start.getTime() : Number.MAX_SAFE_INTEGER;
 };
 
-export const sortByStartAsc = (list: Workshop[]) => {
+const sortByStartAsc = (list: Workshop[]) => {
   return copySorted(list, (a, b) => getWorkshopStartMillis(a) - getWorkshopStartMillis(b));
 };
 
-export const sortByStartDesc = (list: Workshop[]) => {
+const sortByStartDesc = (list: Workshop[]) => {
   return copySorted(list, (a, b) => getWorkshopStartMillis(b) - getWorkshopStartMillis(a));
 };
 

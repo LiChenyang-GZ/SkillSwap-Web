@@ -176,43 +176,43 @@ export function MemoryStudioEditorPanel({
         )}
 
         <div className="rounded-md border border-border p-2 flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" onClick={onInsertHeading1} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertHeading1} disabled={editorActionsDisabled} aria-label="Insert heading 1">
             <Heading1 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertHeading2} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertHeading2} disabled={editorActionsDisabled} aria-label="Insert heading 2">
             <Heading2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertBold} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertBold} disabled={editorActionsDisabled} aria-label="Insert bold text">
             <Bold className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertItalic} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertItalic} disabled={editorActionsDisabled} aria-label="Insert italic text">
             <Italic className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertUnderline} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertUnderline} disabled={editorActionsDisabled} aria-label="Insert underlined text">
             <Underline className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertStrike} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertStrike} disabled={editorActionsDisabled} aria-label="Insert strikethrough text">
             <Strikethrough className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertQuote} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertQuote} disabled={editorActionsDisabled} aria-label="Insert quote">
             <Quote className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertBulletList} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertBulletList} disabled={editorActionsDisabled} aria-label="Insert bullet list">
             <List className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertNumberList} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertNumberList} disabled={editorActionsDisabled} aria-label="Insert numbered list">
             <ListOrdered className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertLink} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertLink} disabled={editorActionsDisabled} aria-label="Insert link">
             <Link2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertImageLink} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertImageLink} disabled={editorActionsDisabled} aria-label="Insert image link">
             <Image className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertYouTube} title="Insert YouTube Video" disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertYouTube} title="Insert YouTube Video" disabled={editorActionsDisabled} aria-label="Insert YouTube video">
             <Video className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertInstagram} title="Insert Instagram Post" disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertInstagram} title="Insert Instagram Post" disabled={editorActionsDisabled} aria-label="Insert Instagram post">
             <Instagram className="w-4 h-4" />
           </Button>
           <Button
@@ -221,13 +221,14 @@ export function MemoryStudioEditorPanel({
             onClick={() => fileInputRef.current?.click()}
             disabled={editorActionsDisabled}
             title="Upload image"
+            aria-label="Upload image"
           >
             <Upload className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onInsertDivider} disabled={editorActionsDisabled}>
+          <Button variant="ghost" size="sm" onClick={onInsertDivider} disabled={editorActionsDisabled} aria-label="Insert divider">
             <Minus className="w-4 h-4" />
           </Button>
-          <input ref={fileInputRef} type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" onChange={(e) => void onPickImage(e)} />
+          <input ref={fileInputRef} type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" aria-label="Upload memory image" onChange={(e) => void onPickImage(e)} />
         </div>
 
         <div className={`grid gap-4 ${mode === "split" ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"}`}>

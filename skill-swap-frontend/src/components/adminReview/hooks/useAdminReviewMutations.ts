@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { toast } from 'sonner';
-import type { WorkshopUpsertPayload } from '../../../lib/api';
+import type { WorkshopUpsertPayload } from '../../../shared/api';
 import type { Workshop } from '../../../types/workshop';
 import { adminWorkshopService } from '../../../shared/service/workshop/adminWorkshopService';
 import { WorkshopFormState } from '../models/adminReviewFormModel';

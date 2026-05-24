@@ -1,5 +1,5 @@
 import type { Workshop } from '../../../types/workshop';
-import { apiCall, enrichWorkshop, toBackendWorkshopId } from '../../../lib/api';
+import { apiCall, enrichWorkshop, toBackendWorkshopId } from '../../../shared/api';
 
 const isAbortError = (error: unknown): boolean => {
   return (error as { name?: string })?.name === 'AbortError';

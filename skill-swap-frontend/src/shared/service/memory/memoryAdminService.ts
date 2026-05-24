@@ -1,4 +1,4 @@
-import { apiCall, resolveAssetUrl } from "../../../lib/api";
+import { apiCall, resolveAssetUrl } from "../../../shared/api";
 import type { MemoryEntry } from "../../../types/memory";
 import { mapMemoryEntry } from "./memoryMapper";
 

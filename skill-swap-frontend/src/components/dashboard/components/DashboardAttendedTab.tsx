@@ -1,5 +1,4 @@
 import { BookOpen, Calendar, Clock } from "lucide-react";
-import type { KeyboardEvent } from "react";
 import { Badge } from "../../ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import type { Workshop } from "../../../types/workshop";
@@ -24,13 +23,6 @@ export function DashboardAttendedTab({
   onSetAttendedPage,
   onOpenWorkshop,
 }: DashboardAttendedTabProps) {
-  const handleWorkshopCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, workshopId: string) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onOpenWorkshop(workshopId);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -40,13 +32,11 @@ export function DashboardAttendedTab({
         {attendedWorkshops.length > 0 ? (
           <div className="space-y-4">
             {pagedAttendedWorkshops.map((workshop) => (
-              <div
+              <button
                 key={workshop.id}
-                role="button"
-                tabIndex={0}
+                type="button"
                 onClick={() => onOpenWorkshop(workshop.id)}
-                onKeyDown={(event) => handleWorkshopCardKeyDown(event, workshop.id)}
-                className="flex items-center justify-between p-4 border border-border rounded-lg cursor-pointer hover:bg-muted/60"
+                className="w-full flex items-center justify-between p-4 border border-border rounded-lg text-left cursor-pointer hover:bg-muted/60 bg-transparent"
               >
                 <div className="flex-1">
                   <h3 className="font-semibold mb-1">{workshop.title}</h3>
@@ -67,7 +57,7 @@ export function DashboardAttendedTab({
                 <Badge variant="outline" className={statusBadgeClassName}>
                   Completed
                 </Badge>
-              </div>
+              </button>
             ))}
             <DashboardPagination currentPage={attendedPage} pageCount={attendedTotalPages} onPageChange={onSetAttendedPage} />
           </div>

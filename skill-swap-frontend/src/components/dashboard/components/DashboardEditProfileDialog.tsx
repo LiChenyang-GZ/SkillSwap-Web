@@ -75,6 +75,7 @@ export function DashboardEditProfileDialog({
                   type="file"
                   accept={IMAGE_UPLOAD_ACCEPT}
                   className="hidden"
+                  aria-label="Choose profile avatar image"
                   onChange={onAvatarFileChange}
                 />
                 <Button type="button" variant="outline" disabled={isSavingProfile} onClick={() => avatarFileInputRef.current?.click()}>

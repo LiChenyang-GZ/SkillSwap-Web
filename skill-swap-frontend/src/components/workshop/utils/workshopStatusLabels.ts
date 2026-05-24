@@ -41,7 +41,7 @@ function parseAttendCloseAt(workshop: Workshop): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-export function isWorkshopOpenForRegistration(workshop: Workshop, now: Date = new Date()): boolean {
+function isWorkshopOpenForRegistration(workshop: Workshop, now: Date = new Date()): boolean {
   const status = resolveUserWorkshopStatus(workshop, now);
   if (status !== 'upcoming') {
     return false;

@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-import { resolveAssetUrl } from "../../../lib/api";
+import { resolveAssetUrl } from "../../../shared/api";
 import { memoryMarkdownSanitizeSchema } from "../constants/memoryUiConstants";
 
 interface MemoryMarkdownRendererProps {

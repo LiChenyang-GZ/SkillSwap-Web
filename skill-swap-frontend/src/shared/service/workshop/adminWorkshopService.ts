@@ -1,5 +1,5 @@
-import { apiCall, enrichWorkshop, toBackendWorkshopId } from '../../../lib/api';
-import type { WorkshopUpsertPayload } from '../../../lib/api';
+import { apiCall, enrichWorkshop, toBackendWorkshopId } from '../../../shared/api';
+import type { WorkshopUpsertPayload } from '../../../shared/api';
 import type { Workshop } from '../../../types/workshop';
 
 export const adminWorkshopService = {

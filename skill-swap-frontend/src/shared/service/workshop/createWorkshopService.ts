@@ -1,5 +1,5 @@
-import { apiCall } from '../../../lib/api';
-import type { WorkshopUpsertPayload } from '../../../lib/api';
+import { apiCall } from '../../../shared/api';
+import type { WorkshopUpsertPayload } from '../../../shared/api';
 
 export const createWorkshopService = {
   create: async (payload: WorkshopUpsertPayload, token: string): Promise<void> => {

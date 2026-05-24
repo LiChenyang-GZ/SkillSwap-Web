@@ -8,19 +8,12 @@ interface NotificationsListItemProps {
 
 export function NotificationsListItem({ notification, onOpenNotification }: NotificationsListItemProps) {
   return (
-    <div
+    <button
       key={notification.id}
-      role="button"
-      tabIndex={0}
+      type="button"
       onClick={() => onOpenNotification(notification)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          void onOpenNotification(notification);
-        }
-      }}
       className={
-        "relative p-5 flex flex-col gap-2 transition-colors cursor-pointer hover:bg-muted/60 " +
+        "relative w-full p-5 flex flex-col gap-2 text-left transition-colors cursor-pointer hover:bg-muted/60 " +
         (notification.read ? "bg-card" : "bg-primary/5")
       }
     >
@@ -32,6 +25,6 @@ export function NotificationsListItem({ notification, onOpenNotification }: Noti
         </div>
       </div>
       {notification.timestamp && <p className="text-xs text-muted-foreground">{formatNotificationTimestamp(notification.timestamp)}</p>}
-    </div>
+    </button>
   );
 }

@@ -1,7 +1,7 @@
 import type { MemoryEntry } from "../../../types/memory";
 import type { ParsedMemoryDocument } from "../models/memoryFormModel";
 
-export function parseFrontMatter(documentText: string): { meta: Record<string, string>; body: string } {
+function parseFrontMatter(documentText: string): { meta: Record<string, string>; body: string } {
   const normalized = documentText.replace(/\r\n/g, "\n");
   const match = normalized.match(/^\uFEFF?(?:\s*\n)*---\n([\s\S]*?)\n---\n?/);
   if (!match) {
@@ -25,7 +25,7 @@ export function parseFrontMatter(documentText: string): { meta: Record<string, s
   };
 }
 
-export function normalizeMemoryCoverValue(value?: string): string {
+function normalizeMemoryCoverValue(value?: string): string {
   if (!value) return "";
   const unquoted = value.trim().replace(/^['"]|['"]$/g, "");
   if (!unquoted) return "";
@@ -38,7 +38,7 @@ export function normalizeMemoryCoverValue(value?: string): string {
   return unquoted;
 }
 
-export function extractMemoryMediaUrls(markdown: string): string[] {
+function extractMemoryMediaUrls(markdown: string): string[] {
   const urls = new Set<string>();
 
   const imageRegex = /!\[[^\]]*\]\(([^)]+)\)/g;
