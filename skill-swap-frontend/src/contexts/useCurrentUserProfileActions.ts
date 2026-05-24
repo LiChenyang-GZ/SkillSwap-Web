@@ -1,11 +1,11 @@
 import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import type { User } from "../../types/user";
+import type { User } from "../types/user";
 import {
   type BackendUserProfile,
   decodeJwtPayload,
   mapBackendUser,
-} from "../../shared/service/auth/appAuthService";
-import { userProfileService } from "../../shared/service/user/userProfileService";
+} from "../shared/service/auth/appAuthService";
+import { userProfileService } from "../shared/service/user/userProfileService";
 import type {
   CurrentUserProfileUpdates,
   GetAuthToken,

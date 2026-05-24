@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Switch } from '../../../components/ui/switch';
-import { workshopCategories } from '../../../constants/workshop';
+import { workshopCategories } from '../../workshop/constants/workshopCategories';
 import type { CreateWorkshopFormField, CreateWorkshopFormValues } from '../models/createWorkshopFormModel';
 
 interface CreateWorkshopBasicFieldsProps {

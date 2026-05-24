@@ -3,8 +3,8 @@ import {
   ADMIN_MEMORY_PATH,
   MEMORY_PAGE_ID,
   MEMORY_PATH,
-} from "../../components/memory/constants/memoryRouteConstants";
-import { pageFromMemoryPath, pathFromMemoryPage } from "../../components/memory/utils/memoryRoute";
+} from "../components/memory/constants/memoryRouteConstants";
+import { pageFromMemoryPath, pathFromMemoryPage } from "../components/memory/utils/memoryRoute";
 import type { RefreshDataMode } from "./appContextTypes";
 
 const PAGE_TO_PATH: Record<string, string> = {

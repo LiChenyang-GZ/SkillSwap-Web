@@ -1,6 +1,6 @@
 import type { MemoryEntry } from "../../../types/memory";
 import { Archive, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { ImageWithFallback } from "../../figma/ImageWithFallback";
+import { ImageWithFallback } from "../../ui/ImageWithFallback";
 import { Button } from "../../ui/button";
 import { Card } from "../../ui/card";
 import { pickMemoryCover } from "../../memory/utils/memoryCover";

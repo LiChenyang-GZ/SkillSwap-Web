@@ -75,7 +75,7 @@ The frontend is a React 18, TypeScript, and Vite application located under `skil
 |---|---|---|
 | Entry point | `main.tsx` renders the React app inside `ClerkProvider` | Code |
 | Main shell | `App.tsx` lazy-loads major screens and renders the selected page | Code |
-| Application context | `contexts/AppContext.tsx` exposes the global `AppProvider`/`useApp` API and composes focused internal hooks under `contexts/app` for routing helpers, theme state, workshop cache/actions, notification unread count, and user profile actions | Code |
+| Application context | `contexts/AppContext.tsx` exposes the global `AppProvider`/`useApp` API and composes focused internal hooks in `contexts/` for routing helpers, theme state, workshop cache/actions, notification unread count, and user profile actions | Code |
 | Feature structure | Feature folders under `components`, with screens, hooks, components, constants, models, and utilities | Code |
 | Shared API services | `shared/api.ts` and `shared/service` contain the base API helper, response mapping helpers, and domain-specific backend API wrappers | Code |
 
@@ -139,7 +139,7 @@ The frontend derives `isAdmin` from the backend profile role rather than from a 
 
 State management is implemented with React Context, focused custom hooks, local component state, `localStorage`, and `sessionStorage`.
 
-The application-wide context keeps one public access point, `useApp()`, while its implementation is split into smaller modules under `src/contexts/app`. Authenticated async state such as notification unread counts and workshop refreshes guards against stale responses after sign-out or cache resets.
+The application-wide context keeps one public access point, `useApp()`, while its implementation is split into smaller modules under `src/contexts`. Authenticated async state such as notification unread counts and workshop refreshes guards against stale responses after sign-out or cache resets.
 
 No Redux, Zustand, server-state cache library, or GraphQL client was found in the inspected code. This is inferred from implementation.
 

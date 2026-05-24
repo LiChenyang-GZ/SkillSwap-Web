@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { workshopCategories } from '../../../constants/workshop';
+import { workshopCategories } from '../constants/workshopCategories';
 import { Input } from '../../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { WORKSHOP_ALL_CATEGORIES_OPTION } from '../constants/workshopExploreOptions';

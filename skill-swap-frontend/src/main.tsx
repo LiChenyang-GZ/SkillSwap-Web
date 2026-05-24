@@ -5,7 +5,6 @@ import App from "./App.tsx";
 import { ClerkProvider } from "@clerk/clerk-react";
 
 // importing custom css
-import "./index.css";
 import "./styles/globals.css";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
