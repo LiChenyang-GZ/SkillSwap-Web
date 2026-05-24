@@ -59,6 +59,8 @@ export function useWorkshopDetailQuery({
   }, [normalizedWorkshopId, workshops]);
 
   useEffect(() => {
+    let effectController: AbortController | null = null;
+
     const loadWorkshop = async (force = false) => {
       const hasLocalSnapshot = hasLocalSnapshotRef.current;
       const hasActiveSameKeyRequest =
@@ -79,6 +81,7 @@ export function useWorkshopDetailQuery({
       controllerRef.current?.abort();
       const controller = new AbortController();
       controllerRef.current = controller;
+      effectController = controller;
 
       try {
         const token = isAuthenticated ? await getAuthToken() : null;
@@ -112,7 +115,7 @@ export function useWorkshopDetailQuery({
     void loadWorkshop(refreshNonce > 0);
 
     return () => {
-      controllerRef.current?.abort();
+      effectController?.abort();
     };
   }, [detailFetchKey, normalizedWorkshopId, refreshNonce, isAuthenticated, getAuthToken, workshopId]);
 

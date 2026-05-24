@@ -103,9 +103,10 @@ export function MemoryWallCarousel({ originalEntries, displayEntries, onOpenEntr
           <ChevronLeft className="w-5 h-5" />
         </Button>
         <div className="flex gap-2 isolate">
-          {originalEntries.map((_, index) => (
+          {originalEntries.map((entry, index) => (
             <button
-              key={index}
+              key={entry.id}
+              type="button"
               onClick={() => emblaApi?.scrollTo(index)}
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 index === activeDotIndex ? "bg-primary w-6" : "bg-muted-foreground/30 w-1.5 hover:bg-muted-foreground/50"

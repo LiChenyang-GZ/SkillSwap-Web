@@ -67,7 +67,7 @@ export function MemoryStudioEntriesPanel({
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <button className="text-left flex-1 min-w-0" onClick={() => onSelectEntry(entry.id)}>
+                <button type="button" className="text-left flex-1 min-w-0" onClick={() => onSelectEntry(entry.id)}>
                   <div className="font-medium line-clamp-1">{entry.title}</div>
                   {isEntryDraftLockedByOther(entry) && (
                     <div className="text-xs text-amber-600 mt-1 line-clamp-1">

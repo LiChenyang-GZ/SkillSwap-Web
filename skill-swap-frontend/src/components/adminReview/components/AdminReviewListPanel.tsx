@@ -57,6 +57,7 @@ export function AdminReviewListPanel({
             return (
               <button
                 key={workshop.id}
+                type="button"
                 onClick={() => onSelect(workshop.id)}
                 data-workshop-id={workshop.id}
                 className={`w-full text-left border rounded-lg p-3 transition ${

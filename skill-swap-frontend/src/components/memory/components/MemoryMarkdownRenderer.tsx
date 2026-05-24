@@ -83,6 +83,7 @@ export function MemoryMarkdownRenderer({
                   src={`https://www.youtube.com/embed/${videoId}`}
                   title="YouTube video player"
                   frameBorder="0"
+                  sandbox="allow-scripts allow-same-origin"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 ></iframe>
@@ -100,6 +101,7 @@ export function MemoryMarkdownRenderer({
                   height="480"
                   title="Instagram embed"
                   frameBorder="0"
+                  sandbox="allow-scripts allow-same-origin"
                   scrolling="no"
                 ></iframe>
               </MarkdownEmbed>
