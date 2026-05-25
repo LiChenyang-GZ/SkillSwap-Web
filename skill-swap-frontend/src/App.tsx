@@ -3,22 +3,18 @@ import { AppProvider, useApp } from './contexts/AppContext';
 import { NavigationScreen } from './components/navigation/screen/NavigationScreen';
 import { Toaster } from './components/ui/sonner';
 import { MEMORY_ENTRY_PAGE_PREFIX } from './components/memory/constants/memoryRouteConstants';
+import { AuthScreen } from './components/auth/screen/AuthScreen';
+import { HeroScreen } from './components/hero/screen/HeroScreen';
+import { MemoryScreen as Memory } from './components/memory/screen/MemoryScreen';
+import { ExploreWorkshopsScreen as ExploreWorkshops } from './components/workshop/screen/ExploreWorkshopsScreen';
 
-const HeroScreen = React.lazy(() => import('./components/hero/screen/HeroScreen').then((m) => ({ default: m.HeroScreen })));
 const HomePage = React.lazy(() => import('./components/archive/HomePage').then((m) => ({ default: m.HomePage })));
-const ExploreWorkshops = React.lazy(() =>
-  import('./components/workshop/screen/ExploreWorkshopsScreen').then((m) => ({ default: m.ExploreWorkshopsScreen }))
-);
-const Memory = React.lazy(() =>
-  import('./components/memory/screen/MemoryScreen').then((m) => ({ default: m.MemoryScreen }))
-);
 const Dashboard = React.lazy(() =>
   import('./components/dashboard/screen/DashboardScreen').then((m) => ({ default: m.DashboardScreen }))
 );
 const CreateWorkshop = React.lazy(() =>
   import('./components/create-workshop/screen/CreateWorkshopScreen').then((m) => ({ default: m.CreateWorkshopScreen }))
 );
-const AuthScreen = React.lazy(() => import('./components/auth/screen/AuthScreen').then((m) => ({ default: m.AuthScreen })));
 const WorkshopDetails = React.lazy(() =>
   import('./components/workshop/screen/WorkshopDetailsScreen').then((m) => ({ default: m.WorkshopDetailsScreen }))
 );
@@ -146,7 +142,7 @@ function AppContent() {
   const showNavigation = (currentPage !== 'hero' && currentPage !== 'auth') || isAuthenticated;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       {showNavigation && <NavigationScreen />}
       <main>
         <React.Suspense
