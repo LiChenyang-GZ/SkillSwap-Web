@@ -74,7 +74,7 @@ The frontend is a React 18, TypeScript, and Vite application located under `skil
 | Area | Implementation | Source |
 |---|---|---|
 | Entry point | `main.tsx` renders the React app inside `ClerkProvider` | Code |
-| Main shell | `App.tsx` lazy-loads major screens and renders the selected page | Code |
+| Main shell | `App.tsx` directly imports common public/auth screens and lazy-loads lower-frequency or heavier screens before rendering the selected page | Code |
 | Application context | `contexts/AppContext.tsx` exposes the global `AppProvider`/`useApp` API and composes focused internal hooks in `contexts/` for routing helpers, theme state, workshop cache/actions, notification unread count, and user profile actions | Code |
 | Feature structure | Feature folders under `components`, with screens, hooks, components, constants, models, and utilities | Code |
 | Shared API services | `shared/api.ts` and `shared/service` contain the base API helper, response mapping helpers, and domain-specific backend API wrappers | Code |
