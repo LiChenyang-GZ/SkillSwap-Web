@@ -182,6 +182,17 @@
 }
 
   @layer base {
+    html,
+    body,
+    #root {
+      min-height: 100%;
+    }
+
+    body {
+      background-color: var(--color-background);
+      color: var(--color-foreground);
+    }
+
     ::selection {
       background-color: var(--color-secondary);
       color: var(--color-secondary-foreground);

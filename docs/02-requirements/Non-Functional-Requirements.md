@@ -12,7 +12,7 @@ The requirements were verified against the current repository and existing docum
 |---|---|---|---|---|
 | NFR-001 | Public workshop browsing should use lightweight summary data where possible. | Should | Code | Public workshop list responses omit sensitive fields and use summary DTO mapping. |
 | NFR-002 | The frontend should avoid unnecessary personal-data requests when users browse public pages. | Should | Code | Public page refresh logic requests public workshop data without requiring authenticated dashboard data. |
-| NFR-003 | The frontend should lazy-load major page screens to reduce initial load cost. | Should | Code | Major screens are loaded through `React.lazy` boundaries. |
+| NFR-003 | The frontend should balance initial load cost with maintainable page loading. | Should | Code | Common public/auth screens are directly imported, while lower-frequency or heavier screens remain behind `React.lazy` boundaries. |
 | NFR-004 | Backend database access should use configurable connection pooling appropriate to environment capacity. | Should | Code | Hikari pool settings are configurable in application profiles. |
 | NFR-005 | The backend runtime should use memory-conscious container settings for the documented VM footprint. | Should | Code and existing documentation | Docker runtime starts the Java process with bounded heap settings; deployment docs discuss VM memory constraints. |
 | NFR-006 | Quantified response-time SLAs require future measurement. | Could | Inferred from implementation | No unverified numeric response-time target is presented as a current requirement. |
@@ -162,7 +162,7 @@ The requirements were verified against the current repository and existing docum
 
 ## Verification Notes
 
-Directly supported by code: JWT/JWKS security, stateless session policy, CORS configuration, role-based admin checks, structured error handling, upload validation, Markdown sanitization, health endpoint, frontend lazy loading, SPA fallback routing, storage service integration, and PostgreSQL-backed persistence.
+Directly supported by code: JWT/JWKS security, stateless session policy, CORS configuration, role-based admin checks, structured error handling, upload validation, Markdown sanitization, health endpoint, selective frontend lazy loading, SPA fallback routing, storage service integration, and PostgreSQL-backed persistence.
 
 Directly supported by existing documentation: Vercel hosting, Azure VM backend deployment, Azure PostgreSQL, Azure Blob Storage, Nginx/TLS, GitHub Actions/GHCR deployment, secret injection practices, VM memory/log constraints, manual deployment fallback, and database export/import runbook guidance.
 
