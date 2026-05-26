@@ -1243,6 +1243,8 @@ Error cases: `401`, `500`.
 
 ### 7.6 Public Memories
 
+Public memory list/detail endpoints remain anonymous/public. They do not establish a current viewer identity.
+
 #### GET `/api/v1/memories`
 
 - Purpose: list published memory entries.
@@ -1304,6 +1306,7 @@ Error cases:
 ### 7.7 Admin Memory Studio
 
 All admin memory endpoints require `Authorization: Bearer <JWT_TOKEN>` and admin authority.
+Admin memory actor identity is resolved from `JwtAuthenticationToken` through `UserService.findOrCreateCurrentUser(...)`; non-JWT principals and `authentication.getName()` are not supported as user identity sources.
 
 #### GET `/api/v1/admin/memories`
 

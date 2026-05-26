@@ -106,7 +106,8 @@ This document covers only what is specific to SkillSwap:
 - [ ] to be detailed when PR #2 merges
 
 ### PR #4 -- memory module
-- [ ] to be detailed when previous module merges
+- [x] Added `MemoryServiceImplAuthExtractionTest` covering anonymous public memory reads, JWT-only admin memory actor resolution, and rejection of anonymous/non-JWT admin principals.
+- [x] Removed legacy `authentication.getName()` identity fallback from Memory admin paths; public Memory reads remain anonymous/public.
 
 ### PR #5 -- workshop module
 - [ ] to be detailed when previous module merges
