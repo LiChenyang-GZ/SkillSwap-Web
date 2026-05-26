@@ -147,6 +147,8 @@ No Redux, Zustand, server-state cache library, or GraphQL client was found in th
 
 The frontend uses Tailwind CSS, custom CSS files, Radix UI primitives, Lucide icons, and Sonner toasts. Memory content rendering uses `react-markdown`, `remark-gfm`, and `rehype-sanitize`, which supports safe rendering of Markdown-based memory content.
 
+Static brand artwork is stored under `skill-swap-frontend/public/brand` and is served by Vite as root-relative assets. The current brand assets include the browser favicon, navigation/auth logo, loading fox illustration, auth-page mascot, and empty-state illustrations for workshop, memory, and notification screens. These files are frontend-only presentation assets and are separate from user-uploaded media, which is stored through the backend and Azure Blob Storage.
+
 ## 5. Backend Architecture
 
 ### Framework and Runtime

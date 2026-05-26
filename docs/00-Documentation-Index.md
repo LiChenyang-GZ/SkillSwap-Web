@@ -68,6 +68,11 @@
 - Tables: [Database-Design.md §5.1 user_account](docs/03-architecture/Database-Design.md#L208), [§5.2 user_skill](docs/03-architecture/Database-Design.md#L221)
 - User actions: [End-User-Guide.md → User Profile Management](docs/07-user-guides/End-User-Guide.md#L95)
 
+### Frontend UI / Brand Assets / Favicon
+- Architecture: [System-Architecture.md §4 Frontend Architecture → Styling and UI Approach](docs/03-architecture/System-Architecture.md#styling-and-ui-approach)
+- Asset location: `skill-swap-frontend/public/brand`
+- Scope: static frontend-only assets such as favicon, navigation/auth logo, loading illustration, mascot, and empty-state artwork.
+
 ### Media / File Upload (avatar / workshop image / memory media)
 - Architecture: [System-Architecture.md §8 Media / File Storage Architecture](docs/03-architecture/System-Architecture.md#L366)
 - Database references: [Database-Design.md §8 Media and File Reference Storage](docs/03-architecture/Database-Design.md#L330)

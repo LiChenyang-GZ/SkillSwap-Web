@@ -1,5 +1,5 @@
 import type { MemoryEntry } from "../../../types/memory";
-import { Archive, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Archive, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { ImageWithFallback } from "../../ui/ImageWithFallback";
 import { Button } from "../../ui/button";
 import { Card } from "../../ui/card";
@@ -15,6 +15,8 @@ interface HeroMemoriesSectionProps {
   onOpenMemoryEntry: (entry: MemoryEntry) => void;
   onOpenMemoryPage: () => void;
 }
+
+const LOADING_FOX_SRC = "/brand/fox-empty-search.png";
 
 export function HeroMemoriesSection({
   isLoadingMemories,
@@ -37,7 +39,12 @@ export function HeroMemoriesSection({
 
         {isLoadingMemories ? (
           <div className="py-16 flex flex-col items-center justify-center space-y-4 text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <img
+              src={LOADING_FOX_SRC}
+              alt=""
+              aria-hidden="true"
+              className="h-20 w-20 object-contain animate-pulse"
+            />
             <p>Loading featured memories...</p>
           </div>
         ) : featuredMemories.length > 0 ? (

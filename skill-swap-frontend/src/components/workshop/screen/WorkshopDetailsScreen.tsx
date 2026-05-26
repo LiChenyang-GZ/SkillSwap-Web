@@ -18,6 +18,8 @@ interface WorkshopDetailsScreenProps {
   workshopId: string;
 }
 
+const LOADING_FOX_SRC = '/brand/fox-empty-search.png';
+
 export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps) {
   const {
     workshops,
@@ -66,7 +68,15 @@ export function WorkshopDetailsScreen({ workshopId }: WorkshopDetailsScreenProps
   if (query.isLoading) {
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="flex flex-col items-center justify-center space-y-4 text-muted-foreground">
+          <img
+            src={LOADING_FOX_SRC}
+            alt=""
+            aria-hidden="true"
+            className="h-20 w-20 object-contain animate-pulse"
+          />
+          <p className="animate-pulse">Loading...</p>
+        </div>
       </div>
     );
   }

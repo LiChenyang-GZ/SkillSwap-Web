@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ArrowLeft, CalendarDays, Loader2 } from "lucide-react";
+import { ArrowLeft, CalendarDays } from "lucide-react";
 import { useApp } from "../../../contexts/AppContext";
 import { Button } from "../../ui/button";
 import {
@@ -16,6 +16,8 @@ interface MemoryDetailScreenProps {
   slug: string;
 }
 
+const LOADING_FOX_SRC = "/brand/fox-empty-search.png";
+
 export function MemoryDetailScreen({ slug }: MemoryDetailScreenProps) {
   const { setCurrentPage } = useApp();
   const { entry, isLoading } = useMemoryDetailQuery(slug);
@@ -27,7 +29,12 @@ export function MemoryDetailScreen({ slug }: MemoryDetailScreenProps) {
     return (
       <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center">
         <div className="flex flex-col items-center justify-center space-y-4 text-muted-foreground">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <img
+            src={LOADING_FOX_SRC}
+            alt=""
+            aria-hidden="true"
+            className="h-20 w-20 object-contain animate-pulse"
+          />
           <p className="animate-pulse">{MEMORY_DETAIL_LOADING_MESSAGE}</p>
         </div>
       </div>

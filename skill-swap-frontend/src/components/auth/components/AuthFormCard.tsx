@@ -17,6 +17,8 @@ interface AuthFormCardProps {
   } & NonNullable<ComponentProps<typeof SignIn>["appearance"]>;
 }
 
+const BRAND_LOGO_SRC = "/brand/fox-logo.png";
+
 export function AuthFormCard({
   isDarkMode,
   activeTab,
@@ -38,11 +40,11 @@ export function AuthFormCard({
         <div
           className={
             isDarkMode
-              ? "w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center mx-auto mb-3"
-              : "w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mx-auto mb-3"
+              ? "w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center mx-auto mb-3 overflow-hidden"
+              : "w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mx-auto mb-3 overflow-hidden"
           }
         >
-          <span className="text-slate-900 font-black text-lg">SS</span>
+          <img src={BRAND_LOGO_SRC} alt="Skill Swap Club" className="h-full w-full object-cover" />
         </div>
         <h2 className={isDarkMode ? "text-2xl font-bold text-white" : "text-2xl font-bold text-slate-900"}>Welcome</h2>
         <p className={isDarkMode ? "text-sm text-slate-100 mt-1" : "text-sm text-slate-600 mt-1"}>

@@ -2,6 +2,8 @@ interface AuthMarketingPanelProps {
   isDarkMode: boolean;
 }
 
+const FOX_MASCOT_SRC = "/brand/fox-mascot.png";
+
 export function AuthMarketingPanel({ isDarkMode }: AuthMarketingPanelProps) {
   return (
     <section className={isDarkMode ? "text-white" : "text-slate-900"}>
@@ -22,6 +24,12 @@ export function AuthMarketingPanel({ isDarkMode }: AuthMarketingPanelProps) {
       <p className={isDarkMode ? "mt-4 max-w-md text-slate-200/90" : "mt-4 max-w-md text-slate-700"}>
         Join workshops, share practical skills, and connect with people who are excited to build with you.
       </p>
+      <img
+        src={FOX_MASCOT_SRC}
+        alt=""
+        aria-hidden="true"
+        className="mt-8 h-52 w-52 object-contain sm:h-64 sm:w-64"
+      />
     </section>
   );
 }
