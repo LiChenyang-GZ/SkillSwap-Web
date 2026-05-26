@@ -317,12 +317,12 @@ SkillSwap uses Clerk on the frontend and Spring Security OAuth2 Resource Server 
 | Concept | Implementation | Source |
 |---|---|---|
 | External identity | JWT `sub` from the authenticated provider. Current docs identify Clerk as active. | Code and existing documentation |
-| Internal user row | `UserService.findOrCreateCurrentUser` finds by `user_account.auth_subject`, falls back to UUID subject lookup for legacy compatibility, or creates a new `UserAccount`. | Code |
-| Internal primary key | `user_account.id` UUID. For non-UUID subjects, the service creates a random UUID. | Code |
+| Internal user row | `UserService.findOrCreateCurrentUser` finds by `user_account.auth_subject` or creates a new `UserAccount`. The backend no longer resolves `jwt.sub` as `user_account.id`. | Code |
+| Internal primary key | `user_account.id` UUID is the internal application user ID. New users receive a backend-generated UUID. | Code |
 | Auth provider | JWT issuer is stored in `user_account.auth_provider` when available. | Code |
 | Email | The service reads email-related JWT claims when present and may store the email if missing locally. | Code |
 | Default role | Newly created users are assigned `member`. | Code |
-| Admin mapping | `JwtConverter` looks up the local user by `auth_subject` or legacy UUID subject and grants `ROLE_ADMIN` only when `role` normalizes to `admin` or `role_admin`. | Code |
+| Admin mapping | `JwtConverter` looks up the local user by matching JWT `sub` to `user_account.auth_subject` and grants `ROLE_ADMIN` only when `role` normalizes to `admin` or `role_admin`. | Code |
 
 Admin provisioning is not self-service in the application. Existing admin documentation states that assigning or correcting admin roles is a technical maintainer process. Production Clerk cutover documentation notes that Clerk user IDs differ between environments and that seeded admin records may need `auth_subject` remapping. The example in deployment documentation uses placeholder values and should not be treated as seed data.
 
@@ -513,7 +513,7 @@ Current conclusion: migration and recovery support exists at a basic/manual docu
 - Repositories for users, workshops, participants, notifications, and memory entries.
 - DTO validation for workshop creation/update and skills.
 - Service-level validation for workshop lifecycle, attendance, memory status/slug/edit locks, profile updates, uploads, and admin checks.
-- JWT-to-user mapping through `auth_subject`, with legacy UUID fallback.
+- JWT-to-user mapping through `auth_subject`; `jwt.sub` is an external provider subject and is not resolved as `user_account.id`.
 - Admin authority mapping from `user_account.role`.
 - Media URL persistence and Azure Blob Storage upload/delete service usage.
 - Memory edit lock model using owner and expiry fields, not JPA `@Version`.
@@ -532,7 +532,7 @@ Current conclusion: migration and recovery support exists at a basic/manual docu
 
 - `schema.sql` defines the active core tables and most active relationships as of the dump.
 - Flyway migrations define additional fields, tables, indexes, and historical schema changes.
-- Manual SQL under `doc/sql` adds `auth_provider` and `auth_subject`, creates a unique index on `auth_subject`, and removes historical unused tables after backup.
+- Manual SQL under `doc/sql` adds `auth_provider` and `auth_subject`, creates a unique index on `auth_subject`, and removes historical unused tables after backup. The 2026-04-30 auth-subject backfill script reflects the old migration path for legacy rows; current code no longer treats `jwt.sub` as `user_account.id`.
 
 ### Inferred from Implementation
 

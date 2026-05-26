@@ -126,14 +126,12 @@ public class UserService {
 
     @Transactional
     public UserAccount findOrCreateCurrentUser(Jwt jwt) {
-        String subject = jwt.getSubject();
+        String subject = requireAuthenticatedSubject(jwt);
         String issuer = jwt.getIssuer() != null ? jwt.getIssuer().toString() : null;
-        UUID subjectUuid = tryParseUuid(subject);
 
         UserAccount user = userRepository.findByAuthSubject(subject)
-                .or(() -> subjectUuid == null ? java.util.Optional.empty() : userRepository.findById(subjectUuid))
                 .orElseGet(() -> {
-                    UUID newId = subjectUuid != null ? subjectUuid : UUID.randomUUID();
+                    UUID newId = UUID.randomUUID();
                     String jwtEmail = extractEmailFromJwt(jwt);
                     maybeRequireVerifiedEmail(jwt, jwtEmail);
 
@@ -170,6 +168,14 @@ public class UserService {
         }
 
         return dirty ? userRepository.save(user) : user;
+    }
+
+    private String requireAuthenticatedSubject(Jwt jwt) {
+        String subject = jwt != null ? jwt.getSubject() : null;
+        if (subject == null || subject.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
+        return subject;
     }
 
     @Transactional(readOnly = true)
