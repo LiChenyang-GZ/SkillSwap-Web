@@ -63,6 +63,8 @@ Verified public endpoints:
 - `GET /api/v1/memories`
 - `GET /api/v1/memories/{slug}`
 
+For optional-viewer workshop reads, missing or anonymous authentication is treated as "no current viewer". A valid `JwtAuthenticationToken` may establish the current viewer for facilitator/admin-sensitive fields. Authenticated non-JWT principals are not supported as user identity sources.
+
 ### Protected Endpoints
 
 Most `/api/**` routes require a valid bearer token. Some routes are additionally protected by service-level ownership or admin checks.
@@ -569,7 +571,7 @@ Error cases:
 - Request body: none.
 - Successful response: `200 WorkshopResponseDto`.
 - Source: `WorkshopController`, `WorkshopServiceImpl.enforceWorkshopVisibility`; directly verified.
-- Inferred from implementation: pending and rejected workshops return `404` to unauthenticated/non-authorized viewers.
+- Inferred from implementation: missing or anonymous authentication is treated as no current viewer; pending and rejected workshops return `404` to unauthenticated/non-authorized viewers.
 
 Example request:
 

@@ -231,6 +231,8 @@ Implemented route policy from Spring Security configuration:
 
 Some public route patterns are broad enough that service-level checks remain important. For example, workshop routes such as `/mine` and `/attending` are protected by controller/service authentication checks even though the GET workshop route pattern is public at the Spring Security route layer.
 
+Public workshop read logic treats missing or anonymous authentication as no current viewer. A valid JWT can establish the current viewer for facilitator/admin-sensitive fields, while authenticated non-JWT principals are rejected instead of being parsed as local user IDs.
+
 ### Input Validation
 
 Implemented validation includes:
