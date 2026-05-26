@@ -13,8 +13,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -141,19 +139,6 @@ public class NotificationServiceImpl implements NotificationService {
             return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId();
         }
 
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof UserDetails ud) {
-            return UUID.fromString(ud.getUsername());
-        }
-
-        if (principal instanceof DefaultOAuth2User ou) {
-            Object sub = ou.getAttribute("sub");
-            if (sub != null) return UUID.fromString(sub.toString());
-            Object id = ou.getAttribute("id");
-            if (id != null) return UUID.fromString(id.toString());
-            return UUID.fromString(ou.getName());
-        }
-
-        return UUID.fromString(authentication.getName());
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unsupported authentication type.");
     }
 }

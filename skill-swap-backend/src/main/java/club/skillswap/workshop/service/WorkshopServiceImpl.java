@@ -21,9 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -371,9 +371,7 @@ public class WorkshopServiceImpl implements WorkshopService {
     @Override
     @Transactional
     public void requestWorkshopApproval(Long workshopId, Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
+        JwtAuthenticationToken jwtAuth = requireJwtAuthentication(authentication);
 
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
@@ -383,8 +381,8 @@ public class WorkshopServiceImpl implements WorkshopService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending workshops can request approval.");
         }
 
-        UUID requesterId = extractUserUuid(authentication);
-        boolean isAdmin = isAdmin(authentication);
+        UUID requesterId = resolveCurrentUser(jwtAuth).getId();
+        boolean isAdmin = hasAdminAuthority(jwtAuth);
         boolean isFacilitator = workshop.getFacilitator() != null
                 && workshop.getFacilitator().getId() != null
                 && workshop.getFacilitator().getId().equals(requesterId);
@@ -447,7 +445,9 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     @Override
     @Transactional
-    public void joinWorkshop(Long workshopId, String userId) {
+    public void joinWorkshop(Long workshopId, Authentication authentication) {
+        JwtAuthenticationToken jwtAuth = requireJwtAuthentication(authentication);
+
         // 1. 鏌ユ壘宸ヤ綔鍧?
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
@@ -474,7 +474,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         }
 
         // 2. 鏌ユ壘鐢ㄦ埛
-        UserAccount user = userService.findUserByStringId(userId);
+        UserAccount user = resolveCurrentUser(jwtAuth);
 
         // 3. 妫€鏌ョ敤鎴锋槸鍚﹀凡缁忓弬鍔犱簡杩欎釜宸ヤ綔鍧?
         List<WorkshopParticipant> existingParticipations = participantRepository.findByUserIdAndWorkshopId(
@@ -518,13 +518,15 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     @Override
     @Transactional
-    public void leaveWorkshop(Long workshopId, String userId) {
+    public void leaveWorkshop(Long workshopId, Authentication authentication) {
+        JwtAuthenticationToken jwtAuth = requireJwtAuthentication(authentication);
+
         // 1. 鏌ユ壘宸ヤ綔鍧?
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
 
         // 2. 鏌ユ壘鐢ㄦ埛
-        UserAccount user = userService.findUserByStringId(userId);
+        UserAccount user = resolveCurrentUser(jwtAuth);
 
         // 3. 鏌ユ壘鍙備笌璁板綍
         List<WorkshopParticipant> participations = participantRepository.findByUserIdAndWorkshopId(
@@ -777,11 +779,8 @@ public class WorkshopServiceImpl implements WorkshopService {
         if (isAdmin(authentication)) {
             return true;
         }
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return false;
-        }
 
-        UUID requesterId = extractUserUuid(authentication);
+        UUID requesterId = resolveOptionalCurrentUserId(authentication).orElse(null);
         UUID facilitatorId = workshop.getFacilitator() != null ? workshop.getFacilitator().getId() : null;
         return requesterId != null && facilitatorId != null && facilitatorId.equals(requesterId);
     }
@@ -881,9 +880,12 @@ public class WorkshopServiceImpl implements WorkshopService {
     }
 
     private boolean isAdmin(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return false;
-        }
+        return authentication instanceof JwtAuthenticationToken
+                && authentication.isAuthenticated()
+                && hasAdminAuthority(authentication);
+    }
+
+    private boolean hasAdminAuthority(Authentication authentication) {
         return authentication.getAuthorities().stream()
                 .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
     }
@@ -899,15 +901,11 @@ public class WorkshopServiceImpl implements WorkshopService {
             return;
         }
 
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workshop not found.");
-        }
-
         if (isAdmin(authentication)) {
             return;
         }
 
-        UUID requesterId = extractUserUuid(authentication);
+        UUID requesterId = resolveOptionalCurrentUserId(authentication).orElse(null);
         UUID facilitatorId = workshop.getFacilitator() != null ? workshop.getFacilitator().getId() : null;
         if (requesterId != null && facilitatorId != null && facilitatorId.equals(requesterId)) {
             return;
@@ -917,12 +915,22 @@ public class WorkshopServiceImpl implements WorkshopService {
     }
 
     private void requireAdmin(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
-        if (!isAdmin(authentication)) {
+        JwtAuthenticationToken jwtAuth = requireJwtAuthentication(authentication);
+        if (!hasAdminAuthority(jwtAuth)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required.");
         }
+    }
+
+    private JwtAuthenticationToken requireJwtAuthentication(Authentication authentication) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
+        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+            return jwtAuth;
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unsupported authentication type.");
     }
 
     private UUID extractUserUuid(Authentication authentication) {
@@ -1048,34 +1056,22 @@ public class WorkshopServiceImpl implements WorkshopService {
     }
 
     private String extractUserId(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
+        return resolveCurrentUser(requireJwtAuthentication(authentication)).getId().toString();
+    }
 
-        // 1) Spring Resource Server锛圔earer JWT锛?
+    private Optional<UUID> resolveOptionalCurrentUserId(Authentication authentication) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            return Optional.empty();
+        }
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            // JWT 的 subject(sub) 可能不是 UUID（例如 Clerk）。
-            // 统一映射到本地 user_account.id（UUID），保证下游 UUID 解析稳定。
-            return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
+            return Optional.of(resolveCurrentUser(jwtAuth).getId());
         }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unsupported authentication type.");
+    }
 
-        // 2) 浼犵粺琛ㄥ崟/鑷畾涔?UserDetails
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof UserDetails ud) {
-            // 閫氬父鏄敤鎴峰悕锛涘鏋滀綘鐨?username 瀛樼殑鏄?UUID锛岃繖閲屽氨鏄?UUID
-            return ud.getUsername();
-        }
-
-        // 3) OAuth2 Login锛圙oogle/GitHub/鈥︼級
-        if (principal instanceof DefaultOAuth2User ou) {
-            Object sub = ou.getAttribute("sub"); // 鏈変簺鎻愪緵鏂圭敤 "id"
-            if (sub != null) return sub.toString();
-            Object id = ou.getAttribute("id");
-            if (id != null) return id.toString();
-            return ou.getName(); // fallback
-        }
-
-        // 4) 鍏滃簳
-        return authentication.getName();
+    private UserAccount resolveCurrentUser(JwtAuthenticationToken jwtAuth) {
+        return userService.findOrCreateCurrentUser(jwtAuth.getToken());
     }
 }

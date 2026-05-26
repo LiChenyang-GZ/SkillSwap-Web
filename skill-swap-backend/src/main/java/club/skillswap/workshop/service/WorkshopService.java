@@ -41,9 +41,9 @@ public interface WorkshopService {
     
     void deleteWorkshop(Long workshopId, Authentication authentication);
 
-    void joinWorkshop(Long workshopId, String userId);
+    void joinWorkshop(Long workshopId, Authentication authentication);
 
-    void leaveWorkshop(Long workshopId, String userId);
+    void leaveWorkshop(Long workshopId, Authentication authentication);
 
     void requestWorkshopApproval(Long workshopId, Authentication authentication);
 

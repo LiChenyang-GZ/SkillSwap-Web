@@ -119,13 +119,7 @@ public class WorkshopController {
     public ResponseEntity<ApiMessageDto> joinWorkshop(
             @PathVariable Long id,
             Authentication authentication) {
-        
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
-        
-        String userId = extractAuthenticatedUserId(authentication);
-        workshopService.joinWorkshop(id, userId);
+        workshopService.joinWorkshop(id, authentication);
         return ResponseEntity.ok(new ApiMessageDto("Successfully joined workshop"));
     }
 
@@ -133,20 +127,7 @@ public class WorkshopController {
     public ResponseEntity<ApiMessageDto> leaveWorkshop(
             @PathVariable Long id,
             Authentication authentication) {
-        
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
-        
-        String userId = extractAuthenticatedUserId(authentication);
-        workshopService.leaveWorkshop(id, userId);
+        workshopService.leaveWorkshop(id, authentication);
         return ResponseEntity.ok(new ApiMessageDto("Successfully left workshop"));
-    }
-
-    private String extractAuthenticatedUserId(Authentication authentication) {
-        if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
-        }
-        return authentication.getName();
     }
 }
