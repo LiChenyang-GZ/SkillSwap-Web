@@ -15,6 +15,7 @@ import club.skillswap.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
@@ -505,28 +506,36 @@ public class MemoryServiceImpl implements MemoryService {
     }
 
     private UserAccount requireAdminAndResolveActor(Authentication authentication) {
-        requireAdmin(authentication);
-        return userService.findUserByStringId(extractUserId(authentication));
+        JwtAuthenticationToken jwtAuth = requireAdmin(authentication);
+        return resolveCurrentUser(jwtAuth);
     }
 
-    private void requireAdmin(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
-        }
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
-        if (!isAdmin) {
+    private JwtAuthenticationToken requireAdmin(Authentication authentication) {
+        JwtAuthenticationToken jwtAuth = requireJwtAuthentication(authentication);
+        if (!hasAdminAuthority(jwtAuth)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin access required.");
         }
+        return jwtAuth;
     }
 
-    private String extractUserId(Authentication authentication) {
+    private JwtAuthenticationToken requireJwtAuthentication(Authentication authentication) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        }
         if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-            return userService.findOrCreateCurrentUser(jwtAuth.getToken()).getId().toString();
+            return jwtAuth;
         }
-        if (authentication != null && authentication.getName() != null && !authentication.getName().isBlank()) {
-            return authentication.getName();
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Please login.");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unsupported authentication type.");
+    }
+
+    private boolean hasAdminAuthority(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()) || "ADMIN".equals(a.getAuthority()));
+    }
+
+    private UserAccount resolveCurrentUser(JwtAuthenticationToken jwtAuth) {
+        return userService.findOrCreateCurrentUser(jwtAuth.getToken());
     }
 }

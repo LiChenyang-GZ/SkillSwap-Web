@@ -201,7 +201,7 @@ Implemented admin controls include:
 - Admin-only hello/test endpoint through method security.
 - Admin workshop listing, detail, moderation actions, delete, and image upload through controller and service admin checks.
 - Workshop delete through an explicit admin check in the workshop service.
-- Admin memory listing, creation, update, deletion, locking, and media upload through controller and service admin checks.
+- Admin memory listing, creation, update, deletion, locking, and media upload through controller and service admin checks. Admin memory actor resolution requires `JwtAuthenticationToken` and does not parse principal names as local user IDs.
 
 Partially supported / Requires verification:
 
