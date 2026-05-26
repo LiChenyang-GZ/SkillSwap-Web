@@ -133,7 +133,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - Consider synchronous async executor test configuration when notification integration tests begin.
 - Continue broadening backend test coverage beyond the current security regression and infrastructure tests.
 - Removed the UUID-subject fallback in `UserService.findOrCreateCurrentUser()` and `JwtConverter`; the supported identity model is now `auth_subject` (external JWT `sub`) -> internal `UserAccount.id`.
-- Removed legacy non-JWT auth extraction branches in notification/workshop services (`UserDetails` and `DefaultOAuth2User`); the supported web auth path is `JwtAuthenticationToken`.
+- Removed legacy non-JWT auth extraction branches in notification/workshop services (`UserDetails` and `DefaultOAuth2User`); the supported web auth path is `JwtAuthenticationToken`, while anonymous workshop public reads remain no-viewer access.
 - Document or version the Clerk `signupTemplate` claims used by the frontend so backend assumptions such as `email_verified` can be verified from source.
 
 ## Decisions Log

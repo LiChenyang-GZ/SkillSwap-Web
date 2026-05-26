@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -95,6 +96,7 @@ class WorkshopServiceImplAuthExtractionTest {
         verify(userService, never()).findOrCreateCurrentUser(any());
         verify(userService, never()).findUserByStringId(anyString());
         verify(userService, never()).findAdmins();
+        verify(workshopRepository, never()).findById(any());
         verifyNoInteractions(notificationService);
     }
 
@@ -107,7 +109,128 @@ class WorkshopServiceImplAuthExtractionTest {
         verify(userService, never()).findOrCreateCurrentUser(any());
         verify(userService, never()).findUserByStringId(anyString());
         verify(userService, never()).findAdmins();
+        verify(workshopRepository, never()).findById(any());
         verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("Treats AnonymousAuthenticationToken as no viewer for public workshop detail.")
+    void shouldTreatAnonymousAuthenticationAsNoViewerForPublicWorkshopDetail() {
+        Workshop workshop = publicWorkshop(40L, facilitator("facilitator_public"));
+        when(workshopRepository.findByIdWithDetails(40L)).thenReturn(Optional.of(workshop));
+
+        var response = workshopService.getWorkshopById(40L, anonymousAuthentication());
+
+        assertThat(response.contactNumber()).isNull();
+        assertThat(response.submitterEmail()).isNull();
+        verify(userService, never()).findOrCreateCurrentUser(any());
+        verify(userService, never()).findUserByStringId(anyString());
+    }
+
+    @Test
+    @DisplayName("Treats null authentication as no viewer for public workshop detail.")
+    void shouldTreatNullAuthenticationAsNoViewerForPublicWorkshopDetail() {
+        Workshop workshop = publicWorkshop(41L, facilitator("facilitator_public_null"));
+        when(workshopRepository.findByIdWithDetails(41L)).thenReturn(Optional.of(workshop));
+
+        var response = workshopService.getWorkshopById(41L, null);
+
+        assertThat(response.contactNumber()).isNull();
+        assertThat(response.submitterEmail()).isNull();
+        verify(userService, never()).findOrCreateCurrentUser(any());
+        verify(userService, never()).findUserByStringId(anyString());
+    }
+
+    @Test
+    @DisplayName("Resolves JwtAuthenticationToken viewer for public workshop detail.")
+    void shouldResolveJwtViewerForPublicWorkshopDetail() {
+        UUID facilitatorId = UUID.fromString("12121212-1212-1212-1212-121212121212");
+        Jwt jwt = jwt("user_public_viewer");
+        UserAccount facilitator = TestFixtures.userAccount()
+                .id(facilitatorId)
+                .authSubject(jwt.getSubject())
+                .build();
+        Workshop workshop = publicWorkshop(42L, facilitator);
+        when(workshopRepository.findByIdWithDetails(42L)).thenReturn(Optional.of(workshop));
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(facilitator);
+
+        var response = workshopService.getWorkshopById(42L, jwtAuthentication(jwt));
+
+        assertThat(response.contactNumber()).isEqualTo("0400000000");
+        assertThat(response.submitterEmail()).isEqualTo("host@example.com");
+        verify(userService).findOrCreateCurrentUser(jwt);
+        verify(userService, never()).findUserByStringId(anyString());
+    }
+
+    @Test
+    @DisplayName("Rejects UserDetails principal on optional workshop viewer path.")
+    void shouldRejectUserDetailsOnOptionalViewerPath() {
+        Workshop workshop = publicWorkshop(43L, facilitator("facilitator_optional_userdetails"));
+        when(workshopRepository.findByIdWithDetails(43L)).thenReturn(Optional.of(workshop));
+
+        assertUnsupportedAuthentication(() ->
+                workshopService.getWorkshopById(43L, userDetailsAuthentication(UUID.randomUUID().toString())));
+
+        verify(userService, never()).findOrCreateCurrentUser(any());
+        verify(userService, never()).findUserByStringId(anyString());
+    }
+
+    @Test
+    @DisplayName("Rejects DefaultOAuth2User principal on optional workshop viewer path.")
+    void shouldRejectDefaultOAuth2UserOnOptionalViewerPath() {
+        Workshop workshop = publicWorkshop(44L, facilitator("facilitator_optional_oauth"));
+        when(workshopRepository.findByIdWithDetails(44L)).thenReturn(Optional.of(workshop));
+
+        assertUnsupportedAuthentication(() ->
+                workshopService.getWorkshopById(44L, defaultOAuth2Authentication(UUID.randomUUID().toString())));
+
+        verify(userService, never()).findOrCreateCurrentUser(any());
+        verify(userService, never()).findUserByStringId(anyString());
+    }
+
+    @Test
+    @DisplayName("Treats anonymous viewer as no viewer for restricted workshop visibility.")
+    void shouldTreatAnonymousAuthenticationAsNoViewerForRestrictedWorkshopVisibility() {
+        Workshop workshop = pendingWorkshop(45L, facilitator("facilitator_restricted"));
+        when(workshopRepository.findByIdWithDetails(45L)).thenReturn(Optional.of(workshop));
+
+        assertThatThrownBy(() -> workshopService.getWorkshopById(45L, anonymousAuthentication()))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(ex.getReason()).isEqualTo("Workshop not found.");
+                });
+
+        verify(userService, never()).findOrCreateCurrentUser(any());
+        verify(userService, never()).findUserByStringId(anyString());
+    }
+
+    @Test
+    @DisplayName("Rejects AnonymousAuthenticationToken for join workshop.")
+    void shouldRejectAnonymousAuthenticationForJoinWorkshop() {
+        assertLoginRequired(() -> workshopService.joinWorkshop(20L, anonymousAuthentication()));
+
+        verify(userService, never()).findOrCreateCurrentUser(any());
+        verify(userService, never()).findUserByStringId(anyString());
+        verifyNoInteractions(workshopRepository, participantRepository, notificationService);
+    }
+
+    @Test
+    @DisplayName("Rejects AnonymousAuthenticationToken for leave workshop.")
+    void shouldRejectAnonymousAuthenticationForLeaveWorkshop() {
+        assertLoginRequired(() -> workshopService.leaveWorkshop(30L, anonymousAuthentication()));
+
+        verify(userService, never()).findOrCreateCurrentUser(any());
+        verify(userService, never()).findUserByStringId(anyString());
+        verifyNoInteractions(workshopRepository, participantRepository, notificationService);
+    }
+
+    @Test
+    @DisplayName("Rejects AnonymousAuthenticationToken for admin workshop list.")
+    void shouldRejectAnonymousAuthenticationForAdminWorkshopList() {
+        assertLoginRequired(() -> workshopService.getAllWorkshopsForAdmin(anonymousAuthentication()));
+
+        verify(workshopRepository, never()).findAllWithFacilitator();
+        verify(userService, never()).findOrCreateCurrentUser(any());
     }
 
     @Test
@@ -243,11 +366,6 @@ class WorkshopServiceImplAuthExtractionTest {
     }
 
     private void assertUnsupportedAuthentication(Authentication authentication) {
-        UserAccount facilitator = TestFixtures.userAccount()
-                .id(UUID.fromString("77777777-7777-7777-7777-777777777777"))
-                .build();
-        when(workshopRepository.findById(10L)).thenReturn(Optional.of(pendingWorkshop(10L, facilitator)));
-
         assertThatThrownBy(() -> workshopService.requestWorkshopApproval(10L, authentication))
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
                     assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -261,6 +379,29 @@ class WorkshopServiceImplAuthExtractionTest {
                     assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
                     assertThat(ex.getReason()).isEqualTo("Unsupported authentication type.");
                 });
+    }
+
+    private void assertLoginRequired(Runnable action) {
+        assertThatThrownBy(action::run)
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+                    assertThat(ex.getReason()).isEqualTo("Please login.");
+                });
+    }
+
+    private UserAccount facilitator(String subject) {
+        return TestFixtures.userAccount()
+                .id(UUID.randomUUID())
+                .authSubject(subject)
+                .build();
+    }
+
+    private Workshop publicWorkshop(Long id, UserAccount facilitator) {
+        Workshop workshop = upcomingWorkshop(id);
+        workshop.setFacilitator(facilitator);
+        workshop.setContactNumber("0400000000");
+        workshop.setSubmitterEmail("host@example.com");
+        return workshop;
     }
 
     private Workshop pendingWorkshop(Long id, UserAccount facilitator) {
@@ -292,6 +433,14 @@ class WorkshopServiceImplAuthExtractionTest {
                 jwt,
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN")),
                 jwt.getSubject()
+        );
+    }
+
+    private Authentication anonymousAuthentication() {
+        return new AnonymousAuthenticationToken(
+                "test-anonymous-key",
+                "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))
         );
     }
 
