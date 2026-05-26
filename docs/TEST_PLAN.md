@@ -90,12 +90,17 @@ This document covers only what is specific to SkillSwap:
 - Local verification: `./gradlew test` BUILD SUCCESSFUL in 49s on Docker Desktop 4.43.1 (Windows)
 
 ### PR #2 -- user service unit tests, round 1
-- [ ] creates current user from a new JWT with default member role and verified email
-- [ ] returns existing user by auth subject without creating a duplicate
-- [ ] rejects JWT when email verification signal is explicitly false
-- [ ] updates current profile and replaces normalized skills
-- [ ] rejects blank skill when adding a skill
+- [x] creates current user from a new JWT with default member role and verified email
+- [x] returns existing user by auth subject without creating a duplicate
+- [x] rejects JWT when email verification signal is explicitly false
+- [x] updates current profile and replaces normalized skills
+- [x] rejects blank skill when adding a skill
 - Deferred: avatar upload/storage cleanup, user controller tests, repository tests, `JwtConverter` tests
+
+**Implementation notes (added on completion):**
+- Added Mockito-only unit tests in `skill-swap-backend/src/test/java/club/skillswap/user/service/UserServiceTest.java`.
+- Covered current Clerk-path behavior for new-user creation, existing auth-subject lookup, explicit unverified-email rejection, profile skill replacement, and blank skill rejection.
+- Local tests intentionally not run for PR #2; CI is the verification path because Docker is unavailable in the agent environment.
 
 ### PR #3 -- notification module
 - [ ] to be detailed when PR #2 merges
@@ -117,6 +122,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 
 - `UserProfileDto.fromEntity()` sets `creditBalance=100` while `UserService` returns `0`.
 - `GET /api/v1/users/{id}` is commented as public, but current security config requires authentication.
+- `UserService.findOrCreateCurrentUser()` rejects `email_verified=false`, but Clerk default session-token documentation does not list `email_verified` as a default claim. Current source only proves the frontend requests a `signupTemplate` token; the Clerk dashboard template contents are not versioned in this repository.
 
 ## Future Refactors
 
@@ -126,6 +132,9 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - Consider centralizing authenticated user ID resolution, currently repeated across services/controllers.
 - Consider synchronous async executor test configuration when notification integration tests begin.
 - Continue broadening backend test coverage beyond the current security regression and infrastructure tests.
+- Review whether the UUID-subject fallback in `UserService.findOrCreateCurrentUser()` and `JwtConverter` is still needed now that Clerk non-UUID subjects are the active auth path.
+- Review legacy non-JWT auth extraction branches in notification/workshop services (`UserDetails` and `DefaultOAuth2User`) and remove or document them if they are no longer active.
+- Document or version the Clerk `signupTemplate` claims used by the frontend so backend assumptions such as `email_verified` can be verified from source.
 
 ## Decisions Log
 
