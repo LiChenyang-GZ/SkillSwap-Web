@@ -23,12 +23,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,8 +80,8 @@ class UserServiceTest {
     @Test
     @DisplayName("Returns the existing user for a Clerk auth subject without saving a duplicate.")
     void shouldReturnExistingUserWhenAuthSubjectExists() {
-        String subject = "test-user";
-        UserAccount existingUser = TestFixtures.userAccount().build();
+        String subject = "user_clerk_existing";
+        UserAccount existingUser = TestFixtures.userAccount().authSubject(subject).build();
         Jwt jwt = jwt(subject, "ignored@example.test", true);
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
 
@@ -89,6 +91,73 @@ class UserServiceTest {
         verify(userRepository).findByAuthSubject(subject);
         verify(userRepository, never()).findById(any());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Returns an existing user for a UUID-shaped auth subject without ID fallback.")
+    void shouldReturnExistingUserWhenUuidShapedAuthSubjectExists() {
+        String subject = "22222222-2222-2222-2222-222222222222";
+        UserAccount existingUser = TestFixtures.userAccount().authSubject(subject).build();
+        Jwt jwt = jwt(subject, "ignored@example.test", true);
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+
+        UserAccount result = userService.findOrCreateCurrentUser(jwt);
+
+        assertThat(result).isSameAs(existingUser);
+        verify(userRepository).findByAuthSubject(subject);
+        verify(userRepository, never()).findById(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Treats a UUID-shaped JWT subject as an auth subject, not an internal user ID.")
+    void shouldCreateGeneratedInternalIdForUuidShapedSubjectWithoutAuthSubjectMatch() {
+        UUID subjectUuid = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        String subject = subjectUuid.toString();
+        Jwt jwt = jwt(subject, "uuid-subject@example.test", true);
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
+        when(userRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserAccount result = userService.findOrCreateCurrentUser(jwt);
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        UserAccount savedUser = userCaptor.getValue();
+        assertThat(result).isSameAs(savedUser);
+        assertThat(savedUser.getId()).isNotNull();
+        assertThat(savedUser.getId()).isNotEqualTo(subjectUuid);
+        assertThat(savedUser.getAuthSubject()).isEqualTo(subject);
+        assertThat(savedUser.getAuthProvider()).isEqualTo(CLERK_ISSUER);
+        assertThat(savedUser.getEmail()).isEqualTo("uuid-subject@example.test");
+        assertThat(savedUser.getRole()).isEqualTo("member");
+        verify(userRepository).findByAuthSubject(subject);
+        verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Rejects a JWT with no subject before user lookup or creation.")
+    void shouldRejectNullJwtSubjectBeforeLookup() {
+        Jwt jwt = jwtWithoutSubject("null-subject@example.test", true);
+
+        assertThatThrownBy(() -> userService.findOrCreateCurrentUser(jwt))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+                    assertThat(ex.getReason()).isEqualTo("Please login.");
+                });
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Rejects a blank JWT subject before user lookup or creation.")
+    void shouldRejectBlankJwtSubjectBeforeLookup() {
+        Jwt jwt = jwt("   ", "blank-subject@example.test", true);
+
+        assertThatThrownBy(() -> userService.findOrCreateCurrentUser(jwt))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+                    assertThat(ex.getReason()).isEqualTo("Please login.");
+                });
+        verifyNoInteractions(userRepository);
     }
 
     @Test
@@ -161,6 +230,15 @@ class UserServiceTest {
                 .header("alg", "none")
                 .issuer(CLERK_ISSUER)
                 .subject(subject)
+                .claim("email", email)
+                .claim("email_verified", emailVerified)
+                .build();
+    }
+
+    private Jwt jwtWithoutSubject(String email, boolean emailVerified) {
+        return Jwt.withTokenValue("token-without-subject")
+                .header("alg", "none")
+                .issuer(CLERK_ISSUER)
                 .claim("email", email)
                 .claim("email_verified", emailVerified)
                 .build();

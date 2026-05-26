@@ -1,6 +1,7 @@
 package club.skillswap.common.config;
 
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,7 +18,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -27,31 +27,29 @@ public class JwtConverter implements Converter<Jwt, AbstractAuthenticationToken>
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
-        Collection<GrantedAuthority> authorities = extractAuthoritiesFromDb(jwt);
-        return new JwtAuthenticationToken(jwt, authorities, jwt.getSubject());
+        String subject = requireAuthenticatedSubject(jwt);
+        Collection<GrantedAuthority> authorities = extractAuthoritiesFromDb(subject);
+        return new JwtAuthenticationToken(jwt, authorities, subject);
     }
 
-    private Collection<GrantedAuthority> extractAuthoritiesFromDb(Jwt jwt) {
+    private Collection<GrantedAuthority> extractAuthoritiesFromDb(String subject) {
         List<GrantedAuthority> authorities = new ArrayList<>();
 
-        String subject = jwt.getSubject();
-        if (subject == null || subject.isBlank()) {
-            return authorities;
-        }
-
         Optional<UserAccount> userOpt = userRepository.findByAuthSubject(subject);
-        if (userOpt.isEmpty()) {
-            UUID subjectUuid = tryParseUuid(subject);
-            if (subjectUuid != null) {
-                userOpt = userRepository.findById(subjectUuid);
-            }
-        }
 
         if (userOpt.isPresent() && isAdminRole(userOpt.get().getRole())) {
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
         }
 
         return authorities;
+    }
+
+    private String requireAuthenticatedSubject(Jwt jwt) {
+        String subject = jwt != null ? jwt.getSubject() : null;
+        if (subject == null || subject.isBlank()) {
+            throw new BadCredentialsException("JWT subject is required.");
+        }
+        return subject;
     }
 
     private boolean isAdminRole(String role) {
@@ -66,11 +64,4 @@ public class JwtConverter implements Converter<Jwt, AbstractAuthenticationToken>
         return role.replaceAll("[\\s\\p{Cntrl}]+", "").toLowerCase(Locale.ROOT);
     }
 
-    private UUID tryParseUuid(String value) {
-        try {
-            return UUID.fromString(value);
-        } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
 }

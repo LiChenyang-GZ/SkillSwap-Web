@@ -48,7 +48,7 @@ The backend validates JWTs with configured issuer and JWKS endpoint values throu
 
 ### Local User Mapping
 
-`JwtConverter` and `UserService` map the JWT `sub` claim to `user_account.auth_subject`, with fallback support for legacy UUID subjects. If a valid authenticated user does not yet have a local row, `UserService.findOrCreateCurrentUser(...)` may create one.
+`UserAccount.id` is the internal application user ID. The JWT `sub` claim is an external provider subject stored in `user_account.auth_subject`. `JwtConverter` and `UserService` resolve users by `auth_subject`; the backend no longer resolves `jwt.sub` as `user_account.id`. If a valid authenticated user does not yet have a local row, `UserService.findOrCreateCurrentUser(...)` may create one with a backend-generated internal UUID.
 
 Admin authority is derived from the local database role, not from frontend state. A user is treated as admin when their local `user_account.role` normalizes to `admin` or `role_admin`, producing `ROLE_ADMIN`.
 
@@ -1853,7 +1853,7 @@ Admin access is enforced by backend authority checks. The frontend may hide admi
 Admin authority source:
 
 1. JWT is validated by Spring Security.
-2. `JwtConverter` looks up the local user by JWT subject.
+2. `JwtConverter` looks up the local user by matching JWT `sub` to `user_account.auth_subject`.
 3. Local `user_account.role` is normalized.
 4. `admin` or `role_admin` maps to `ROLE_ADMIN`.
 

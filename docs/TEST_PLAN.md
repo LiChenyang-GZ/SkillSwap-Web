@@ -132,7 +132,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - Consider centralizing authenticated user ID resolution, currently repeated across services/controllers.
 - Consider synchronous async executor test configuration when notification integration tests begin.
 - Continue broadening backend test coverage beyond the current security regression and infrastructure tests.
-- Review whether the UUID-subject fallback in `UserService.findOrCreateCurrentUser()` and `JwtConverter` is still needed now that Clerk non-UUID subjects are the active auth path.
+- Removed the UUID-subject fallback in `UserService.findOrCreateCurrentUser()` and `JwtConverter`; the supported identity model is now `auth_subject` (external JWT `sub`) -> internal `UserAccount.id`.
 - Review legacy non-JWT auth extraction branches in notification/workshop services (`UserDetails` and `DefaultOAuth2User`) and remove or document them if they are no longer active.
 - Document or version the Clerk `signupTemplate` claims used by the frontend so backend assumptions such as `email_verified` can be verified from source.
 
