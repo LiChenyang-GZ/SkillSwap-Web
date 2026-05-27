@@ -119,6 +119,14 @@ This document covers only what is specific to SkillSwap:
 ### PR #4 -- memory module
 - [x] Added `MemoryServiceImplAuthExtractionTest` covering anonymous public memory reads, JWT-only admin memory actor resolution, and rejection of anonymous/non-JWT admin principals.
 - [x] Removed legacy `authentication.getName()` identity fallback from Memory admin paths; public Memory reads remain anonymous/public.
+- [x] Added Mockito-only `MemoryServiceImplTest` for non-auth service behavior: slug/status rules, draft edit-lock expiry, published/non-draft lock behavior, delete-time media cleanup, and memory media upload object paths.
+- Deferred: memory controller tests, memory repository tests, memory integration/API contract tests, exhaustive slug fallback/truncation cases, exhaustive content media parsing edge cases, direct `AzureBlobStorageService` tests/refactor, static validator branch tests beyond the service boundary, and true concurrent transaction/locking behavior.
+
+**Implementation notes (added on completion):**
+- Kept `MemoryServiceImplAuthExtractionTest` unchanged; the new tests live in `skill-swap-backend/src/test/java/club/skillswap/memory/service/MemoryServiceImplTest.java`.
+- `MemoryEntryRepository`, `UserService`, and `AzureBlobStorageService` are Mockito mocks; no Spring context and no real Azure clients are used.
+- Time-sensitive branches use far-past/far-future input data, explicit `editLockSeconds` test configuration, and `isNotNull` timestamp assertions only.
+- Local tests intentionally not run for PR #4; CI/human verification is the verification path because this conversation is constrained from running local tests.
 
 ### PR #5 -- workshop module
 - [x] to be detailed when previous module merges
@@ -158,6 +166,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - `UserProfileDto.fromEntity()` sets `creditBalance=100` while `UserService` returns `0`.
 - `GET /api/v1/users/{id}` is commented as public, but current security config requires authentication.
 - `UserService.findOrCreateCurrentUser()` rejects `email_verified=false`, while missing `email` and missing `email_verified` remain lenient. This source-backed behavior is documented in `docs/03-architecture/Security-Design.md` and covered by unit tests, but the live Clerk dashboard `signupTemplate` contents are not versioned in this repository.
+- `MemoryServiceImpl.updateMemory()` requires an active edit lock only when the current entry status is `draft` (`MemoryServiceImpl.java:114-116`). Non-draft entries such as published memories skip that guard and reach `applyPayload(...)` with no lock requirement, so published memories can be edited concurrently without lock protection. On that reachable path, `applyPayload(...)` normalizes `status == null` to `draft` (`MemoryServiceImpl.java:253-254`) while other null payload fields preserve existing values.
 
 ## Future Refactors
 
