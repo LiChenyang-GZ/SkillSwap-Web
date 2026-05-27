@@ -707,5 +707,5 @@ The following should be confirmed before treating them as production guarantees:
 - Exact Azure Blob container name used by production after resolving workflow/property variable naming.
 - Automated database backup schedule and recovery point objectives.
 - Current schema migration process, because Flyway is present but disabled in inspected properties.
-- Current automated test coverage and CI quality gates beyond the backend deploy workflow.
+- Automated testing beyond the documented backend test workflow, such as frontend, full browser E2E, performance, or security scanning.
 - Whether any monitoring, alerting, or external log aggregation exists outside the inspected repository.

@@ -11,9 +11,9 @@ Detailed architecture, troubleshooting, security design, and testing strategy ar
 - Architecture: `docs/03-architecture/System-Architecture.md`
 - Cloud deployment background: `doc/cloud/SkillSwap-Cloud-Deployment.md`
 - Local development: `docs/05-development/Local-Development-Guide.md`
-- Troubleshooting: planned separately in `docs/06-operations/Troubleshooting-Guide.md`
-- Security design: planned separately in `docs/03-architecture/Security-Design.md`
-- Testing strategy: planned separately under `docs/08-testing/`
+- Troubleshooting: `docs/06-operations/Troubleshooting-Guide.md`
+- Security design: `docs/03-architecture/Security-Design.md`
+- Testing strategy: `docs/08-testing/Testing-Strategy.md`
 
 ## 2. Deployment Scope
 
