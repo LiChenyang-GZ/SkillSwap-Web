@@ -107,7 +107,53 @@ Implemented flow from the inspected frontend code:
 5. The backend validates the JWT before allowing access to protected `/api/**` routes.
 6. The backend maps the JWT subject to a local `user_account` record through `auth_subject`.
 
-The frontend code requests a Clerk token using a named token template. The exact production Clerk token template configuration is external to this repository and **Requires verification**.
+The frontend code requests a Clerk token using a named token template. The source-backed JWT claim contract is documented below. The exact production Clerk token template configuration is external to this repository and **Requires verification**.
+
+### Local Auth Model
+
+`UserAccount.id` is the internal application user ID.
+
+JWT `sub` is the external authentication-provider subject. The backend stores it in `user_account.auth_subject` and resolves authenticated users by `auth_subject`.
+
+The backend must not assume JWT `sub` equals `user_account.id`. New local users receive a backend-generated internal UUID.
+
+Clerk is the current provider, but the model should remain friendly to a future provider migration: provider subject and local user ID are separate concepts.
+
+### Clerk/JWT Claim Contract
+
+| Claim | Current backend use | Current behavior |
+|---|---|---|
+| `iss` | Stored as `UserAccount.authProvider` when present. Also validated through configured issuer in Spring Security JWT validation. | Provider metadata; not an internal user ID. |
+| `sub` | Required non-blank subject. Looked up against `user_account.auth_subject`, stored as `authSubject`, and used by `JwtConverter` as the authentication name. | External provider subject. The backend no longer resolves it as `user_account.id`. |
+| `email` | Preferred email claim when present and non-blank. | Stored as local email when a new user is created, or when an existing user has no email. |
+| `email_address` | Fallback email claim when `email` is absent or blank. | Same storage behavior as `email`. |
+| `email_verified` | Boolean claim read when an email was found. | Explicit `false` is rejected. `true` allows normal creation/update. Missing claim stays lenient. |
+| `preferred_username` | Optional username/display-name source when email is absent. | First optional name claim considered. Sanitized before use. |
+| `username` | Optional username/display-name fallback. | Used after `preferred_username` when email is absent. Sanitized before use. |
+| `name` | Optional username/display-name fallback. | Used after `username` when email is absent. Sanitized before use. |
+| `given_name` | Optional username/display-name fallback. | Used after `name` when email is absent. Sanitized before use. |
+
+If no email claim is present, current backend behavior does not reject the token. Username creation then falls back to optional name claims, then to a sanitized subject-based username, then to a generated internal UUID suffix.
+
+If `email_verified` is absent, current backend behavior does not reject the token. This is intentionally documented as existing behavior, not a new security rule.
+
+If `email_verified=false` and an email or fallback email is present, the backend rejects the request with `403`.
+
+`JwtConverter` does not read role claims from the JWT. It looks up the local user by `auth_subject` and grants `ROLE_ADMIN` only when the stored local `user_account.role` normalizes to `admin` or `role_admin`.
+
+### Clerk Template Verification Checklist
+
+The repository cannot prove the live Clerk dashboard `signupTemplate` configuration unless the template or a redacted claim map is versioned here. It also cannot prove actual deployed issuer/JWKS/frontend publishable-key alignment without environment inspection or a deployment smoke test.
+
+To make these assumptions verifiable from source:
+
+- Version an exported/redacted Clerk `signupTemplate` configuration, or document the exact claim map manually.
+- Include a redacted decoded-token claim-map fixture without secrets or a real signed JWT.
+- Confirm `email_verified` is a boolean claim when present.
+- Confirm the frontend template name matches the backend-tested assumptions.
+- Confirm `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_ISSUER_URI`, and `CLERK_JWKS_URI` point to the intended Clerk environment.
+- Document the migration policy if Clerk is replaced by Auth0 or another provider.
+- Do not invent live claim values in source or documentation.
 
 ### Development and Production Configuration
 

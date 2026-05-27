@@ -123,7 +123,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 
 - `UserProfileDto.fromEntity()` sets `creditBalance=100` while `UserService` returns `0`.
 - `GET /api/v1/users/{id}` is commented as public, but current security config requires authentication.
-- `UserService.findOrCreateCurrentUser()` rejects `email_verified=false`, but Clerk default session-token documentation does not list `email_verified` as a default claim. Current source only proves the frontend requests a `signupTemplate` token; the Clerk dashboard template contents are not versioned in this repository.
+- `UserService.findOrCreateCurrentUser()` rejects `email_verified=false`, while missing `email` and missing `email_verified` remain lenient. This source-backed behavior is documented in `docs/03-architecture/Security-Design.md` and covered by unit tests, but the live Clerk dashboard `signupTemplate` contents are not versioned in this repository.
 
 ## Future Refactors
 
@@ -135,7 +135,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - Continue broadening backend test coverage beyond the current security regression and infrastructure tests.
 - Removed the UUID-subject fallback in `UserService.findOrCreateCurrentUser()` and `JwtConverter`; the supported identity model is now `auth_subject` (external JWT `sub`) -> internal `UserAccount.id`.
 - Removed legacy non-JWT auth extraction branches in notification/workshop services (`UserDetails` and `DefaultOAuth2User`); the supported web auth path is `JwtAuthenticationToken`, while anonymous workshop public reads remain no-viewer access.
-- Document or version the Clerk `signupTemplate` claims used by the frontend so backend assumptions such as `email_verified` can be verified from source.
+- Documented and tested the current Clerk/JWT claim contract in `docs/03-architecture/Security-Design.md`; follow-up is to version a redacted Clerk `signupTemplate` export or decoded claim-map fixture so live dashboard assumptions can be verified from source.
 
 ## Decisions Log
 
