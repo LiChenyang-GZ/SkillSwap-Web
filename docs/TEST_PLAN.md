@@ -102,6 +102,16 @@ This document covers only what is specific to SkillSwap:
 - Covered current Clerk-path behavior for new-user creation, existing auth-subject lookup, explicit unverified-email rejection, profile skill replacement, and blank skill rejection.
 - Local tests intentionally not run for PR #2; CI is the verification path because Docker is unavailable in the agent environment.
 
+**Round 2 implementation notes (added on completion):**
+- [x] Extended the existing Mockito-only `skill-swap-backend/src/test/java/club/skillswap/common/config/JwtConverterTest.java` rather than creating a second JwtConverter test file; the existing file was already present on main from commit `b623a93`.
+- [x] Added JwtConverter branch coverage for `admin` role mapping, non-admin/null/blank/unknown role values, auth-subject not found, and null JWT rejection. Kept the existing UUID-shaped-subject no-ID-fallback test as the single legacy-fallback assertion.
+- [x] Appended avatar upload/storage cleanup coverage to the existing `skill-swap-backend/src/test/java/club/skillswap/user/service/UserServiceTest.java`; no second UserService test file was created.
+- [x] Avatar tests mock `AzureBlobStorageService` and assert observable behavior only: uploaded object path, detected content type, returned avatar URL, persisted `avatarUrl`, previous-avatar cleanup on replacement, and targeted `never()` cleanup/upload/save checks on non-cleanup paths.
+- [x] Avatar happy-path DTO return stubs only the `getUserProfileWithStats` collaborators exercised by the source path: `UserRepository.findById`, `WorkshopRepository.countByFacilitatorId`, and `WorkshopParticipantRepository.countByUserId`.
+- [x] Avatar assertions intentionally stay avatar-focused. The returned `UserProfileDto` passes through the already recorded `creditBalance` inconsistency (`UserProfileDto.fromEntity()` uses 100 while `UserService` returns 0); the avatar path itself introduced no NEW inconsistency, and `creditBalance` is left as-is.
+- Deferred after round 2: user controller tests and user repository tests remain out of scope for this PR.
+- Local tests intentionally not run for PR #2 round 2; CI/human verification is the verification path for this conversation.
+
 ### PR #3 -- notification module
 - [x] to be detailed when PR #2 merges
 - [x] Preserve existing JWT-only notification auth extraction tests from the legacy-branch-removal work
