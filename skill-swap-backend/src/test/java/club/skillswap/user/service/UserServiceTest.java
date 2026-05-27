@@ -13,6 +13,8 @@ import club.skillswap.workshop.repository.WorkshopRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -24,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -167,7 +170,6 @@ class UserServiceTest {
         Jwt jwt = jwt(subject, "unverified@example.test", false);
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
 
-        // FIXME: Current behavior depends on the Clerk signupTemplate emitting email_verified.
         assertThatThrownBy(() -> userService.findOrCreateCurrentUser(jwt))
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
                     assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -176,6 +178,126 @@ class UserServiceTest {
         verify(userRepository).findByAuthSubject(subject);
         verify(userRepository, never()).findById(any());
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Uses email_address as the fallback email claim when email is absent.")
+    void shouldUseEmailAddressFallbackWhenEmailClaimIsMissing() {
+        String subject = "user_email_address_fallback";
+        Jwt jwt = jwtWithClaims(subject, builder -> builder
+                .claim("email_address", "fallback@example.test")
+                .claim("email_verified", true));
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
+        when(userRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserAccount result = userService.findOrCreateCurrentUser(jwt);
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        UserAccount savedUser = userCaptor.getValue();
+        assertThat(result).isSameAs(savedUser);
+        assertThat(savedUser.getEmail()).isEqualTo("fallback@example.test");
+        assertThat(savedUser.getUsername()).isEqualTo("fallback");
+        assertThat(savedUser.getAuthSubject()).isEqualTo(subject);
+        assertThat(savedUser.getAuthProvider()).isEqualTo(CLERK_ISSUER);
+        verify(userRepository).findByAuthSubject(subject);
+        verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Rejects email_address fallback when email_verified is explicitly false.")
+    void shouldRejectUnverifiedEmailAddressFallbackWhenClaimIsFalse() {
+        String subject = "user_unverified_email_address";
+        Jwt jwt = jwtWithClaims(subject, builder -> builder
+                .claim("email_address", "unverified-fallback@example.test")
+                .claim("email_verified", false));
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.findOrCreateCurrentUser(jwt))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(ex.getReason()).contains("Please verify your email before accessing profile.");
+                });
+        verify(userRepository).findByAuthSubject(subject);
+        verify(userRepository, never()).findById(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Allows user creation when email_verified is missing.")
+    void shouldAllowCreationWhenEmailVerifiedClaimIsMissing() {
+        String subject = "user_missing_email_verified";
+        Jwt jwt = jwtWithClaims(subject, builder -> builder.claim("email", "missing-verified@example.test"));
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
+        when(userRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserAccount result = userService.findOrCreateCurrentUser(jwt);
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        UserAccount savedUser = userCaptor.getValue();
+        assertThat(result).isSameAs(savedUser);
+        assertThat(savedUser.getEmail()).isEqualTo("missing-verified@example.test");
+        assertThat(savedUser.getAuthSubject()).isEqualTo(subject);
+        assertThat(savedUser.getAuthProvider()).isEqualTo(CLERK_ISSUER);
+        verify(userRepository).findByAuthSubject(subject);
+        verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("Allows user creation when email and email_verified claims are both missing.")
+    void shouldAllowCreationWhenEmailAndVerificationClaimsAreMissing() {
+        String subject = "user_missing_email";
+        Jwt jwt = jwtWithClaims(subject, builder -> { });
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
+        when(userRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserAccount result = userService.findOrCreateCurrentUser(jwt);
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        UserAccount savedUser = userCaptor.getValue();
+        assertThat(result).isSameAs(savedUser);
+        assertThat(savedUser.getEmail()).isNull();
+        assertThat(savedUser.getUsername()).isEqualTo("user_user_missing_email");
+        assertThat(savedUser.getAuthSubject()).isEqualTo(subject);
+        assertThat(savedUser.getAuthProvider()).isEqualTo(CLERK_ISSUER);
+        verify(userRepository).findByAuthSubject(subject);
+        verify(userRepository, never()).findById(any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "preferred_username,preferred-user,preferred-user",
+            "username,username-user,username-user",
+            "name,Display Name,Display Name",
+            "given_name,Given Name,Given Name"
+    })
+    @DisplayName("Derives username from optional name claims when email is absent.")
+    void shouldDeriveUsernameFromOptionalNameClaimsWhenEmailIsMissing(
+            String claimName,
+            String claimValue,
+            String expectedUsername
+    ) {
+        String subject = "user_optional_" + claimName;
+        Jwt jwt = jwtWithClaims(subject, builder -> builder
+                .claim(claimName, claimValue)
+                .claim("email_verified", true));
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.empty());
+        when(userRepository.save(any(UserAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserAccount result = userService.findOrCreateCurrentUser(jwt);
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        UserAccount savedUser = userCaptor.getValue();
+        assertThat(result).isSameAs(savedUser);
+        assertThat(savedUser.getEmail()).isNull();
+        assertThat(savedUser.getUsername()).isEqualTo(expectedUsername);
+        assertThat(savedUser.getAuthSubject()).isEqualTo(subject);
+        assertThat(savedUser.getAuthProvider()).isEqualTo(CLERK_ISSUER);
+        verify(userRepository).findByAuthSubject(subject);
+        verify(userRepository, never()).findById(any());
     }
 
     @Test
@@ -226,13 +348,18 @@ class UserServiceTest {
     }
 
     private Jwt jwt(String subject, String email, boolean emailVerified) {
-        return Jwt.withTokenValue("token-" + subject)
+        return jwtWithClaims(subject, builder -> builder
+                .claim("email", email)
+                .claim("email_verified", emailVerified));
+    }
+
+    private Jwt jwtWithClaims(String subject, Consumer<Jwt.Builder> configureClaims) {
+        Jwt.Builder builder = Jwt.withTokenValue("token-" + subject)
                 .header("alg", "none")
                 .issuer(CLERK_ISSUER)
-                .subject(subject)
-                .claim("email", email)
-                .claim("email_verified", emailVerified)
-                .build();
+                .subject(subject);
+        configureClaims.accept(builder);
+        return builder.build();
     }
 
     private Jwt jwtWithoutSubject(String email, boolean emailVerified) {

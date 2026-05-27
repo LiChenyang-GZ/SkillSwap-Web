@@ -34,9 +34,10 @@
 
 ### Authentication / Login / Clerk / JWT
 - Architecture: [System-Architecture.md §7 Authentication and Authorization Architecture](docs/03-architecture/System-Architecture.md#L308), [§4 Frontend Auth Integration](docs/03-architecture/System-Architecture.md#L133)
-- Security detail: [Security-Design.md §4 Authentication](docs/03-architecture/Security-Design.md#L84), [§5 JWT Validation](docs/03-architecture/Security-Design.md#L122), [§6 RBAC](docs/03-architecture/Security-Design.md#L171)
+- Security detail: [Security-Design.md §4 Authentication](docs/03-architecture/Security-Design.md#L84), [§5 JWT Validation](docs/03-architecture/Security-Design.md#L168), [§6 RBAC](docs/03-architecture/Security-Design.md#L218)
 - Requirements: [Functional-Requirements.md → Authentication And User Accounts (FR-001~005)](docs/02-requirements/Functional-Requirements.md#L52)
 - Local config: [Local-Development-Guide.md §8 Authentication Setup](docs/05-development/Local-Development-Guide.md#L363)
+- Claim contract: [Security-Design.md §4 Authentication Design → Clerk/JWT Claim Contract](docs/03-architecture/Security-Design.md#clerkjwt-claim-contract)
 - Decision rationale: [ADR-001 Use Clerk for Authentication](docs/09-decision-records/ADR-001-Use-Clerk-for-Authentication.md)
 - Troubleshooting: [Troubleshooting-Guide.md §9 Authentication and Authorization Issues](docs/06-operations/Troubleshooting-Guide.md#L708)
 
@@ -206,23 +207,23 @@
 - 2. Security Scope — L11
 - 3. Security Architecture Summary — L37
 - 4. Authentication Design — L84
-- 5. JWT Validation — L122
-- 6. Authorization and Role-Based Access Control — L171
-- 7. API Security (incl. Public/Protected Routes, Input Validation, Error Handling, CORS) — L215
-- 8. Frontend Security Considerations — L275
-- 9. Secret Management — L307
-- 10. Network Security — L347
-- 11. HTTPS / TLS Design — L378
-- 12. Database Security — L404
-- 13. Azure Blob Storage Security and Access Model — L435
-- 14. CI/CD and Deployment Security — L483
-- 15. Container and VM Security — L520
-- 16. Data Protection and Privacy — L553
-- 17. Threats, Risks, and Mitigations (risk table) — L595
-- 18. Security Assumptions — L613
-- 19. Known Limitations — L631
-- 20. Recommended Future Improvements — L651
-- 21. Verification Notes — L673
+- 5. JWT Validation — L168
+- 6. Authorization and Role-Based Access Control — L218
+- 7. API Security (incl. Public/Protected Routes, Input Validation, Error Handling, CORS) — L261
+- 8. Frontend Security Considerations — L325
+- 9. Secret Management — L357
+- 10. Network Security — L397
+- 11. HTTPS / TLS Design — L428
+- 12. Database Security — L454
+- 13. Azure Blob Storage Security and Access Model — L485
+- 14. CI/CD and Deployment Security — L532
+- 15. Container and VM Security — L569
+- 16. Data Protection and Privacy — L602
+- 17. Threats, Risks, and Mitigations (risk table) — L644
+- 18. Security Assumptions — L662
+- 19. Known Limitations — L680
+- 20. Recommended Future Improvements — L700
+- 21. Verification Notes — L721
 
 ### 7. [docs/04-api/API-Documentation.md](docs/04-api/API-Documentation.md)
 - 1. Document Purpose — L5
