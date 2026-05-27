@@ -7,6 +7,7 @@ import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.service.UserService;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
+import club.skillswap.workshop.dto.WorkshopResponseDto;
 import club.skillswap.workshop.entity.Workshop;
 import club.skillswap.workshop.entity.WorkshopParticipant;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
@@ -22,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -337,12 +339,188 @@ class WorkshopServiceImplTest {
         assertThat(workshopCaptor.getValue().getImageUrl()).isEqualTo(NEW_IMAGE_URL);
     }
 
+    @Test
+    @DisplayName("Returns a restricted workshop detail when the viewer is an admin.")
+    void shouldReturnRestrictedWorkshopWhenViewerIsAdmin() {
+        Jwt jwt = jwt("admin-view-restricted-workshop");
+        UserAccount facilitator = facilitator();
+        Workshop workshop = pendingWorkshop(60L, facilitator);
+        when(workshopRepository.findByIdWithDetails(60L)).thenReturn(java.util.Optional.of(workshop));
+        when(participantRepository.findByWorkshopIdWithUser(60L)).thenReturn(List.of());
+
+        var response = workshopService.getWorkshopById(60L, adminAuthentication(jwt));
+
+        assertThat(response.status()).isEqualTo("pending");
+        assertThat(response.contactNumber()).isEqualTo("0412345678");
+        assertThat(response.submitterEmail()).isEqualTo(facilitator.getEmail());
+        assertThat(response.participants()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Returns a restricted workshop detail when the viewer is the facilitator.")
+    void shouldReturnRestrictedWorkshopWhenViewerIsFacilitator() {
+        Jwt jwt = jwt("facilitator-view-restricted-workshop");
+        UserAccount facilitator = facilitatorWithSubject(jwt.getSubject());
+        Workshop workshop = pendingWorkshop(61L, facilitator);
+        when(workshopRepository.findByIdWithDetails(61L)).thenReturn(java.util.Optional.of(workshop));
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(facilitator);
+
+        var response = workshopService.getWorkshopById(61L, memberAuthentication(jwt));
+
+        assertThat(response.status()).isEqualTo("pending");
+        assertThat(response.contactNumber()).isEqualTo("0412345678");
+        assertThat(response.submitterEmail()).isEqualTo(facilitator.getEmail());
+    }
+
+    @Test
+    @DisplayName("Returns 404 when a different member requests a restricted workshop.")
+    void shouldReturnNotFoundWhenRestrictedWorkshopViewerIsDifferentMember() {
+        Jwt jwt = jwt("member-view-restricted-workshop");
+        UserAccount member = memberUser(jwt);
+        Workshop workshop = pendingWorkshop(62L, facilitator());
+        when(workshopRepository.findByIdWithDetails(62L)).thenReturn(java.util.Optional.of(workshop));
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(member);
+
+        assertNotFound(() -> workshopService.getWorkshopById(62L, memberAuthentication(jwt)));
+    }
+
+    @Test
+    @DisplayName("Returns 404 when an anonymous viewer requests a restricted workshop.")
+    void shouldReturnNotFoundWhenRestrictedWorkshopViewerIsAnonymous() {
+        Workshop workshop = pendingWorkshop(63L, facilitator());
+        when(workshopRepository.findByIdWithDetails(63L)).thenReturn(java.util.Optional.of(workshop));
+
+        assertNotFound(() -> workshopService.getWorkshopById(63L, anonymousAuthentication()));
+
+        verify(userService, never()).findOrCreateCurrentUser(any());
+    }
+
+    @Test
+    @DisplayName("Returns pending when the stored workshop status is null.")
+    void shouldReturnPendingWhenStoredStatusIsNull() {
+        Jwt jwt = jwt("facilitator-view-null-status");
+        UserAccount facilitator = facilitatorWithSubject(jwt.getSubject());
+        Workshop workshop = pendingWorkshop(64L, facilitator);
+        workshop.setStatus(null);
+
+        assertWorkshopDetailStatus(64L, workshop, jwt, facilitator, "pending");
+    }
+
+    @Test
+    @DisplayName("Returns terminal and restricted statuses verbatim before deriving lifecycle state.")
+    void shouldReturnVerbatimStatusWhenWorkshopStatusIsRestrictedOrTerminal() {
+        List<String> statuses = List.of("cancelled", "completed", "pending", "rejected");
+        for (int i = 0; i < statuses.size(); i++) {
+            String status = statuses.get(i);
+            long workshopId = 70L + i;
+            Jwt jwt = jwt("facilitator-verbatim-" + status);
+            UserAccount facilitator = facilitatorWithSubject(jwt.getSubject());
+            Workshop workshop = workshopWithStatus(workshopId, facilitator, status);
+            workshop.setDate(farFutureDate());
+            workshop.setTime(LocalTime.NOON);
+            workshop.setDuration(90);
+
+            assertWorkshopDetailStatus(workshopId, workshop, jwt, facilitator, status);
+        }
+    }
+
+    @Test
+    @DisplayName("Returns upcoming when an approved workshop starts in the future.")
+    void shouldReturnUpcomingWhenApprovedWorkshopStartsInFuture() {
+        Jwt jwt = jwt("member-view-upcoming-status");
+        UserAccount member = memberUser(jwt);
+        Workshop workshop = approvedWorkshopStartingAt(80L, facilitator(), farFutureDateTime(), 90);
+
+        assertWorkshopDetailStatus(80L, workshop, jwt, member, "upcoming");
+    }
+
+    @Test
+    @DisplayName("Returns ongoing when an approved workshop has started but not ended.")
+    void shouldReturnOngoingWhenApprovedWorkshopHasStartedButNotEnded() {
+        Jwt jwt = jwt("member-view-ongoing-status");
+        UserAccount member = memberUser(jwt);
+        Workshop workshop = approvedWorkshopStartingAt(81L, facilitator(), recentPastDateTime(), 3 * 24 * 60);
+
+        assertWorkshopDetailStatus(81L, workshop, jwt, member, "ongoing");
+    }
+
+    @Test
+    @DisplayName("Returns completed when an approved workshop ended in the past.")
+    void shouldReturnCompletedWhenApprovedWorkshopEndedInPast() {
+        Jwt jwt = jwt("member-view-completed-status");
+        UserAccount member = memberUser(jwt);
+        Workshop workshop = approvedWorkshopStartingAt(82L, facilitator(), farPastDateTime(), 60);
+
+        assertWorkshopDetailStatus(82L, workshop, jwt, member, "completed");
+    }
+
+    @Test
+    @DisplayName("Returns ongoing when an approved started workshop has null duration.")
+    void shouldReturnOngoingWhenApprovedWorkshopStartedWithNullDuration() {
+        Jwt jwt = jwt("member-view-null-duration");
+        UserAccount member = memberUser(jwt);
+        Workshop workshop = approvedWorkshopStartingAt(83L, facilitator(), farPastDateTime(), null);
+
+        assertWorkshopDetailStatus(83L, workshop, jwt, member, "ongoing");
+    }
+
+    @Test
+    @DisplayName("Returns ongoing when an approved started workshop has zero duration.")
+    void shouldReturnOngoingWhenApprovedWorkshopStartedWithZeroDuration() {
+        Jwt jwt = jwt("member-view-zero-duration");
+        UserAccount member = memberUser(jwt);
+        Workshop workshop = approvedWorkshopStartingAt(84L, facilitator(), farPastDateTime(), 0);
+
+        assertWorkshopDetailStatus(84L, workshop, jwt, member, "ongoing");
+    }
+
+    @Test
+    @DisplayName("Resolves effective status after a workshop detail passes visibility checks.")
+    void shouldResolveEffectiveStatusWhenVisibleWorkshopDetailIsReturned() {
+        Jwt jwt = jwt("facilitator-visible-rejected-status");
+        UserAccount facilitator = facilitatorWithSubject(jwt.getSubject());
+        Workshop workshop = workshopWithStatus(85L, facilitator, "rejected");
+        workshop.setDate(farFutureDate());
+        workshop.setTime(LocalTime.NOON);
+        workshop.setDuration(90);
+
+        var response = assertWorkshopDetailStatus(85L, workshop, jwt, facilitator, "rejected");
+
+        assertThat(response.contactNumber()).isEqualTo("0412345678");
+        assertThat(response.submitterEmail()).isEqualTo(facilitator.getEmail());
+    }
+
     private void assertBadRequest(ThrowingCallable action, String reason) {
         assertThatThrownBy(action)
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
                     assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(ex.getReason()).isEqualTo(reason);
                 });
+    }
+
+    private void assertNotFound(ThrowingCallable action) {
+        assertThatThrownBy(action)
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(ex.getReason()).isEqualTo("Workshop not found.");
+                });
+    }
+
+    private WorkshopResponseDto assertWorkshopDetailStatus(
+            Long workshopId,
+            Workshop workshop,
+            Jwt jwt,
+            UserAccount viewer,
+            String expectedStatus
+    ) {
+        when(workshopRepository.findByIdWithDetails(workshopId)).thenReturn(java.util.Optional.of(workshop));
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(viewer);
+
+        var response = workshopService.getWorkshopById(workshopId, memberAuthentication(jwt));
+
+        assertThat(response.status()).as("resolved status for stored status %s", workshop.getStatus())
+                .isEqualTo(expectedStatus);
+        return response;
     }
 
     private WorkshopCreateRequestDto createRequest() {
@@ -390,6 +568,30 @@ class WorkshopServiceImplTest {
         return workshop;
     }
 
+    private Workshop workshopWithStatus(Long id, UserAccount facilitator, String status) {
+        Workshop workshop = baseWorkshop(id, facilitator);
+        workshop.setStatus(status);
+        workshop.setDate(farFutureDate());
+        workshop.setTime(LocalTime.NOON);
+        workshop.setAttendCloseAt(farFutureDateTime());
+        return workshop;
+    }
+
+    private Workshop approvedWorkshopStartingAt(
+            Long id,
+            UserAccount facilitator,
+            LocalDateTime startDateTime,
+            Integer durationMinutes
+    ) {
+        Workshop workshop = baseWorkshop(id, facilitator);
+        workshop.setStatus("approved");
+        workshop.setDate(startDateTime.toLocalDate());
+        workshop.setTime(startDateTime.toLocalTime());
+        workshop.setDuration(durationMinutes);
+        workshop.setAttendCloseAt(farFutureDateTime());
+        return workshop;
+    }
+
     private Workshop baseWorkshop(Long id, UserAccount facilitator) {
         Workshop workshop = new Workshop();
         workshop.setId(id);
@@ -410,6 +612,16 @@ class WorkshopServiceImplTest {
         return TestFixtures.userAccount()
                 .id(FACILITATOR_ID)
                 .authSubject("facilitator-workshop")
+                .username("Taylor Host")
+                .email("taylor.host@example.test")
+                .role("member")
+                .build();
+    }
+
+    private UserAccount facilitatorWithSubject(String authSubject) {
+        return TestFixtures.userAccount()
+                .id(FACILITATOR_ID)
+                .authSubject(authSubject)
                 .username("Taylor Host")
                 .email("taylor.host@example.test")
                 .role("member")
@@ -458,6 +670,14 @@ class WorkshopServiceImplTest {
         );
     }
 
+    private Authentication anonymousAuthentication() {
+        return new AnonymousAuthenticationToken(
+                "test-anonymous-key",
+                "anonymous",
+                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))
+        );
+    }
+
     private Jwt jwt(String subject) {
         return Jwt.withTokenValue("token-" + subject)
                 .header("alg", "none")
@@ -471,6 +691,10 @@ class WorkshopServiceImplTest {
 
     private LocalDateTime farFutureDateTime() {
         return LocalDateTime.now().plusYears(4);
+    }
+
+    private LocalDateTime recentPastDateTime() {
+        return LocalDateTime.now().minusHours(1);
     }
 
     private LocalDateTime farPastDateTime() {

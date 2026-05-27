@@ -138,6 +138,14 @@ This document covers only what is specific to SkillSwap:
 - Time-sensitive setup uses far-past/far-future input data. Timestamps written with `LocalDateTime.now()` are asserted with `isNotNull()` only.
 - Local tests intentionally not run for PR #5; CI/human verification is the verification path for this conversation.
 
+**Round 2 implementation notes (added on completion):**
+- [x] Added Mockito-only `WorkshopServiceImplTest` coverage for restricted workshop visibility through `getWorkshopById`: admin, owning facilitator, different member, and anonymous viewer paths.
+- [x] Added lifecycle effective-status coverage through non-admin `getWorkshopById` DTO mapping: `null` status, all four short-circuit statuses, upcoming, ongoing, completed, null duration, and zero duration.
+- [x] Kept lifecycle tests on member/non-admin authentication so `mapToDtoForViewer` resolves effective status instead of returning raw admin status.
+- [x] Covered the combined visibility-plus-status behavior after a restricted workshop detail passes facilitator visibility checks.
+- Deferred: workshop controller tests, workshop repository tests, workshop integration/API contract tests, lifecycle `date == null` branch, cancel notification fanout, admin-update notification fanout, request-approval authorization and admin notification branches, host hide rules, list/query summary mapping edge cases, upload validation failure branches, delete/leave behavior beyond existing auth extraction coverage, and production refactors such as `Clock` injection or `AzureBlobStorageService` changes.
+- Local tests intentionally not run for PR #5 round 2; CI/human verification is the verification path for this conversation.
+
 ### PR #6 -- admin + Health + integration + security route matrix
 - [x] Added `SecurityRegressionTests` covering admin endpoint denial for members/anonymous users, admin workshop detail protection, non-admin workshop delete denial, avatar URL PATCH ignoring, Azure Blob URL validation for memory cover URLs, and SVG/fake image rejection for avatar/workshop/memory uploads.
 - [x] Added focused tests for CORS allowed headers/origins, JWT config startup validation, Azure Blob returned URL/SAS failure behaviour, Azure Blob URL validation, and image upload validation.
