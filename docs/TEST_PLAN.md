@@ -167,7 +167,17 @@ This document covers only what is specific to SkillSwap:
 ### PR #6 -- admin + Health + integration + security route matrix
 - [x] Added `SecurityRegressionTests` covering admin endpoint denial for members/anonymous users, admin workshop detail protection, non-admin workshop delete denial, avatar URL PATCH ignoring, Azure Blob URL validation for memory cover URLs, and SVG/fake image rejection for avatar/workshop/memory uploads.
 - [x] Added focused tests for CORS allowed headers/origins, JWT config startup validation, Azure Blob returned URL/SAS failure behaviour, Azure Blob URL validation, and image upload validation.
-- [ ] Add remaining end-to-end API contract tests for non-security workshop, notification, memory lock, and user profile edge cases.
+- [x] Add remaining end-to-end API contract tests for non-security workshop, notification, memory lock, and user profile edge cases.
+
+**Round 1 API contract implementation notes (added on completion):**
+- [x] Added full-context MockMvc API contract tests in `skill-swap-backend/src/test/java/club/skillswap/workshop/WorkshopApiContractTests.java`, `skill-swap-backend/src/test/java/club/skillswap/notification/NotificationApiContractTests.java`, `skill-swap-backend/src/test/java/club/skillswap/memory/MemoryLockApiContractTests.java`, and `skill-swap-backend/src/test/java/club/skillswap/user/UserProfileApiContractTests.java`.
+- [x] Reused the PR #6 baseline bootstrap style: `@SpringBootTest`, `@AutoConfigureMockMvc`, real security filter chain, real controllers/services/repositories, and mocked `AzureBlobStorageService`.
+- [x] Reused the baseline MockMvc authentication mechanism: `jwt().authorities(...)`; no real `JwtConverter`, `JwtDecoder`, or Clerk JWKS path is loaded by these requests.
+- [x] Used test-managed `@Transactional` rollback for data isolation in all four new API contract classes. The focused round-1 paths do not exercise `NotificationServiceImpl.createNotification(...)`, which is `@Async` and `REQUIRES_NEW`; future async notification e2e coverage needs separate isolation/executor handling.
+- [x] Kept assertions on observable API contracts: status codes, response bodies, error paths/messages, specific seeded IDs/titles, and response field presence/absence. Tests avoid global row-count assumptions.
+- [x] `UserProfileApiContractTests` asserts the actual current `/api/v1/users/me` `creditBalance` response value of `0`, while leaving the already-recorded `UserProfileDto.fromEntity()` `100` inconsistency untouched.
+- Deferred after round 1: exhaustive workshop lifecycle/admin update/cancel/leave/hide/request-approval API matrices, notification unread-count/read-all/order contracts, async notification creation e2e tests, public memory slug/list CRUD contracts beyond lock behavior, memory expired-lock/non-draft variants, user public-profile/stat edge cases, and upload cases already covered by the PR #6 baseline.
+- Local tests intentionally not run for PR #6 round 1; CI/human verification is the verification path because this conversation is constrained from running Docker/local tests.
 
 ## Behavioral Inconsistencies Found
 
@@ -206,6 +216,7 @@ Behavioral inconsistencies are handled according to the behavior preservation ru
 - 2026-05-16: PR #1 introduces PostgreSQL Testcontainers during infrastructure setup, before repository tests originally scheduled for PR #4. Reasons: Production uses PostgreSQL on Azure; H2 dialect substitution risks false-green tests. Local PostgreSQL would require per-developer setup and suffers from state drift between machines. Testcontainers provides reproducible, isolated, production-equivalent test datasource for both local and CI runs. Project target is industrial production quality; the Docker dependency cost is justified by reproducibility.
 - 2026-05-16: Test schema generated via Hibernate `ddl-auto=create-drop` because no Flyway/Liquibase migrations exist on main. If repository tests in PR #4 reveal entity-to-schema discrepancies (`jsonb` columns, custom `@Type`, etc.), revisit by adding migration files or explicit `columnDefinition` declarations.
 - 2026-05-16: Added backend test CI via GitHub Actions (.github/workflows/backend-tests.yml). Resolves the "backend test CI workflow gap" Future Refactor item. Trigger: PR or push to main affecting skill-swap-backend/** or the workflow file itself. Java 17 matches project toolchain. Runner: ubuntu-latest (Docker expected to be available for Testcontainers; if removed from future runner images, a docker-setup step will need to be added). Test results uploaded as artifact (retention 7 days) for offline review when CI fails. Job timeout 15 minutes to prevent stuck runs from consuming the 6-hour default.
+- 2026-05-27: PR #6 round-1 API contract tests use full-context MockMvc with test-managed `@Transactional` rollback for data isolation. Reason: the focused workshop join/list/detail, notification read-side, memory lock, and user profile paths do not hit `NotificationServiceImpl.createNotification(...)` (`@Async` + `REQUIRES_NEW`), so rollback is simpler and less brittle than manual cleanup or table truncation.
 
 ## Open Questions / Pending Decisions
 
