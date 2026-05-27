@@ -121,7 +121,22 @@ This document covers only what is specific to SkillSwap:
 - [x] Removed legacy `authentication.getName()` identity fallback from Memory admin paths; public Memory reads remain anonymous/public.
 
 ### PR #5 -- workshop module
-- [ ] to be detailed when previous module merges
+- [x] to be detailed when previous module merges
+- [x] Added Mockito-only `WorkshopServiceImplTest` for round-1 non-auth service behavior.
+- [x] Covered workshop submission persistence and admin notification dispatch, including the actual branch that skips a facilitator who also appears in admin candidates.
+- [x] Covered focused `joinWorkshop` behavior: effective-status rejection, capacity enforcement, duplicate-join handling, attendance cutoff, participant persistence, and exactly one dedicated facilitator-notification absence test (`shouldNotNotifyFacilitatorWhenUserJoinsWorkshop`).
+- [x] Covered approve/reject status transitions with non-flaky timestamp assertions and mocked notification dispatch to the facilitator.
+- [x] Covered workshop image upload through mocked `AzureBlobStorageService`, including object path capture and previous-image cleanup.
+- Deferred: workshop controller tests, workshop repository tests, workshop integration/API contract tests, full lifecycle/status matrix beyond round-1 approve/reject/join-not-upcoming coverage, cancel notification fanout, admin-update notification fanout, request-approval authorization and admin notification branches, full visibility matrix for pending/rejected/admin/facilitator/public viewers, host hide rules, list/query summary mapping edge cases, upload validation failure branches, delete/leave behavior beyond existing auth extraction coverage, and production refactors such as `Clock` injection or `AzureBlobStorageService` changes.
+
+**Implementation notes (added on completion):**
+- Kept `WorkshopServiceImplAuthExtractionTest` unchanged; round-1 non-auth behavior lives in `skill-swap-backend/src/test/java/club/skillswap/workshop/service/WorkshopServiceImplTest.java`.
+- `WorkshopRepository`, `WorkshopParticipantRepository`, `UserService`, `NotificationService`, and `AzureBlobStorageService` are Mockito mocks; no Spring context, real Azure client, or async notification proxy is used.
+- `NotificationService` is mocked, so notification dispatch assertions are synchronous Mockito verifications. `ArgumentCaptor` assertions are limited to behavior-relevant recipient and type fields.
+- The `joinWorkshop` product decision remains locked by exactly one dedicated absence test. Other join tests focus on their primary branch behavior and do not re-assert facilitator-notification absence.
+- Current source behavior has `joinWorkshop` fully silent; round 1 intentionally locks only the facilitator absence while preserving branch-focused join tests.
+- Time-sensitive setup uses far-past/far-future input data. Timestamps written with `LocalDateTime.now()` are asserted with `isNotNull()` only.
+- Local tests intentionally not run for PR #5; CI/human verification is the verification path for this conversation.
 
 ### PR #6 -- admin + Health + integration + security route matrix
 - [x] Added `SecurityRegressionTests` covering admin endpoint denial for members/anonymous users, admin workshop detail protection, non-admin workshop delete denial, avatar URL PATCH ignoring, Azure Blob URL validation for memory cover URLs, and SVG/fake image rejection for avatar/workshop/memory uploads.
