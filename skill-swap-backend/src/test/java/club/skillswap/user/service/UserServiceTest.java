@@ -20,7 +20,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -31,6 +34,9 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,6 +46,8 @@ import static org.mockito.Mockito.when;
 class UserServiceTest {
 
     private static final String CLERK_ISSUER = "https://clerk.test.invalid";
+    private static final String OLD_AVATAR_URL = "https://skillswaptest.blob.core.windows.net/media/avatars/old.png";
+    private static final String NEW_AVATAR_URL = "https://skillswaptest.blob.core.windows.net/media/avatars/new.png";
 
     @Mock
     private UserRepository userRepository;
@@ -347,6 +355,210 @@ class UserServiceTest {
         verify(userRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("Uploads an avatar and returns the new avatar URL when no previous avatar exists.")
+    void shouldUploadAvatarAndReturnProfileWhenNoPreviousAvatar() {
+        setMaxImageBytes(10L * 1024L * 1024L);
+        String subject = "user_upload_avatar";
+        Jwt jwt = jwt(subject, "avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(null)
+                .build();
+        MockMultipartFile file = validPngFile("avatar.png");
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+        when(azureBlobStorageService.uploadImage(any(MultipartFile.class), anyString(), eq("image/png")))
+                .thenReturn(NEW_AVATAR_URL);
+        stubProfileStats(existingUser);
+
+        var result = userService.uploadCurrentUserAvatar(jwt, file);
+
+        assertThat(result.getAvatarUrl()).isEqualTo(NEW_AVATAR_URL);
+        ArgumentCaptor<String> pathCaptor = ArgumentCaptor.forClass(String.class);
+        verify(azureBlobStorageService).uploadImage(same(file), pathCaptor.capture(), eq("image/png"));
+        assertThat(pathCaptor.getValue())
+                .matches("avatars/" + existingUser.getId() + "/[0-9a-fA-F-]{36}\\.png");
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getAvatarUrl()).isEqualTo(NEW_AVATAR_URL);
+    }
+
+    @Test
+    @DisplayName("Deletes the previous avatar URL after uploading a replacement avatar.")
+    void shouldDeletePreviousAvatarWhenAvatarIsReplaced() {
+        setMaxImageBytes(10L * 1024L * 1024L);
+        String subject = "user_replace_avatar";
+        Jwt jwt = jwt(subject, "replace-avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(OLD_AVATAR_URL)
+                .build();
+        MockMultipartFile file = validPngFile("avatar.png");
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+        when(azureBlobStorageService.uploadImage(any(MultipartFile.class), anyString(), eq("image/png")))
+                .thenReturn(NEW_AVATAR_URL);
+        stubProfileStats(existingUser);
+
+        var result = userService.uploadCurrentUserAvatar(jwt, file);
+
+        assertThat(result.getAvatarUrl()).isEqualTo(NEW_AVATAR_URL);
+        ArgumentCaptor<String> pathCaptor = ArgumentCaptor.forClass(String.class);
+        verify(azureBlobStorageService).uploadImage(same(file), pathCaptor.capture(), eq("image/png"));
+        assertThat(pathCaptor.getValue())
+                .matches("avatars/" + existingUser.getId() + "/[0-9a-fA-F-]{36}\\.png");
+        verify(azureBlobStorageService).deleteByUrlQuietly(OLD_AVATAR_URL);
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getAvatarUrl()).isEqualTo(NEW_AVATAR_URL);
+    }
+
+    @Test
+    @DisplayName("Keeps the existing avatar blob when upload returns the same URL.")
+    void shouldNotDeleteAvatarWhenUploadReturnsSameUrl() {
+        setMaxImageBytes(10L * 1024L * 1024L);
+        String subject = "user_same_avatar_url";
+        Jwt jwt = jwt(subject, "same-avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(OLD_AVATAR_URL)
+                .build();
+        MockMultipartFile file = validPngFile("avatar.png");
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+        when(azureBlobStorageService.uploadImage(any(MultipartFile.class), anyString(), eq("image/png")))
+                .thenReturn(OLD_AVATAR_URL);
+        stubProfileStats(existingUser);
+
+        var result = userService.uploadCurrentUserAvatar(jwt, file);
+
+        assertThat(result.getAvatarUrl()).isEqualTo(OLD_AVATAR_URL);
+        ArgumentCaptor<String> pathCaptor = ArgumentCaptor.forClass(String.class);
+        verify(azureBlobStorageService).uploadImage(same(file), pathCaptor.capture(), eq("image/png"));
+        assertThat(pathCaptor.getValue())
+                .matches("avatars/" + existingUser.getId() + "/[0-9a-fA-F-]{36}\\.png");
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+
+        ArgumentCaptor<UserAccount> userCaptor = ArgumentCaptor.forClass(UserAccount.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getAvatarUrl()).isEqualTo(OLD_AVATAR_URL);
+    }
+
+    @Test
+    @DisplayName("Rejects a missing avatar file before uploading or deleting storage.")
+    void shouldRejectNullAvatarFileBeforeUpload() {
+        setMaxImageBytes(10L * 1024L * 1024L);
+        String subject = "user_null_avatar";
+        Jwt jwt = jwt(subject, "null-avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(OLD_AVATAR_URL)
+                .build();
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+
+        assertThatThrownBy(() -> userService.uploadCurrentUserAvatar(jwt, null))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getReason()).isEqualTo("Image file is required.");
+                });
+        verify(azureBlobStorageService, never()).uploadImage(any(), anyString(), anyString());
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Rejects an empty avatar file before uploading or deleting storage.")
+    void shouldRejectEmptyAvatarFileBeforeUpload() {
+        setMaxImageBytes(10L * 1024L * 1024L);
+        String subject = "user_empty_avatar";
+        Jwt jwt = jwt(subject, "empty-avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(OLD_AVATAR_URL)
+                .build();
+        MockMultipartFile file = new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+
+        assertThatThrownBy(() -> userService.uploadCurrentUserAvatar(jwt, file))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getReason()).isEqualTo("Image file is required.");
+                });
+        verify(azureBlobStorageService, never()).uploadImage(any(), anyString(), anyString());
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Rejects an unsupported avatar content type before uploading or deleting storage.")
+    void shouldRejectUnsupportedAvatarContentTypeBeforeUpload() {
+        setMaxImageBytes(10L * 1024L * 1024L);
+        String subject = "user_text_avatar";
+        Jwt jwt = jwt(subject, "text-avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(OLD_AVATAR_URL)
+                .build();
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.txt", "text/plain", validPng());
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+
+        assertThatThrownBy(() -> userService.uploadCurrentUserAvatar(jwt, file))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getReason()).isEqualTo("Unsupported image format. Please use PNG/JPG/WEBP/GIF.");
+                });
+        verify(azureBlobStorageService, never()).uploadImage(any(), anyString(), anyString());
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Rejects an SVG avatar before uploading or deleting storage.")
+    void shouldRejectSvgAvatarBeforeUpload() {
+        setMaxImageBytes(10L * 1024L * 1024L);
+        String subject = "user_svg_avatar";
+        Jwt jwt = jwt(subject, "svg-avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(OLD_AVATAR_URL)
+                .build();
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.svg", "image/svg+xml", "<svg/>".getBytes());
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+
+        assertThatThrownBy(() -> userService.uploadCurrentUserAvatar(jwt, file))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getReason()).isEqualTo("SVG images are not supported.");
+                });
+        verify(azureBlobStorageService, never()).uploadImage(any(), anyString(), anyString());
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Rejects an oversized avatar before uploading or deleting storage.")
+    void shouldRejectOversizedAvatarBeforeUpload() {
+        setMaxImageBytes(1L);
+        String subject = "user_oversized_avatar";
+        Jwt jwt = jwt(subject, "oversized-avatar@example.test", true);
+        UserAccount existingUser = TestFixtures.userAccount()
+                .authSubject(subject)
+                .avatarUrl(OLD_AVATAR_URL)
+                .build();
+        MockMultipartFile file = validPngFile("avatar.png");
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+
+        assertThatThrownBy(() -> userService.uploadCurrentUserAvatar(jwt, file))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.PAYLOAD_TOO_LARGE);
+                    assertThat(ex.getReason()).isEqualTo("Image is too large.");
+                });
+        verify(azureBlobStorageService, never()).uploadImage(any(), anyString(), anyString());
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+        verify(userRepository, never()).save(any());
+    }
+
     private Jwt jwt(String subject, String email, boolean emailVerified) {
         return jwtWithClaims(subject, builder -> builder
                 .claim("email", email)
@@ -376,5 +588,24 @@ class UserServiceTest {
         skill.setSkillName(skillName);
         skill.setUser(user);
         return skill;
+    }
+
+    private void setMaxImageBytes(long maxImageBytes) {
+        ReflectionTestUtils.setField(userService, "maxImageBytes", maxImageBytes);
+    }
+
+    private void stubProfileStats(UserAccount user) {
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(workshopRepository.countByFacilitatorId(user.getId())).thenReturn(0L);
+        when(participantRepository.countByUserId(user.getId())).thenReturn(0L);
+    }
+
+    private MockMultipartFile validPngFile(String fileName) {
+        return new MockMultipartFile("file", fileName, "image/png", validPng());
+    }
+
+    private byte[] validPng() {
+        return java.util.Base64.getDecoder()
+                .decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=");
     }
 }
