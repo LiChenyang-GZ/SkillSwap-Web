@@ -103,7 +103,18 @@ This document covers only what is specific to SkillSwap:
 - Local tests intentionally not run for PR #2; CI is the verification path because Docker is unavailable in the agent environment.
 
 ### PR #3 -- notification module
-- [ ] to be detailed when PR #2 merges
+- [x] to be detailed when PR #2 merges
+- [x] Preserve existing JWT-only notification auth extraction tests from the legacy-branch-removal work
+- [x] Add Mockito-only `NotificationServiceImpl` service tests for recipient-scoped listing/counting
+- [x] Add read/unread transition tests for `markRead` and `markAllRead`
+- [x] Add synchronous observable-behavior tests for both `createNotification` overloads, including null/missing recipient guards and nullable workshop behavior
+- Deferred: notification controller tests, notification repository tests, true async dispatch/integration tests, and end-to-end notification API contract tests
+
+**Implementation notes (added on completion):**
+- Extended existing Mockito-only tests in `skill-swap-backend/src/test/java/club/skillswap/notification/service/NotificationServiceImplTest.java`.
+- Covered current JWT-only recipient resolution via `UserService.findOrCreateCurrentUser(jwt)`, recipient-scoped notification listing/counting, read/unread transitions, missing-notification behavior, and both notification creation overloads.
+- `@Async` creation methods were tested through the direct Mockito-instantiated service, so no Spring async proxy is active; observable persistence behavior is asserted synchronously on the test thread.
+- Local tests intentionally not run for PR #3; CI/human verification is the verification path because Docker is unavailable in the agent environment.
 
 ### PR #4 -- memory module
 - [x] Added `MemoryServiceImplAuthExtractionTest` covering anonymous public memory reads, JWT-only admin memory actor resolution, and rejection of anonymous/non-JWT admin principals.
