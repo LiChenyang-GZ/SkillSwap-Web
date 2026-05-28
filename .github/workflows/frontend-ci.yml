@@ -1,0 +1,45 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    paths:
+      - 'skill-swap-frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'skill-swap-frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: skill-swap-frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-package-lock
+
+      - name: Run frontend build
+        run: npm run build
