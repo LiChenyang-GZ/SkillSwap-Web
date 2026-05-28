@@ -564,9 +564,10 @@ cd skill-swap-backend
 Current test coverage:
 
 - Spring Boot context/profile tests exist at `src/test/java/club/skillswap/SkillSwapBackendApplicationTests.java`.
-- Security regression tests and focused CORS/JWT/storage/upload validation tests exist under `src/test/java/club/skillswap/**`.
+- Service unit tests, selected API contract tests, security regression tests, and focused CORS/JWT/storage/upload validation tests exist under `src/test/java/club/skillswap/**`.
 - `build.gradle` configures JUnit Platform and activates the `test` profile for `./gradlew test`.
 - Test datasource configuration uses Testcontainers PostgreSQL through `src/test/resources/application-test.properties`; Docker is required for the full backend test suite.
+- Detailed testing strategy is documented in `docs/08-testing/Testing-Strategy.md`.
 
 ## 13. Code Quality and Build Commands
 
@@ -672,7 +673,7 @@ Use this checklist after setup:
 - Add a local Docker Compose file for PostgreSQL if the team wants one-command onboarding.
 - Clarify and automate schema setup.
 - Add frontend test/lint/type-check scripts.
-- Add stronger backend tests beyond the current security regression and infrastructure coverage.
+- Continue expanding backend tests for deferred API matrices, repository/database behaviours, and async notification integration where useful.
 - Keep Azure Blob container environment variable names aligned across backend code, docs, and workflow.
 - Avoid printing sensitive configuration previews from build/runtime tasks.
 
@@ -704,7 +705,7 @@ Use this checklist after setup:
 
 - Canonical Node/npm versions.
 - Canonical local database bootstrap and migration process.
-- Whether backend tests should use a test profile or test container in future.
+- Whether additional backend tests should validate migrations or repository-only behaviours beyond the current test-profile/Testcontainers setup.
 - Clerk local template/claims configuration.
 - Production storage container access level and SAS/public URL behaviour.
 - Whether existing `.env` files should be replaced with `.env.example` templates for onboarding.

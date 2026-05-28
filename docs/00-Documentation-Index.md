@@ -24,7 +24,8 @@
 | 10 | Troubleshooting Guide | [docs/06-operations/Troubleshooting-Guide.md](docs/06-operations/Troubleshooting-Guide.md) | Symptom-based troubleshooting: frontend / backend / API / DB / storage / Docker / Nginx / CI |
 | 11 | Admin Guide | [docs/07-user-guides/Admin-Guide.md](docs/07-user-guides/Admin-Guide.md) | Admin workflows: workshop review, Memory Studio, permission boundaries |
 | 12 | End-User Guide | [docs/07-user-guides/End-User-Guide.md](docs/07-user-guides/End-User-Guide.md) | Regular user actions: sign up/in, attend, submit workshops, notifications, FAQ |
-| 13 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~007: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices |
+| 13 | Testing Strategy | [docs/08-testing/Testing-Strategy.md](docs/08-testing/Testing-Strategy.md) | Backend-focused automated testing strategy, coverage summary, CI test workflow, AI-assisted testing guideline |
+| 14 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~007: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices |
 
 ---
 
@@ -97,6 +98,16 @@
 - Process and commands: [Deployment-Runbook.md](docs/06-operations/Deployment-Runbook.md) — backend auto-deploy [§7](docs/06-operations/Deployment-Runbook.md#L135), frontend [§8](docs/06-operations/Deployment-Runbook.md#L222), manual fallback [§9](docs/06-operations/Deployment-Runbook.md#L263), rollback [§13](docs/06-operations/Deployment-Runbook.md#L442)
 - Secrets/env var lists: [Deployment-Runbook.md §6](docs/06-operations/Deployment-Runbook.md#L77), [Local-Development-Guide.md §10](docs/05-development/Local-Development-Guide.md#L415)
 - Decisions: [ADR-002 Vercel](docs/09-decision-records/ADR-002-Use-Vercel-for-Frontend-Hosting.md), [ADR-003 Azure VM](docs/09-decision-records/ADR-003-Use-Azure-VM-for-Backend-Hosting.md), [ADR-006 GitHub Actions+GHCR](docs/09-decision-records/ADR-006-Use-GitHub-Actions-and-GHCR-for-CICD.md), [ADR-007 Nginx](docs/09-decision-records/ADR-007-Use-Nginx-for-Reverse-Proxy-and-TLS-Termination.md)
+
+### Testing / Backend CI / AI-Assisted Test Workflow
+- Strategy: [Testing-Strategy.md](docs/08-testing/Testing-Strategy.md)
+- Current backend testing scope: [Testing-Strategy.md §2 Testing Scope](docs/08-testing/Testing-Strategy.md#L23), [§5 Test Types Used](docs/08-testing/Testing-Strategy.md#L109)
+- Module coverage summary: [Testing-Strategy.md §6 Module Coverage Summary](docs/08-testing/Testing-Strategy.md#L186), [§7 Backend Test Coverage Table](docs/08-testing/Testing-Strategy.md#L201)
+- Authentication/JWT testing: [Testing-Strategy.md §8 Authentication and Authorization Testing](docs/08-testing/Testing-Strategy.md#L216)
+- Database/testing infrastructure: [Testing-Strategy.md §4 Backend Test Infrastructure](docs/08-testing/Testing-Strategy.md#L52), [§9 Database Testing Approach](docs/08-testing/Testing-Strategy.md#L252)
+- Backend CI workflow: [Testing-Strategy.md §11 CI Workflow for Backend Tests](docs/08-testing/Testing-Strategy.md#L284)
+- AI-assisted testing convention: [Testing-Strategy.md §12 AI-Assisted Testing Workflow](docs/08-testing/Testing-Strategy.md#L300), source convention [`.codex/skills/test-skill/SKILL.md`](../.codex/skills/test-skill/SKILL.md)
+- SkillSwap-specific roadmap: [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intentionally excluded from this index's per-document section list)
 
 ### Security (CORS / secret management / network / TLS / risks)
 - All in [Security-Design.md](docs/03-architecture/Security-Design.md): API security incl. CORS [§7](docs/03-architecture/Security-Design.md#L215), secrets [§9](docs/03-architecture/Security-Design.md#L307), network [§10](docs/03-architecture/Security-Design.md#L347), TLS [§11](docs/03-architecture/Security-Design.md#L378), risks and mitigations [§17](docs/03-architecture/Security-Design.md#L595), recommended improvements [§20](docs/03-architecture/Security-Design.md#L651)
@@ -343,7 +354,26 @@
 - Frequently Asked Questions — L272
 - Verification Notes — L306
 
-### 13. Decision Records (ADR) — [docs/09-decision-records/](docs/09-decision-records/)
+### 13. [docs/08-testing/Testing-Strategy.md](docs/08-testing/Testing-Strategy.md)
+- 1. Document Purpose — L3
+- 2. Testing Scope — L23
+- 3. Testing Principles — L36
+- 4. Backend Test Infrastructure — L52
+- 5. Test Types Used — L109
+- 6. Module Coverage Summary — L186
+- 7. Backend Test Coverage Table — L201
+- 8. Authentication and Authorization Testing — L216
+- 9. Database Testing Approach — L252
+- 10. External Service Isolation — L268
+- 11. CI Workflow for Backend Tests — L284
+- 12. AI-Assisted Testing Workflow — L300
+- 13. Behavioural Inconsistencies Discovered by Tests — L321
+- 14. Current Limitations — L334
+- 15. Future Testing Improvements — L349
+- 16. How to Run Tests — L362
+- 17. Verification Notes — L412
+
+### 14. Decision Records (ADR) — [docs/09-decision-records/](docs/09-decision-records/)
 > All 7 ADRs share the same structure: Status / Date / Context / Decision / Rationale / Alternatives Considered / Consequences (Positive, Negative, Future) / Related Documentation.
 
 | ADR | Topic | File |

@@ -190,7 +190,7 @@ Deployment note for handover: the backend reads the Azure Blob container from `A
 
 ## 10. Limitations And Future Improvements
 
-- Add stronger automated test coverage. The backend now includes security regression tests and backend CI, but broader unit, API contract, and frontend coverage still need expansion.
+- Continue expanding automated test coverage. The backend now includes service unit tests, selected API contract tests, security regression tests, and backend CI; frontend automated tests, full browser E2E tests, performance tests, and exhaustive API matrices remain future work.
 - Keep deployment configuration documentation aligned with backend properties and GitHub Actions when storage or auth variables change.
 - Decide whether memory editing should remain lock-based or reintroduce version-based optimistic locking. The current source supports edit locks, while historical migrations show a removed `version` column.
 - Keep documentation paths and older auth references aligned with the current Clerk-based frontend and backend flow.

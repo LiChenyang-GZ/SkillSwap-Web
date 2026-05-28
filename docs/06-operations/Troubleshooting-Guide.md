@@ -10,8 +10,8 @@ It is intentionally symptom-based. It does not replace:
 
 - Deployment procedures: `docs/06-operations/Deployment-Runbook.md`
 - Architecture overview: `docs/03-architecture/System-Architecture.md`
-- Security design: `docs/03-architecture/Security-Design.md` when available
-- Testing strategy and manual test cases: `docs/08-testing/` when available
+- Security design: `docs/03-architecture/Security-Design.md`
+- Testing strategy: `docs/08-testing/Testing-Strategy.md`
 
 Where a step is inferred rather than explicitly documented, it is labelled `Inferred from implementation`.
 
@@ -1542,9 +1542,9 @@ Avoid in this guide:
 - Runtime Flyway migration is disabled in inspected Spring profiles; schema setup/migration process requires maintainer verification.
 - The deployment workflow and backend code now use `AZURE_STORAGE_MEDIA_CONTAINER`, but live container existence, access level, and SAS/public URL behaviour still require verification.
 - Frontend automated test/lint/typecheck scripts were not found in `package.json`.
-- Backend test coverage visible in the repository now includes security regression tests and CI, but not full domain/API/frontend coverage.
+- Backend automated testing visible in the repository now includes service unit tests, selected API contract tests, security regression tests, and backend CI, but not frontend, full browser E2E, performance, or exhaustive API coverage.
 - Some behaviors require verification against production configuration, especially Clerk, CORS, storage container access, database schema, DNS, and Vercel settings.
-- Older planning references to `docs/08-testing/` are still stale if encountered; current testing notes are in `docs/TEST_PLAN.md`.
+- Current testing strategy is documented in `docs/08-testing/Testing-Strategy.md`; the SkillSwap-specific test roadmap remains in `docs/TEST_PLAN.md`.
 
 ## 19. Verification Notes
 
