@@ -4,7 +4,7 @@
 
 This document describes the current testing strategy for SkillSwap. It is intended for technical handover, contributor onboarding, and portfolio review.
 
-The current automated test suite focuses on Spring Boot backend validation. Frontend automated tests and full browser end-to-end tests are outside the current automated test scope and are listed as future improvements.
+The current automated test suite focuses on Spring Boot backend validation. Frontend CI currently provides TypeScript typecheck and production build gates, but frontend automated tests and full browser end-to-end tests are outside the current automated test scope and are listed as future improvements.
 
 This document is based on:
 
@@ -13,6 +13,7 @@ This document is based on:
 - backend test source under `skill-swap-backend/src/test/java`
 - backend test configuration under `skill-swap-backend/src/test/resources/application-test.properties`
 - backend Gradle configuration and GitHub Actions workflow configuration
+- frontend package scripts and GitHub Actions workflow configuration
 - backend controllers, services, repositories, security configuration, entity/model classes, Azure Blob Storage integration, and Clerk/JWT-related configuration
 - supporting architecture, API, database, security, requirements, overview, and operations documentation
 
@@ -29,7 +30,8 @@ No secrets, production tokens, private keys, or real credential values are inclu
 | Repository/database integration tests | Partially implemented | Full-context tests use real Spring Data repositories with PostgreSQL Testcontainers | No dedicated `@DataJpaTest` repository-only suites are currently present. |
 | Azure Blob Storage integration behaviour | Implemented through mocks/stubs and focused unit tests | `AzureBlobStorageService` is mocked in Spring context tests; service tests mock storage; one focused storage unit test covers SAS failure behaviour | Tests avoid real Azure calls. |
 | CI backend test execution | Implemented | GitHub Actions runs `./gradlew test` in `skill-swap-backend` | Workflow uploads Gradle test reports and result XML files. |
-| Frontend automated tests | Not currently implemented | Future improvement | `skill-swap-frontend/package.json` has build/dev scripts but no test script or frontend test framework configuration was found. |
+| CI frontend typecheck/build execution | Implemented | GitHub Actions runs `npm run typecheck` and `npm run build` in `skill-swap-frontend` | Workflow uses `npm ci`; no artifact upload is configured. |
+| Frontend automated tests | Not currently implemented | Future improvement | `skill-swap-frontend/package.json` has no test script or frontend test framework configuration. |
 | End-to-end browser tests | Not currently implemented | Future improvement | No Playwright/Cypress E2E suite was found. |
 | Performance/load tests | Not currently implemented | Future improvement | No load test tooling or CI job was found. |
 
@@ -278,7 +280,9 @@ The backend automated test suite is designed to be safe, deterministic, and inde
 
 No real cloud credentials are required to run the backend tests.
 
-## 11. CI Workflow for Backend Tests
+## 11. CI Workflows
+
+### Backend Tests
 
 Workflow path: `.github/workflows/backend-tests.yml`
 
@@ -296,6 +300,25 @@ Workflow path: `.github/workflows/backend-tests.yml`
 | Docker/Testcontainers | Inferred from implementation: Docker must be available for PostgreSQL Testcontainers |
 
 This workflow acts as a backend quality gate for changed backend code and test infrastructure. It does not test frontend behaviour.
+
+### Frontend Typecheck and Build
+
+Workflow path: `.github/workflows/frontend-ci.yml`
+
+| Setting | Current value |
+| --- | --- |
+| Workflow name | Frontend CI |
+| Trigger conditions | Pull requests and pushes to `main` when `skill-swap-frontend/**` or the workflow file changes |
+| Runner | `ubuntu-latest` |
+| Node version | 20 |
+| Package manager | npm, using `npm ci` |
+| Working directory | `skill-swap-frontend` |
+| Typecheck command | `npm run typecheck` (`tsc --noEmit`) |
+| Build command | `npm run build` (`tsc && vite build`) |
+| Timeout | 10 minutes |
+| Artifacts | None |
+
+This workflow acts as a frontend quality gate for TypeScript correctness and production build viability. ESLint is not currently wired into CI because no ESLint package or config is present in the frontend project.
 
 ## 12. AI-Assisted Testing Workflow
 
@@ -334,6 +357,7 @@ Documented product decision, not an inconsistency: `joinWorkshop` does not notif
 ## 14. Current Limitations
 
 - Frontend automated tests are not currently implemented.
+- Frontend linting is not currently implemented because ESLint is not configured.
 - Full browser E2E tests are not currently implemented.
 - Performance/load tests are not currently implemented.
 - Security scanning is not currently implemented in the inspected test workflow.
@@ -350,6 +374,7 @@ Future work may include:
 
 - Add selected frontend component tests.
 - Add frontend API-client tests or MSW-based integration tests.
+- Add an ESLint dependency/configuration decision before introducing a frontend lint CI gate.
 - Add a small number of Playwright E2E tests for critical flows after backend/API contracts are stable.
 - Add coverage reporting if desired.
 - Add more repository/database integration tests where persistence behaviour is business-critical.
@@ -385,7 +410,9 @@ cd skill-swap-backend
 
 ### CI Execution Path
 
-GitHub Actions runs the same backend test command from `.github/workflows/backend-tests.yml` when backend files or the workflow change on pull requests and pushes to `main`.
+GitHub Actions runs the backend test command from `.github/workflows/backend-tests.yml` when backend files or the workflow change on pull requests and pushes to `main`.
+
+GitHub Actions runs the frontend typecheck and build commands from `.github/workflows/frontend-ci.yml` when frontend files or the workflow change on pull requests and pushes to `main`.
 
 ### Test Results
 
@@ -399,6 +426,8 @@ CI uploads:
 - `skill-swap-backend/build/reports/tests/`
 - `skill-swap-backend/build/test-results/`
 
+The frontend CI workflow does not upload artifacts.
+
 ### Common Failure Causes
 
 - Docker is not running or cannot start Testcontainers PostgreSQL.
@@ -406,6 +435,8 @@ CI uploads:
 - Tests are run without the Gradle `test` task, so the `test` profile is not active.
 - A full-context test loads a real external-service bean instead of a mock or test override.
 - A new API contract test depends on async `@Async` / `REQUIRES_NEW` notification behaviour without controlled isolation.
+- Frontend dependencies are out of sync with `package-lock.json`, causing `npm ci` to fail.
+- TypeScript errors prevent `npm run typecheck` or `npm run build` from passing.
 
 ## 17. Verification Notes
 
@@ -419,6 +450,7 @@ Directly verified from code/configuration:
 - Service-layer Mockito tests exist for user, notification, memory, and workshop services.
 - Azure Blob Storage is mocked in full-context tests that need the Spring context.
 - The backend GitHub Actions workflow runs `./gradlew test` with Java 17 and uploads test reports.
+- The frontend GitHub Actions workflow runs `npm ci`, `npm run typecheck`, and `npm run build` with Node 20.
 
 Based on `docs/TEST_PLAN.md`:
 

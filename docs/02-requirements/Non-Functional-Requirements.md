@@ -142,7 +142,7 @@ The requirements were verified against the current repository and existing docum
 | KC-001 | Current deployment documentation describes a single backend VM. | Do not assume horizontal scaling or high availability. |
 | KC-002 | High availability is documented as not enabled for the database. | Availability expectations should match current project scale. |
 | KC-003 | Backend test coverage now includes security regression tests and backend CI, but remains incomplete across all domains. | Non-functional quality gates should continue to be strengthened before production-critical use. |
-| KC-004 | Frontend test/lint CI checks were not verified in workflow files reviewed. | Client-side regressions may not be automatically caught in CI. |
+| KC-004 | Frontend CI currently covers TypeScript typecheck and production build, but not automated tests or linting. | Client-side regressions beyond type/build failures may not be automatically caught in CI. |
 | KC-005 | Flyway migrations exist but application profiles currently disable Flyway. | Migration process needs clarification before handover. |
 | KC-006 | Azure Blob container naming has been aligned in the current workflow and backend property, but live storage access still requires verification. | Do not assume production container access or SAS/public-read behaviour without checking the deployed environment. |
 | KC-007 | Feedback/reviews are not exposed, and the credit economy is disabled. | These should not be presented as completed capabilities. |
@@ -168,4 +168,4 @@ Directly supported by existing documentation: Vercel hosting, Azure VM backend d
 
 Inferred from implementation: suitability for club-scale workloads, frontend active-status discovery behavior, maintainability implications of feature folders/layered backend packages, and the role of AI review as quality assistance.
 
-Weakened or marked for verification because support was incomplete: quantified performance SLAs, automated backups, centralized monitoring/alerting, high availability, frontend test CI, public user profile access, Flyway runtime migration execution, and live deployment state.
+Weakened or marked for verification because support was incomplete: quantified performance SLAs, automated backups, centralized monitoring/alerting, high availability, frontend automated tests/linting, public user profile access, Flyway runtime migration execution, and live deployment state.
