@@ -529,6 +529,17 @@ npm test
 
 Do not document or rely on a frontend test command until one is added to `package.json`.
 
+### Frontend Typecheck and Build
+
+Run these checks from the frontend directory before opening a frontend PR:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+`npm run typecheck` runs `tsc --noEmit`. `npm run build` keeps the existing production build behaviour: `tsc && vite build`.
+
 ### Frontend Manual Smoke Checks
 
 Run these browser checks after frontend state-management, routing, authentication, notification, workshop, or memory-rendering changes:
@@ -541,7 +552,7 @@ Run these browser checks after frontend state-management, routing, authenticatio
 6. Join and leave the same workshop from the relevant list/detail/dashboard surfaces, including workshop IDs represented as strings or numbers.
 7. Navigate to notifications and back; confirm unread counts do not reappear after sign-out or cache clearing.
 8. Open a memory detail page with Markdown media embeds; confirm YouTube/Instagram embeds render without DOM nesting warnings and normal Markdown links still behave as links.
-9. Run `npm run build` before committing frontend changes.
+9. Run `npm run typecheck` and `npm run build` before committing frontend changes.
 
 ### Backend Tests
 
@@ -576,13 +587,13 @@ Current test coverage:
 | Command | Supported? | Purpose | Source |
 |---|---|---|---|
 | `npm run dev` | Yes | Start Vite dev server. | `package.json` |
+| `npm run typecheck` | Yes | Run TypeScript without emitting build output. | `package.json`, `tsconfig.json` |
 | `npm run build` | Yes | Build frontend. Vite output directory is `build`. | `package.json`, `vite.config.ts` |
 | `npm run preview` | Yes | Preview built frontend with Vite preview. | `package.json` |
 | `npm run build:now` | Yes | Alias for `vite build`. | `package.json` |
 | `npm run deploy` | Requires verification | Script uses Unix commands and references `dist`, while Vite output is configured as `build`. Treat as deployment-related and not part of local onboarding. | `package.json`, `vite.config.ts` |
-| `npm run lint` | No | No lint script found. | `package.json` |
+| `npm run lint` | No | No lint script found; no ESLint package/config is currently present. | `package.json` |
 | `npm run format` | No | No format script found. | `package.json` |
-| `npm run typecheck` | No | TypeScript is installed, but no type-check script exists. | `package.json` |
 | `npm test` | No | No test script found. | `package.json` |
 
 ### Backend
@@ -631,8 +642,10 @@ Current test coverage:
 
 Use this checklist after setup:
 
-- [ ] Frontend dependencies install with `npm install`.
+- [ ] Frontend dependencies install with `npm ci`.
 - [ ] Frontend starts with `npm run dev`.
+- [ ] Frontend typecheck passes with `npm run typecheck`.
+- [ ] Frontend build passes with `npm run build`.
 - [ ] Frontend opens at `http://localhost:3000`.
 - [ ] Backend starts with `bootRun --args="--spring.profiles.active=dev"`.
 - [ ] Backend health check returns `204 No Content` from `/health`.
