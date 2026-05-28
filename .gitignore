@@ -3,7 +3,6 @@ build/
 .DS_Store
 *.log
 .vscode/
-package-lock.json
 .gradle-cache/
 .claude/settings.local.json
 
