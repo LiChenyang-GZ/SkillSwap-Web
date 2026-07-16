@@ -7,22 +7,22 @@ export const HERO_BASE_STATS = {
 export const HERO_HOW_IT_WORKS_STEPS = [
   {
     order: "1",
-    title: "Sign Up",
-    description: "Create your account with email and start exploring in minutes",
+    title: "Join your campus",
+    description: "Create a profile and tell the community what you want to learn or share.",
   },
   {
     order: "2",
-    title: "Learn Skills",
-    description: "Attend workshops and learn directly from community experts",
+    title: "Find your next skill",
+    description: "Browse practical workshops led by students and community members.",
   },
   {
     order: "3",
-    title: "Teach Others",
-    description: "Host workshops in your area of expertise and help others grow",
+    title: "Share what you know",
+    description: "Host a workshop and turn something you know into someone else's new skill.",
   },
   {
     order: "4",
-    title: "Grow Together",
-    description: "Build connections and expand your skillset within our community",
+    title: "Connect beyond class",
+    description: "Meet curious people and build genuine connections across campuses.",
   },
 ] as const;
