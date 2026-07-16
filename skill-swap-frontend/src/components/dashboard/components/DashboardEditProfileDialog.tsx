@@ -4,7 +4,8 @@ import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
-import type { User } from "../../../types/user";
+import type { UniversityCode, User } from "../../../types/user";
+import { UniversityFields } from "../../onboarding/components/UniversityFields";
 import { DASHBOARD_PROFILE_NAME_MAX_LENGTH } from "../constants/dashboardUiConstants";
 import {
   IMAGE_UPLOAD_ACCEPT,
@@ -16,12 +17,16 @@ interface DashboardEditProfileDialogProps {
   user: User;
   isEditProfileOpen: boolean;
   editUsername: string;
+  editUniversityCode: UniversityCode | "";
+  editUniversityName: string;
   isSavingProfile: boolean;
   pendingAvatarFile: File | null;
   pendingAvatarPreviewUrl: string | null;
   profileError: string | null;
   avatarFileInputRef: RefObject<HTMLInputElement>;
   onEditUsernameChange: (value: string) => void;
+  onEditUniversityCodeChange: (value: UniversityCode) => void;
+  onEditUniversityNameChange: (value: string) => void;
   onAvatarFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onOpenChange: (open: boolean) => void;
   onSave: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -31,12 +36,16 @@ export function DashboardEditProfileDialog({
   user,
   isEditProfileOpen,
   editUsername,
+  editUniversityCode,
+  editUniversityName,
   isSavingProfile,
   pendingAvatarFile,
   pendingAvatarPreviewUrl,
   profileError,
   avatarFileInputRef,
   onEditUsernameChange,
+  onEditUniversityCodeChange,
+  onEditUniversityNameChange,
   onAvatarFileChange,
   onOpenChange,
   onSave,
@@ -103,6 +112,15 @@ export function DashboardEditProfileDialog({
             <Label htmlFor="dashboard-profile-email">Email</Label>
             <Input id="dashboard-profile-email" value={user.email} readOnly disabled />
           </div>
+
+          <UniversityFields
+            idPrefix="dashboard-profile"
+            universityCode={editUniversityCode}
+            universityName={editUniversityName}
+            disabled={isSavingProfile}
+            onUniversityCodeChange={onEditUniversityCodeChange}
+            onUniversityNameChange={onEditUniversityNameChange}
+          />
 
           {profileError && <p className="text-sm text-destructive">{profileError}</p>}
 

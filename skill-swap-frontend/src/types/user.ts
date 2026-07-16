@@ -1,3 +1,5 @@
+export type UniversityCode = 'USYD' | 'UNSW' | 'UTS' | 'OTHER';
+
 export interface User {
   id: string;
   username: string;
@@ -5,6 +7,8 @@ export interface User {
   creditBalance: number;
   avatarUrl?: string;
   bio?: string;
+  universityCode?: UniversityCode;
+  universityName?: string;
   skills: string[];
   totalWorkshopsHosted: number;
   totalWorkshopsAttended: number;
@@ -19,4 +23,3 @@ export interface Facilitator {
   avatarUrl?: string;
   bio?: string;
 }
-
