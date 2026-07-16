@@ -56,13 +56,13 @@ function AppContent() {
     }
     lastAutoRefreshKeyRef.current = refreshKey;
 
-    if (!isAuthenticated && currentPage !== 'home' && currentPage !== 'explore') {
+    if (!isAuthenticated && currentPage !== 'hero' && currentPage !== 'home' && currentPage !== 'explore') {
       return;
     }
 
-    const isPublicPage = currentPage === 'home' || currentPage === 'explore';
+    const isPublicPage = currentPage === 'hero' || currentPage === 'home' || currentPage === 'explore';
     const previousPage = previousKey?.split(':')[0] ?? null;
-    const wasPublicPage = previousPage === 'home' || previousPage === 'explore';
+    const wasPublicPage = previousPage === 'hero' || previousPage === 'home' || previousPage === 'explore';
 
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
     if (isPublicPage) {
@@ -143,7 +143,7 @@ function AppContent() {
   };
 
   // Show navigation only if not on hero/auth page or if user is authenticated
-  const showNavigation = (currentPage !== 'hero' && currentPage !== 'auth') || isAuthenticated;
+  const showNavigation = currentPage !== 'hero' && currentPage !== 'auth';
 
   return (
     <div className="min-h-screen bg-background text-foreground">

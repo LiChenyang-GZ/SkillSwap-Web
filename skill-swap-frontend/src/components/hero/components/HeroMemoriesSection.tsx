@@ -29,12 +29,15 @@ export function HeroMemoriesSection({
   onOpenMemoryPage,
 }: HeroMemoriesSectionProps) {
   return (
-    <section id="workshops" className="py-16 px-4 sm:px-6 lg:px-8">
+    <section id="memories" className="py-20 px-4 sm:px-6 lg:px-8 bg-cream-200/55">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
           <h2 className="text-h1 lg:text-5xl mb-4 text-foreground">
-            Our <span className="text-secondary">Memories</span>
+            Made together. <span className="text-secondary">Remembered together.</span>
           </h2>
+          <p className="text-body text-muted-foreground max-w-2xl mx-auto">
+            A look back at the ideas, friendships and new skills shared by our community.
+          </p>
         </div>
 
         {isLoadingMemories ? (

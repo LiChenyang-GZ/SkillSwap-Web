@@ -3,6 +3,9 @@ import { useApp } from "../../../contexts/AppContext";
 import type { MemoryEntry } from "../../../types/memory";
 import { useMemoryPublicQuery } from "../../memory/hooks/useMemoryPublicQuery";
 import { HeroHowItWorksSection } from "../components/HeroHowItWorksSection";
+import { HeroCampusConnectSection } from "../components/HeroCampusConnectSection";
+import { HeroFeaturedWorkshopsSection } from "../components/HeroFeaturedWorkshopsSection";
+import { HeroFooter } from "../components/HeroFooter";
 import { HeroIntroSection } from "../components/HeroIntroSection";
 import { HeroMemoriesSection } from "../components/HeroMemoriesSection";
 import { HeroTopNav } from "../components/HeroTopNav";
@@ -10,7 +13,7 @@ import { HERO_BASE_STATS } from "../constants/heroUiConstants";
 import { useHeroMemoryCarousel } from "../hooks/useHeroMemoryCarousel";
 
 export function HeroScreen() {
-  const { setCurrentPage, workshops } = useApp();
+  const { isAuthenticated, setCurrentPage, workshops } = useApp();
   const { entries, isLoading: isLoadingMemories } = useMemoryPublicQuery();
 
   const { featuredMemories, visibleMemories, hasCarouselControls, showPreviousMemories, showNextMemories } =
@@ -35,12 +38,25 @@ export function HeroScreen() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HeroTopNav onGetStarted={() => setCurrentPage("auth", "signup")} />
+      <HeroTopNav
+        isAuthenticated={isAuthenticated}
+        onExplore={() => setCurrentPage("explore")}
+        onSignIn={() => setCurrentPage("auth", "signin")}
+        onGetStarted={() => setCurrentPage("auth", "signup")}
+      />
       <HeroIntroSection
         stats={stats}
-        onJoinWithEmail={() => setCurrentPage("auth", "signup")}
-        onSignIn={() => setCurrentPage("auth", "signin")}
+        isAuthenticated={isAuthenticated}
+        onExplore={() => setCurrentPage("explore")}
+        onShareSkill={() => setCurrentPage(isAuthenticated ? "create" : "auth", "signup")}
       />
+      <HeroFeaturedWorkshopsSection
+        workshops={workshops}
+        onExplore={() => setCurrentPage("explore")}
+        onOpenWorkshop={(workshopId) => setCurrentPage(`workshop-${workshopId}`)}
+      />
+      <HeroCampusConnectSection onGetStarted={() => setCurrentPage(isAuthenticated ? "dashboard" : "auth", "signup")} />
+      <HeroHowItWorksSection />
       <HeroMemoriesSection
         isLoadingMemories={isLoadingMemories}
         featuredMemories={featuredMemories}
@@ -51,7 +67,7 @@ export function HeroScreen() {
         onOpenMemoryEntry={openMemoryEntry}
         onOpenMemoryPage={() => setCurrentPage("memory")}
       />
-      <HeroHowItWorksSection />
+      <HeroFooter />
     </div>
   );
 }
