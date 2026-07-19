@@ -1,7 +1,7 @@
-import { useMemo } from "react";
 import { useApp } from "../../../contexts/AppContext";
 import type { MemoryEntry } from "../../../types/memory";
 import { useMemoryPublicQuery } from "../../memory/hooks/useMemoryPublicQuery";
+import { HeroCampusInvitationSection } from "../components/HeroCampusInvitationSection";
 import { HeroHowItWorksSection } from "../components/HeroHowItWorksSection";
 import { HeroIntroSection } from "../components/HeroIntroSection";
 import { HeroMemoriesSection } from "../components/HeroMemoriesSection";
@@ -10,20 +10,11 @@ import { HERO_BASE_STATS } from "../constants/heroUiConstants";
 import { useHeroMemoryCarousel } from "../hooks/useHeroMemoryCarousel";
 
 export function HeroScreen() {
-  const { setCurrentPage, workshops } = useApp();
+  const { isAuthenticated, setCurrentPage } = useApp();
   const { entries, isLoading: isLoadingMemories } = useMemoryPublicQuery();
 
   const { featuredMemories, visibleMemories, hasCarouselControls, showPreviousMemories, showNextMemories } =
     useHeroMemoryCarousel(entries);
-
-  const stats = useMemo(
-    () => ({
-      members: HERO_BASE_STATS.members,
-      skills: HERO_BASE_STATS.skills,
-      workshops: workshops.length || HERO_BASE_STATS.workshopsFallback,
-    }),
-    [workshops.length]
-  );
 
   const openMemoryEntry = (entry: MemoryEntry) => {
     if (entry.slug) {
@@ -33,14 +24,15 @@ export function HeroScreen() {
     setCurrentPage("memory");
   };
 
+  const exploreSwaps = () => setCurrentPage("explore");
+  const hostSwap = () => setCurrentPage(isAuthenticated ? "create" : "auth", "signup");
+  const joinCommunity = () => setCurrentPage(isAuthenticated ? "explore" : "auth", "signup");
+
   return (
     <div className="min-h-screen bg-background">
-      <HeroTopNav onGetStarted={() => setCurrentPage("auth", "signup")} />
-      <HeroIntroSection
-        stats={stats}
-        onJoinWithEmail={() => setCurrentPage("auth", "signup")}
-        onSignIn={() => setCurrentPage("auth", "signin")}
-      />
+      <HeroTopNav onExplore={exploreSwaps} onHost={hostSwap} />
+      <HeroIntroSection stats={HERO_BASE_STATS} onExplore={exploreSwaps} onHost={hostSwap} />
+      <HeroHowItWorksSection onExplore={exploreSwaps} onHost={hostSwap} />
       <HeroMemoriesSection
         isLoadingMemories={isLoadingMemories}
         featuredMemories={featuredMemories}
@@ -51,7 +43,7 @@ export function HeroScreen() {
         onOpenMemoryEntry={openMemoryEntry}
         onOpenMemoryPage={() => setCurrentPage("memory")}
       />
-      <HeroHowItWorksSection />
+      <HeroCampusInvitationSection onJoin={joinCommunity} />
     </div>
   );
 }

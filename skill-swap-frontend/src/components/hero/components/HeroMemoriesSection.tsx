@@ -1,9 +1,8 @@
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import type { MemoryEntry } from "../../../types/memory";
-import { Archive, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { pickMemoryCover } from "../../memory/utils/memoryCover";
 import { ImageWithFallback } from "../../ui/ImageWithFallback";
 import { Button } from "../../ui/button";
-import { Card } from "../../ui/card";
-import { pickMemoryCover } from "../../memory/utils/memoryCover";
 
 interface HeroMemoriesSectionProps {
   isLoadingMemories: boolean;
@@ -29,23 +28,25 @@ export function HeroMemoriesSection({
   onOpenMemoryPage,
 }: HeroMemoriesSectionProps) {
   return (
-    <section id="workshops" className="py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-h1 lg:text-5xl mb-4 text-foreground">
-            Our <span className="text-secondary">Memories</span>
-          </h2>
+    <section id="memories" className="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-12 grid gap-6 md:grid-cols-[1fr_0.7fr] md:items-end">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">Stories from the circle</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+              The skill is only half the story.
+            </h2>
+          </div>
+          <p className="text-lg leading-relaxed text-muted-foreground md:pb-1">
+            These are the afternoons when strangers tried something new, helped one another through it, and left a little more connected.
+          </p>
         </div>
 
         {isLoadingMemories ? (
-          <div className="py-16 flex flex-col items-center justify-center space-y-4 text-muted-foreground">
-            <img
-              src={LOADING_FOX_SRC}
-              alt=""
-              aria-hidden="true"
-              className="h-20 w-20 object-contain animate-pulse"
-            />
-            <p>Loading featured memories...</p>
+          <div role="status" aria-live="polite" className="rounded-[2rem] border border-foreground/10 bg-card px-6 py-14 text-center">
+            <img src={LOADING_FOX_SRC} alt="" aria-hidden="true" className="mx-auto h-20 w-20 animate-pulse object-contain" />
+            <p className="mt-4 font-medium text-foreground">Gathering community stories…</p>
+            <p className="mt-1 text-sm text-muted-foreground">They will be here in a moment.</p>
           </div>
         ) : featuredMemories.length > 0 ? (
           <>
@@ -54,34 +55,40 @@ export function HeroMemoriesSection({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="hidden sm:inline-flex h-11 w-11 rounded-full"
+                  className="hidden h-11 w-11 shrink-0 rounded-full sm:inline-flex"
                   onClick={onShowPrevious}
-                  aria-label="Show previous memories"
+                  aria-label="Show previous community stories"
                 >
-                  <ChevronLeft className="h-5 w-5" />
+                  <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                 </Button>
               )}
 
-              <div className="flex flex-wrap justify-center gap-6 lg:gap-8">
-                {visibleMemories.map((entry) => (
-                  <Card
+              <div className="grid w-full gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleMemories.map((entry, index) => (
+                  <button
+                    type="button"
                     key={entry.id}
-                    className="w-full sm:w-[320px] overflow-hidden border-0 shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer"
                     onClick={() => onOpenMemoryEntry(entry)}
+                    className={`group relative min-h-[27rem] overflow-hidden rounded-[1.75rem] border border-foreground/10 bg-card text-left shadow-md transition duration-300 hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/60 ${
+                      index === 2 ? "sm:col-span-2 lg:col-span-1" : ""
+                    }`}
+                    aria-label={`Read the community story: ${entry.title}`}
                   >
-                    <div className="relative aspect-[4/5] overflow-hidden">
-                      <ImageWithFallback
-                        src={pickMemoryCover(entry)}
-                        alt={entry.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/10" />
-                      <div className="absolute inset-x-0 bottom-0 p-6 text-white text-center">
-                        <p className="text-xs uppercase tracking-[0.2em] text-white/70 mb-2">Memory</p>
-                        <h3 className="text-2xl font-semibold leading-snug line-clamp-3">{entry.title}</h3>
-                      </div>
+                    <ImageWithFallback
+                      src={pickMemoryCover(entry)}
+                      alt={`Students at ${entry.title}`}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
+                    <div className="absolute inset-x-0 bottom-0 p-6 text-white">
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">From our memory wall</p>
+                      <h3 className="mt-3 text-2xl font-semibold leading-snug">{entry.title}</h3>
+                      <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold">
+                        Read the story
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                      </span>
                     </div>
-                  </Card>
+                  </button>
                 ))}
               </div>
 
@@ -89,55 +96,52 @@ export function HeroMemoriesSection({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="hidden sm:inline-flex h-11 w-11 rounded-full"
+                  className="hidden h-11 w-11 shrink-0 rounded-full sm:inline-flex"
                   onClick={onShowNext}
-                  aria-label="Show next memories"
+                  aria-label="Show next community stories"
                 >
-                  <ChevronRight className="h-5 w-5" />
+                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </Button>
               )}
             </div>
 
             {hasCarouselControls && (
-              <div className="sm:hidden mt-6 flex items-center justify-center gap-3">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 rounded-full"
-                  onClick={onShowPrevious}
-                  aria-label="Show previous memories"
-                >
-                  <ChevronLeft className="h-5 w-5" />
+              <div className="mt-6 flex items-center justify-center gap-3 sm:hidden">
+                <Button variant="outline" size="icon" className="h-10 w-10 rounded-full" onClick={onShowPrevious} aria-label="Show previous community stories">
+                  <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 rounded-full"
-                  onClick={onShowNext}
-                  aria-label="Show next memories"
-                >
-                  <ChevronRight className="h-5 w-5" />
+                <Button variant="outline" size="icon" className="h-10 w-10 rounded-full" onClick={onShowNext} aria-label="Show next community stories">
+                  <ChevronRight className="h-5 w-5" aria-hidden="true" />
                 </Button>
               </div>
             )}
 
             <div className="mt-10 text-center">
-              <Button variant="outline" size="lg" className="group" onClick={onOpenMemoryPage}>
-                See more
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              <Button variant="outline" size="lg" className="group rounded-full bg-card" onClick={onOpenMemoryPage}>
+                Visit the memory wall
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
               </Button>
             </div>
           </>
         ) : (
-          <div className="max-w-md mx-auto text-center px-4 py-12">
-            <div className="bg-muted/50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-5">
-              <Archive className="w-10 h-10 text-muted-foreground" />
+          <div className="grid overflow-hidden rounded-[2rem] border border-foreground/10 bg-card sm:grid-cols-[0.72fr_1fr]">
+            <div className="flex min-h-64 items-end justify-center bg-secondary/15 px-6 pt-8">
+              <img
+                src="/brand/fox-empty-memory.png"
+                alt="SkillSwap fox looking through an empty scrapbook"
+                className="max-h-56 w-auto object-contain"
+              />
             </div>
-            <h3 className="text-xl font-semibold mb-2">No featured memories yet</h3>
-            <p className="text-muted-foreground mb-6">New memories will appear here after upcoming events.</p>
-            <Button onClick={onOpenMemoryPage} variant="outline">
-              Go to Memory page
-            </Button>
+            <div className="flex flex-col items-start justify-center p-7 sm:p-10">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-secondary">A fresh page</p>
+              <h3 className="mt-3 text-2xl font-semibold">The next story has not been written yet.</h3>
+              <p className="mt-3 leading-relaxed text-muted-foreground">
+                New memories appear after community events. Until then, you can be part of the next one.
+              </p>
+              <Button onClick={onOpenMemoryPage} variant="outline" className="mt-6 rounded-full">
+                Visit the memory wall
+              </Button>
+            </div>
           </div>
         )}
       </div>
