@@ -1,24 +1,55 @@
+import { ArrowRight } from "lucide-react";
 import { Button } from "../../ui/button";
 
 interface HeroTopNavProps {
-  onGetStarted: () => void;
+  onExplore: () => void;
+  onSignIn: () => void;
+  onHost: () => void;
 }
 
 const BRAND_LOGO_SRC = "/brand/fox-logo.png";
 
-export function HeroTopNav({ onGetStarted }: HeroTopNavProps) {
+export function HeroTopNav({ onExplore, onSignIn, onHost }: HeroTopNavProps) {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+    <nav
+      aria-label="Public navigation"
+      className="fixed inset-x-0 top-0 z-50 border-b border-foreground/10 bg-background/90 backdrop-blur-xl"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center overflow-hidden">
-              <img src={BRAND_LOGO_SRC} alt="Skill Swap Club" className="h-full w-full object-cover" />
+            <div className="h-10 w-10 overflow-hidden rounded-xl bg-secondary shadow-sm">
+              <img src={BRAND_LOGO_SRC} alt="" className="h-full w-full object-cover" />
             </div>
-            <span className="ml-3 text-xl font-bold text-foreground">SkillSwap</span>
+            <span className="ml-3 text-lg font-bold tracking-tight text-foreground">SkillSwap</span>
           </div>
-          <Button onClick={onGetStarted} className="bg-primary text-primary-foreground hover:bg-primary/90">
-            Get Started
+
+          <div className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
+            <a className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="#how-it-works">
+              How it works
+            </a>
+            <a className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="#memories">
+              Our stories
+            </a>
+            <button
+              type="button"
+              onClick={onExplore}
+              className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Explore
+            </button>
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Sign in
+            </button>
+          </div>
+
+          <Button onClick={onHost} size="sm" className="rounded-full px-4 sm:px-5">
+            Host a swap
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
