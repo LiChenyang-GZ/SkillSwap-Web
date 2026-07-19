@@ -76,7 +76,7 @@ export function HeroMemoriesSection({
                   >
                     <ImageWithFallback
                       src={pickMemoryCover(entry)}
-                      alt={`Students at ${entry.title}`}
+                      alt=""
                       className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/5" />
@@ -133,7 +133,7 @@ export function HeroMemoriesSection({
               />
             </div>
             <div className="flex flex-col items-start justify-center p-7 sm:p-10">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-secondary">A fresh page</p>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-primary">A fresh page</p>
               <h3 className="mt-3 text-2xl font-semibold">The next story has not been written yet.</h3>
               <p className="mt-3 leading-relaxed text-muted-foreground">
                 New memories appear after community events. Until then, you can be part of the next one.

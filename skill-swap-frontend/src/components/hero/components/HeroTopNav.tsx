@@ -3,12 +3,13 @@ import { Button } from "../../ui/button";
 
 interface HeroTopNavProps {
   onExplore: () => void;
+  onSignIn: () => void;
   onHost: () => void;
 }
 
 const BRAND_LOGO_SRC = "/brand/fox-logo.png";
 
-export function HeroTopNav({ onExplore, onHost }: HeroTopNavProps) {
+export function HeroTopNav({ onExplore, onSignIn, onHost }: HeroTopNavProps) {
   return (
     <nav
       aria-label="Public navigation"
@@ -36,6 +37,13 @@ export function HeroTopNav({ onExplore, onHost }: HeroTopNavProps) {
               className="transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Explore
+            </button>
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Sign in
             </button>
           </div>
 

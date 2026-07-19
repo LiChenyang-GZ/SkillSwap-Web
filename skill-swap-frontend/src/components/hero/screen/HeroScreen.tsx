@@ -30,7 +30,11 @@ export function HeroScreen() {
 
   return (
     <div className="min-h-screen bg-background">
-      <HeroTopNav onExplore={exploreSwaps} onHost={hostSwap} />
+      <HeroTopNav
+        onExplore={exploreSwaps}
+        onSignIn={() => setCurrentPage("auth", "signin")}
+        onHost={hostSwap}
+      />
       <HeroIntroSection stats={HERO_BASE_STATS} onExplore={exploreSwaps} onHost={hostSwap} />
       <HeroHowItWorksSection onExplore={exploreSwaps} onHost={hostSwap} />
       <HeroMemoriesSection

@@ -30,14 +30,14 @@ const StoryPath = ({
     <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${warm ? "bg-background/15" : "bg-secondary/20"}`}>
       <Icon className={`h-6 w-6 ${warm ? "text-primary-foreground" : "text-secondary"}`} aria-hidden="true" />
     </div>
-    <p className={`mt-6 text-xs font-bold uppercase tracking-[0.22em] ${warm ? "text-primary-foreground/70" : "text-secondary"}`}>{eyebrow}</p>
+    <p className={`mt-6 text-xs font-bold uppercase tracking-[0.22em] ${warm ? "text-primary-foreground/70" : "text-primary"}`}>{eyebrow}</p>
     <h3 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h3>
     <p className={`mt-4 leading-relaxed ${warm ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{description}</p>
 
     <ol className="mt-8 space-y-6">
       {steps.map((step) => (
         <li key={step.order} className={`grid grid-cols-[2.5rem_1fr] gap-3 border-t pt-5 ${warm ? "border-primary-foreground/20" : "border-foreground/10"}`}>
-          <span className={`text-sm font-bold ${warm ? "text-primary-foreground/60" : "text-secondary"}`}>{step.order}</span>
+          <span className={`text-sm font-bold ${warm ? "text-primary-foreground/80" : "text-primary"}`}>{step.order}</span>
           <div>
             <h4 className="font-semibold">{step.title}</h4>
             <p className={`mt-1 text-sm leading-relaxed ${warm ? "text-primary-foreground/75" : "text-muted-foreground"}`}>{step.description}</p>
