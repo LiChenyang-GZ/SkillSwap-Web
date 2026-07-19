@@ -1,7 +1,7 @@
 export const HERO_BASE_STATS = {
   members: "1,000+",
   swaps: "20+",
-  campuses: "3",
+  campuses: "UTS + UNSW",
 } as const;
 
 export const HERO_LEARNER_STEPS = [

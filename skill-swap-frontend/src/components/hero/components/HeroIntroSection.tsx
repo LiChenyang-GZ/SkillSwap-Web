@@ -56,8 +56,8 @@ export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionP
               <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">SkillSwaps so far</span>
             </div>
             <div className="pl-3 sm:pl-6">
-              <strong className="block text-2xl font-bold text-foreground sm:text-3xl">{stats.campuses}</strong>
-              <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">campuses connecting</span>
+              <strong className="block text-lg font-bold leading-tight text-foreground sm:text-3xl">{stats.campuses}</strong>
+              <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">next on the map</span>
             </div>
           </div>
         </div>
