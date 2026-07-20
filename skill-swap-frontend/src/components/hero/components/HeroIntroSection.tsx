@@ -63,7 +63,7 @@ export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionP
         </div>
 
         <div className="relative mx-auto min-h-[480px] w-full max-w-md sm:min-h-[520px]">
-          <div className="relative z-10 mr-8 max-w-sm -translate-y-6 rounded-[50%] border border-[#B75B3E]/25 bg-[#FFF8ED] px-10 py-10 text-center text-[#6B342E] shadow-[0_18px_55px_rgba(107,52,46,0.14)] sm:mr-12 sm:-translate-y-10 sm:px-12 sm:py-12">
+          <div className="relative z-10 mr-8 max-w-sm -translate-y-6 rounded-[50%] border border-[#B75B3E]/25 bg-[#FFF8ED] px-10 py-10 text-center text-[#6B342E] shadow-[0_18px_55px_rgba(107,52,46,0.14)] sm:mr-12 sm:-translate-y-12 sm:px-12 sm:py-12">
             <p className="text-3xl font-semibold leading-[1.2] tracking-[-0.025em] sm:text-4xl">
               Come curious.
               <br />
