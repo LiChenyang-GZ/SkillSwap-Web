@@ -77,7 +77,7 @@ export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionP
           <img
             src={MASCOT_SRC}
             alt="SkillSwap's friendly fox mascot waving hello"
-            className="absolute bottom-0 right-0 z-20 w-[82%] max-w-[360px]"
+            className="absolute bottom-12 right-0 z-20 w-[82%] max-w-[360px] sm:bottom-0 sm:w-[90%] sm:max-w-[396px]"
           />
         </div>
       </div>
