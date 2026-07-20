@@ -70,7 +70,7 @@ export function CampusRoadmapSection() {
                     {CAMPUS_USYD_STATS.map((stat) => (
                       <div key={stat.label} className="pt-3">
                         <strong className="block text-3xl font-bold">{stat.value}</strong>
-                        <span className="mt-1 block text-sm text-primary-foreground/80">{stat.label}</span>
+                        <span className="mt-1 block text-sm text-primary-foreground/85">{stat.label}</span>
                       </div>
                     ))}
                   </div>
