@@ -63,11 +63,13 @@ export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionP
         </div>
 
         <div className="relative mx-auto w-full max-w-md">
-          <div className="absolute inset-4 rotate-3 rounded-[2.5rem] bg-secondary/30" />
-          <div className="relative min-h-[470px] overflow-hidden rounded-[2.5rem] border border-foreground/10 bg-foreground p-7 text-background shadow-2xl shadow-primary/15 sm:min-h-[520px] sm:p-9">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_35%,rgba(229,152,46,0.28),transparent_34%)]" />
+          <div className="absolute inset-4 rotate-3 rounded-[2.5rem] bg-[#B75B3E]/35" />
+          <div className="relative min-h-[470px] overflow-hidden rounded-[2.5rem] border border-[#F5C46B]/25 bg-[linear-gradient(145deg,#6B342E_0%,#8B4236_58%,#B75B3E_100%)] p-7 text-[#FFF8ED] shadow-2xl shadow-[#6B342E]/25 sm:min-h-[520px] sm:p-9">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_42%,rgba(245,196,107,0.42),transparent_38%)]" />
             <div className="relative z-10 max-w-[15rem]">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">A note for your first swap</p>
+              <p className="inline-flex rounded-full bg-[#FFF8ED] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#6B342E] shadow-sm">
+                A note for your first swap
+              </p>
               <p className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">Come curious. Leave connected.</p>
             </div>
             <img
@@ -75,8 +77,8 @@ export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionP
               alt="SkillSwap's friendly fox mascot waving hello"
               className="absolute -bottom-3 -right-12 w-[88%] max-w-none sm:-right-10"
             />
-            <div className="absolute bottom-6 left-6 z-10 flex items-center gap-2 rounded-full bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-lg sm:bottom-8 sm:left-8">
-              <Heart className="h-4 w-4 fill-primary text-primary" aria-hidden="true" />
+            <div className="absolute bottom-6 left-6 z-10 flex items-center gap-2 rounded-full bg-[#FFF8ED] px-4 py-2 text-sm font-semibold text-[#6B342E] shadow-lg sm:bottom-8 sm:left-8">
+              <Heart className="h-4 w-4 fill-[#B75B3E] text-[#B75B3E]" aria-hidden="true" />
               Everyone starts somewhere
             </div>
           </div>
