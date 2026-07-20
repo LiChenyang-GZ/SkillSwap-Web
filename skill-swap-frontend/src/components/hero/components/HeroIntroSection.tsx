@@ -1,4 +1,4 @@
-import { ArrowRight, Heart, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "../../ui/button";
 
 interface HeroIntroSectionProps {
@@ -62,26 +62,23 @@ export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionP
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-md">
-          <div className="absolute inset-4 rotate-3 rounded-[2.5rem] bg-[#B75B3E]/35" />
-          <div className="relative min-h-[470px] overflow-hidden rounded-[2.5rem] border border-[#F5C46B]/25 bg-[linear-gradient(145deg,#6B342E_0%,#8B4236_58%,#B75B3E_100%)] p-7 text-[#FFF8ED] shadow-2xl shadow-[#6B342E]/25 sm:min-h-[520px] sm:p-9">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_42%,rgba(245,196,107,0.42),transparent_38%)]" />
-            <div className="relative z-10 max-w-[15rem]">
-              <p className="inline-flex rounded-full bg-[#FFF8ED] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-[#6B342E] shadow-sm">
-                A note for your first swap
-              </p>
-              <p className="mt-4 text-2xl font-semibold leading-snug sm:text-3xl">Come curious. Leave connected.</p>
-            </div>
-            <img
-              src={MASCOT_SRC}
-              alt="SkillSwap's friendly fox mascot waving hello"
-              className="absolute -bottom-3 -right-12 w-[88%] max-w-none sm:-right-10"
+        <div className="relative mx-auto min-h-[480px] w-full max-w-md sm:min-h-[520px]">
+          <div className="relative z-10 mr-8 max-w-sm -translate-y-6 rounded-[50%] border border-[#B75B3E]/25 bg-[#FFF8ED] px-10 py-10 text-center text-[#6B342E] shadow-[0_18px_55px_rgba(107,52,46,0.14)] sm:mr-12 sm:-translate-y-12 sm:px-12 sm:py-12">
+            <p className="text-3xl font-semibold leading-[1.2] tracking-[-0.025em] sm:text-4xl">
+              Come curious.
+              <br />
+              Leave connected.
+            </p>
+            <span
+              className="absolute -bottom-4 right-14 h-8 w-8 rotate-45 border-b border-r border-[#B75B3E]/25 bg-[#FFF8ED] sm:right-16"
+              aria-hidden="true"
             />
-            <div className="absolute bottom-6 left-6 z-10 flex items-center gap-2 rounded-full bg-[#FFF8ED] px-4 py-2 text-sm font-semibold text-[#6B342E] shadow-lg sm:bottom-8 sm:left-8">
-              <Heart className="h-4 w-4 fill-[#B75B3E] text-[#B75B3E]" aria-hidden="true" />
-              Everyone starts somewhere
-            </div>
           </div>
+          <img
+            src={MASCOT_SRC}
+            alt="SkillSwap's friendly fox mascot waving hello"
+            className="absolute bottom-12 right-0 z-20 w-[82%] max-w-[360px] sm:bottom-0 sm:w-[90%] sm:max-w-[396px]"
+          />
         </div>
       </div>
     </section>
