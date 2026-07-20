@@ -10,8 +10,6 @@ export function NavigationScreen() {
   const {
     currentPage,
     setCurrentPage,
-    isDarkMode,
-    toggleDarkMode,
     user,
     isAuthenticated,
     isAdmin,
@@ -33,8 +31,6 @@ export function NavigationScreen() {
       <NavigationDesktopNav
         items={NAVIGATION_ITEMS}
         currentPage={currentPage}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={toggleDarkMode}
         user={user}
         isAdmin={isAdmin}
         isAuthenticated={isAuthenticated}
@@ -47,13 +43,11 @@ export function NavigationScreen() {
       <NavigationMobileNav
         items={NAVIGATION_ITEMS}
         currentPage={currentPage}
-        isDarkMode={isDarkMode}
         isMobileMenuOpen={isMobileMenuOpen}
         user={user}
         isAdmin={isAdmin}
         isAuthenticated={isAuthenticated}
         notificationsUnreadCount={notificationsUnreadCount}
-        onToggleDarkMode={toggleDarkMode}
         onToggleMobileMenu={toggleMobileMenu}
         onNavigateAndCloseMobile={navigateToPageAndCloseMobile}
         onNavigateToCreateAndCloseMobile={navigateToCreateAndCloseMobile}

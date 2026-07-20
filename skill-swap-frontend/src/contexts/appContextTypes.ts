@@ -28,7 +28,6 @@ export interface AppContextType {
   transactions: CreditTransaction[];
   currentPage: string;
   authTab: AuthTab;
-  isDarkMode: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
   notificationsUnreadCount: number;
@@ -36,7 +35,6 @@ export interface AppContextType {
   isLoading: boolean;
   getAuthToken: GetAuthToken;
   setCurrentPage: (page: string, authTab?: AuthTab) => void;
-  toggleDarkMode: () => void;
   attendWorkshop: (workshopId: string) => Promise<void>;
   cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
   createWorkshop: (workshopData: WorkshopUpsertPayload) => Promise<boolean>;

@@ -44,11 +44,11 @@ export function Credits() {
 
   // Credit level system
   const creditLevels = [
-    { name: 'Bronze', min: 0, max: 50, color: 'text-orange-600', bgColor: 'bg-orange-100', darkBgColor: 'dark:bg-orange-900/20' },
-    { name: 'Silver', min: 51, max: 100, color: 'text-gray-600', bgColor: 'bg-gray-100', darkBgColor: 'dark:bg-gray-800/20' },
-    { name: 'Gold', min: 101, max: 200, color: 'text-yellow-600', bgColor: 'bg-yellow-100', darkBgColor: 'dark:bg-yellow-900/20' },
-    { name: 'Platinum', min: 201, max: 500, color: 'text-purple-600', bgColor: 'bg-purple-100', darkBgColor: 'dark:bg-purple-900/20' },
-    { name: 'Diamond', min: 501, max: Infinity, color: 'text-blue-600', bgColor: 'bg-blue-100', darkBgColor: 'dark:bg-blue-900/20' },
+    { name: 'Bronze', min: 0, max: 50, color: 'text-orange-600', bgColor: 'bg-orange-100' },
+    { name: 'Silver', min: 51, max: 100, color: 'text-gray-600', bgColor: 'bg-gray-100' },
+    { name: 'Gold', min: 101, max: 200, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+    { name: 'Platinum', min: 201, max: 500, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+    { name: 'Diamond', min: 501, max: Infinity, color: 'text-blue-600', bgColor: 'bg-blue-100' },
   ];
 
   const currentLevel = creditLevels.find(level => user.creditBalance >= level.min && user.creditBalance <= level.max) || creditLevels[0];
@@ -107,7 +107,7 @@ export function Credits() {
                     <p className="text-4xl font-bold">{user.creditBalance}</p>
                     <p className="text-muted-foreground">Available Credits</p>
                   </div>
-                  <div className={`px-4 py-2 rounded-lg ${currentLevel.bgColor} ${currentLevel.darkBgColor}`}>
+                  <div className={`px-4 py-2 rounded-lg ${currentLevel.bgColor}`}>
                     <div className="flex items-center space-x-2">
                       <Award className={`w-5 h-5 ${currentLevel.color}`} />
                       <span className={`font-semibold ${currentLevel.color}`}>

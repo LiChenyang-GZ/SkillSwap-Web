@@ -37,19 +37,8 @@ const CampusExpansion = React.lazy(() =>
 const LOADING_FOX_SRC = '/brand/fox-empty-search.png';
 
 function AppContent() {
-  const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData } = useApp();
+  const { currentPage, isLoading, isAuthenticated, refreshData } = useApp();
   const lastAutoRefreshKeyRef = React.useRef<string | null>(null);
-
-  // Apply theme class to html element
-  React.useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
   React.useEffect(() => {
     const refreshKey = `${currentPage}:${isAuthenticated ? 'auth' : 'anon'}`;
