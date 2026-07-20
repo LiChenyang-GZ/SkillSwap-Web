@@ -30,6 +30,9 @@ const MemoryStudio = React.lazy(() =>
 const Notifications = React.lazy(() =>
   import('./components/notifications/screen/NotificationsScreen').then((m) => ({ default: m.NotificationsScreen }))
 );
+const CampusExpansion = React.lazy(() =>
+  import('./components/campus/screen/CampusExpansionScreen').then((m) => ({ default: m.CampusExpansionScreen }))
+);
 
 const LOADING_FOX_SRC = '/brand/fox-empty-search.png';
 
@@ -118,6 +121,8 @@ function AppContent() {
         return <HomePage />;
       case 'explore':
         return <ExploreWorkshops />;
+      case 'campuses':
+        return <CampusExpansion />;
       case 'dashboard':
         return <Dashboard />;
       case 'credits':
