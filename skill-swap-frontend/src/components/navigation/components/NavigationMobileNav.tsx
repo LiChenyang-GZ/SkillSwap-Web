@@ -1,4 +1,4 @@
-import { LayoutDashboard, Menu, Moon, PenSquare, ShieldCheck, Sun, Target, X } from "lucide-react";
+import { LayoutDashboard, Menu, PenSquare, ShieldCheck, Target, X } from "lucide-react";
 import { Button } from "../../ui/button";
 import { NAVIGATION_PAGE_KEYS } from "../constants/navigationPageKeys";
 import type { NavigationMobileNavProps } from "../models/navigationViewModel";
@@ -9,13 +9,11 @@ import { NavigationPrimaryLinks } from "./NavigationPrimaryLinks";
 export function NavigationMobileNav({
   items,
   currentPage,
-  isDarkMode,
   isMobileMenuOpen,
   user,
   isAdmin,
   isAuthenticated,
   notificationsUnreadCount,
-  onToggleDarkMode,
   onToggleMobileMenu,
   onNavigateAndCloseMobile,
   onNavigateToCreateAndCloseMobile,
@@ -98,16 +96,6 @@ export function NavigationMobileNav({
                   )}
                 </>
               )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggleDarkMode}
-                className="w-full justify-start flex items-center space-x-3"
-              >
-                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
-              </Button>
-
               {isAuthenticated ? (
                 <Button
                   variant="ghost"

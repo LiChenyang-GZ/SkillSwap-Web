@@ -33,7 +33,6 @@ import {
 } from "./appRoutes";
 import { useCurrentUserProfileActions } from "./useCurrentUserProfileActions";
 import { useNotificationUnreadCount } from "./useNotificationUnreadCount";
-import { useThemeMode } from "./useThemeMode";
 import { useWorkshopState } from "./useWorkshopState";
 
 export type { GetAuthToken } from "./appContextTypes";
@@ -61,8 +60,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 区分“用户主动登出”与“session 被动过期”：主动登出已有自己的提示，
   // 不应再弹“会话过期”。
   const explicitSignOutRef = useRef(false);
-
-  const { isDarkMode, toggleDarkMode } = useThemeMode();
 
   // Clerk 内部已对 getToken() 做缓存与自动刷新：每次调用按需取最新 token，
   // 不再把 token 存进 React state（避免过期后变成陈旧值导致被强制登出）。
@@ -315,7 +312,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     transactions,
     currentPage,
     authTab,
-    isDarkMode,
     isAuthenticated,
     isAdmin,
     notificationsUnreadCount,
@@ -323,7 +319,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoading,
     getAuthToken,
     setCurrentPage,
-    toggleDarkMode,
     attendWorkshop,
     cancelWorkshopAttendance,
     createWorkshop,
@@ -340,7 +335,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     transactions,
     currentPage,
     authTab,
-    isDarkMode,
     isAuthenticated,
     isAdmin,
     notificationsUnreadCount,
@@ -348,7 +342,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoading,
     getAuthToken,
     setCurrentPage,
-    toggleDarkMode,
     attendWorkshop,
     cancelWorkshopAttendance,
     createWorkshop,

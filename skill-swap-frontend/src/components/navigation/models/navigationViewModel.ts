@@ -29,8 +29,6 @@ export interface NavigationUserMenuProps {
 export interface NavigationDesktopNavProps {
   items: NavigationItem[];
   currentPage: string;
-  isDarkMode: boolean;
-  onToggleDarkMode: () => void;
   user: User | null;
   isAdmin: boolean;
   isAuthenticated: boolean;
@@ -43,13 +41,11 @@ export interface NavigationDesktopNavProps {
 export interface NavigationMobileNavProps {
   items: NavigationItem[];
   currentPage: string;
-  isDarkMode: boolean;
   isMobileMenuOpen: boolean;
   user: User | null;
   isAdmin: boolean;
   isAuthenticated: boolean;
   notificationsUnreadCount: number;
-  onToggleDarkMode: () => void;
   onToggleMobileMenu: () => void;
   onNavigateAndCloseMobile: (page: string) => void;
   onNavigateToCreateAndCloseMobile: () => void;

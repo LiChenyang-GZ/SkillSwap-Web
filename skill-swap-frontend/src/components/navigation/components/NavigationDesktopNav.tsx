@@ -1,5 +1,3 @@
-import { Moon, Sun } from "lucide-react";
-import { Button } from "../../ui/button";
 import type { NavigationDesktopNavProps } from "../models/navigationViewModel";
 import { NavigationBrand } from "./NavigationBrand";
 import { NavigationPrimaryLinks } from "./NavigationPrimaryLinks";
@@ -8,8 +6,6 @@ import { NavigationUserMenu } from "./NavigationUserMenu";
 export function NavigationDesktopNav({
   items,
   currentPage,
-  isDarkMode,
-  onToggleDarkMode,
   user,
   isAdmin,
   isAuthenticated,
@@ -28,10 +24,6 @@ export function NavigationDesktopNav({
         </div>
 
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={onToggleDarkMode} className="w-9 h-9 p-0">
-            {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </Button>
-
           <NavigationUserMenu
             user={user}
             isAdmin={isAdmin}
