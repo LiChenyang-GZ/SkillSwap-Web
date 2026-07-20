@@ -47,7 +47,7 @@ export function HeroScreen() {
         onOpenMemoryEntry={openMemoryEntry}
         onOpenMemoryPage={() => setCurrentPage("memory")}
       />
-      <HeroCampusInvitationSection onJoin={joinCommunity} />
+      <HeroCampusInvitationSection onJoin={joinCommunity} onSeeCampuses={() => setCurrentPage("campuses")} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ const PAGE_TO_PATH: Record<string, string> = {
   hero: "/",
   home: "/home",
   explore: "/explore",
+  campuses: "/campuses",
   create: "/create",
   dashboard: "/dashboard",
   [MEMORY_PAGE_ID]: MEMORY_PATH,
@@ -25,6 +26,7 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/": "hero",
   "/home": "home",
   "/explore": "explore",
+  "/campuses": "campuses",
   "/create": "create",
   "/dashboard": "dashboard",
   [MEMORY_PATH]: MEMORY_PAGE_ID,
@@ -66,6 +68,12 @@ export const pathFromPage = (page: string) => {
   }
   return PAGE_TO_PATH[page] || "/explore";
 };
+
+// Pages a signed-out visitor may open directly by URL. The auth bootstrap
+// keeps these instead of redirecting to the hero landing page.
+const SIGNED_OUT_PRESERVED_PAGES = new Set(["campuses"]);
+
+export const isSignedOutPreservedPage = (page: string) => SIGNED_OUT_PRESERVED_PAGES.has(page);
 
 export const resolvePostLoginPage = () => {
   const requestedPage = pageFromPath(window.location.pathname);

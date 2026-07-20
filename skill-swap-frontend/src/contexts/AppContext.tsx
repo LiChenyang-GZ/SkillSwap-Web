@@ -25,6 +25,7 @@ import type {
   RecentProfileCache,
 } from "./appContextTypes";
 import {
+  isSignedOutPreservedPage,
   normalizePath,
   pageFromPath,
   pathFromPage,
@@ -158,7 +159,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser,
   });
 
-  const clearAuthState = useCallback((targetPage: "hero" | "auth" = "hero") => {
+  const clearAuthState = useCallback((targetPage: string = "hero") => {
     setUser(null);
     setIsAuthenticated(false);
     clearWorkshopList();
@@ -214,6 +215,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             clearAuthState("auth");
           } else if (currentPageFromPath === "auth") {
             clearAuthState("auth");
+          } else if (isSignedOutPreservedPage(currentPageFromPath)) {
+            // Public pages stay directly reachable by URL for signed-out visitors.
+            clearAuthState(currentPageFromPath);
           } else {
             clearAuthState("hero");
           }
