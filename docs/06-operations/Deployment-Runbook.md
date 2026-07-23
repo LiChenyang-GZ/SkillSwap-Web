@@ -376,30 +376,6 @@ Use a `psql`-compatible PostgreSQL connection URI for `<TARGET_POSTGRES_URL>`. D
 3. Apply schema changes through the team's agreed manual process.
 4. Confirm the production database matches the JPA model before starting the new backend container.
 
-### University Onboarding/Profile Migration
-
-The backend version that maps `UserAccount.university` must not be started until the target database contains `public.user_account.university`. Because deployment runs automatically after a push to `main`, complete this database step before merging the release PR.
-
-1. Take or confirm a recoverable database backup.
-2. From the checked-out release commit, run the idempotent migration with a `psql`-compatible connection URI:
-
-   ```bash
-   psql "<TARGET_POSTGRES_URL>" -v ON_ERROR_STOP=1 \
-     -f "doc/sql/2026-07-16_add_university_to_user_account.up.sql"
-   ```
-
-3. Verify the resulting schema:
-
-   ```bash
-   psql "<TARGET_POSTGRES_URL>" -v ON_ERROR_STOP=1 \
-     -c "SELECT column_name, data_type, character_maximum_length FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user_account' AND column_name = 'university';"
-   ```
-
-4. Continue with the backend deployment only when the query returns exactly one `university` column with type `character varying` and maximum length `100`.
-5. After deployment, sign in with a non-production test account and confirm `GET /api/v1/users/me` succeeds and returns `university` as a string or `null`.
-
-The migration uses `ADD COLUMN IF NOT EXISTS`, so re-running the up script is safe. The down script drops the column and all stored university values; use it only as part of an approved rollback after restoring an older backend version and confirming a usable backup.
-
 Inferred from implementation: `./gradlew flywayMigrate` exists through the Gradle Flyway plugin, but the checked-in Flyway configuration targets local-style configuration and is not documented as the production deployment path.
 
 Recommended future improvement: standardise production migration execution through an explicit runbook step, CI/CD job, or controlled manual migration command.
@@ -416,7 +392,6 @@ Recommended future improvement: standardise production migration execution throu
 - [ ] Frontend can reach the backend API configured by `VITE_API_BASE_URL`.
 - [ ] Clerk authentication flow works in production.
 - [ ] Authenticated profile request works after login.
-- [ ] The `user_account.university` column was verified before deploying a backend version that requires it.
 - [ ] Database connection works through normal API reads.
 - [ ] File upload works if Azure Blob Storage upload flows are in scope for the release.
 - [ ] Admin access works for configured admin users if admin features are in scope for the release.
