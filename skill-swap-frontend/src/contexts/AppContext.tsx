@@ -252,8 +252,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
           }
 
-          // 登录后回到用户请求页（或默认 explore）
-          setCurrentPage(resolvePostLoginPage());
+          // New and existing users without a campus complete onboarding first.
+          setCurrentPage(hydrated.university ? resolvePostLoginPage() : "onboarding");
         } catch (e) {
           console.error("❌ Failed to fetch backend profile after login:", e);
           clearAuthState("auth");

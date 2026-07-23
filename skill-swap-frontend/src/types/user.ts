@@ -5,6 +5,7 @@ export interface User {
   creditBalance: number;
   avatarUrl?: string;
   bio?: string;
+  university?: string;
   skills: string[];
   totalWorkshopsHosted: number;
   totalWorkshopsAttended: number;
@@ -19,4 +20,3 @@ export interface Facilitator {
   avatarUrl?: string;
   bio?: string;
 }
-

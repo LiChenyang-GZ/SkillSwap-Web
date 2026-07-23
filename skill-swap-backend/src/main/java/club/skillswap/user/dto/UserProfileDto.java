@@ -17,6 +17,7 @@ public class UserProfileDto {
     private String email;
     private String avatarUrl;
     private String bio;
+    private String university;
     private String role;
     private List<String> skills;
     private Integer creditBalance;
@@ -37,6 +38,7 @@ public class UserProfileDto {
         dto.setEmail(user.getEmail());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
+        dto.setUniversity(user.getUniversity());
         dto.setRole(user.getRole());
         // 鏂扮敤鎴峰垵濮?100 credits
         dto.setCreditBalance(100);

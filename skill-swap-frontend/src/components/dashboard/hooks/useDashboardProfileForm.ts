@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { toast } from "sonner";
 import type { User } from "../../../types/user";
+import { OTHER_OPTION } from "../../onboarding/constants/universityOptions";
+import { resolveUniversity, toUniversityDraft } from "../../onboarding/utils/universityMapper";
 import {
   DASHBOARD_PROFILE_EMPTY_NAME_MESSAGE,
   DASHBOARD_PROFILE_FAILURE_MESSAGE,
@@ -21,6 +23,8 @@ export function useDashboardProfileForm({
 }: UseDashboardProfileFormParams) {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [editUsername, setEditUsername] = useState("");
+  const [editUniversitySelection, setEditUniversitySelection] = useState("");
+  const [editUniversityCustom, setEditUniversityCustom] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] = useState<string | null>(null);
@@ -38,6 +42,9 @@ export function useDashboardProfileForm({
   const resetEditProfileDraft = () => {
     setProfileError(null);
     setEditUsername(user?.username ?? "");
+    const universityDraft = toUniversityDraft(user?.university);
+    setEditUniversitySelection(universityDraft.selection);
+    setEditUniversityCustom(universityDraft.customName);
     setPendingAvatarFile(null);
     setPendingAvatarPreviewUrl((previousUrl) => {
       if (previousUrl) {
@@ -56,6 +63,16 @@ export function useDashboardProfileForm({
     setIsEditProfileOpen(open);
   };
 
+  const handleEditUniversitySelectionChange = (value: string) => {
+    setEditUniversitySelection(value);
+    setProfileError(null);
+  };
+
+  const handleEditUniversityCustomChange = (value: string) => {
+    setEditUniversityCustom(value);
+    setProfileError(null);
+  };
+
   const handleSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) {
@@ -69,8 +86,18 @@ export function useDashboardProfileForm({
     }
 
     const hasNameChange = nextUsername !== user.username.trim();
+    if (!editUniversitySelection) {
+      setProfileError("Please select your university.");
+      return;
+    }
+    const nextUniversity = resolveUniversity(editUniversitySelection, editUniversityCustom);
+    if (editUniversitySelection === OTHER_OPTION && nextUniversity.length < 2) {
+      setProfileError("Please enter your university name.");
+      return;
+    }
+    const hasUniversityChange = nextUniversity !== (user.university || "");
     const hasAvatarChange = pendingAvatarFile !== null;
-    if (!hasNameChange && !hasAvatarChange) {
+    if (!hasNameChange && !hasUniversityChange && !hasAvatarChange) {
       setIsEditProfileOpen(false);
       return;
     }
@@ -78,8 +105,11 @@ export function useDashboardProfileForm({
     setIsSavingProfile(true);
     setProfileError(null);
     try {
-      if (hasNameChange) {
-        await updateCurrentUserProfile({ username: nextUsername });
+      if (hasNameChange || hasUniversityChange) {
+        await updateCurrentUserProfile({
+          ...(hasNameChange ? { username: nextUsername } : {}),
+          ...(hasUniversityChange ? { university: nextUniversity } : {}),
+        });
       }
       if (pendingAvatarFile) {
         await uploadCurrentUserAvatar(pendingAvatarFile);
@@ -133,12 +163,16 @@ export function useDashboardProfileForm({
   return {
     isEditProfileOpen,
     editUsername,
+    editUniversitySelection,
+    editUniversityCustom,
     isSavingProfile,
     pendingAvatarFile,
     pendingAvatarPreviewUrl,
     profileError,
     avatarFileInputRef,
     setEditUsername,
+    handleEditUniversitySelectionChange,
+    handleEditUniversityCustomChange,
     handleEditProfileOpenChange,
     handleSaveProfile,
     handleAvatarFileChange,

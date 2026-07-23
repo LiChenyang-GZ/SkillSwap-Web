@@ -42,6 +42,9 @@ public class UserAccount {
     @Column(name = "bio")
     private String bio;
 
+    @Column(name = "university", length = 100)
+    private String university;
+
     @Column(name = "role", length = 50)
     private String role;
 

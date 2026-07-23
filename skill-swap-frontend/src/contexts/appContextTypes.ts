@@ -13,6 +13,7 @@ export interface CurrentUserProfileUpdates {
   username?: string;
   avatarUrl?: string;
   bio?: string;
+  university?: string;
   skills?: string[];
 }
 

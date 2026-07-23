@@ -338,6 +338,39 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("Normalizes and stores the university name.")
+    void shouldUpdateUniversityWithNormalizedName() {
+        String subject = "university-user";
+        UserAccount existingUser = TestFixtures.userAccount().build();
+        UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto();
+        updateRequest.setUniversity("  Macquarie   University  ");
+        Jwt jwt = jwt(subject, "ignored@example.test", true);
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(existingUser)).thenReturn(existingUser);
+
+        userService.updateCurrentUserProfile(jwt, updateRequest);
+
+        assertThat(existingUser.getUniversity()).isEqualTo("Macquarie University");
+        verify(userRepository).save(existingUser);
+    }
+
+    @Test
+    @DisplayName("Rejects a blank or too-short university name.")
+    void shouldRejectTooShortUniversity() {
+        String subject = "university-too-short";
+        UserAccount existingUser = TestFixtures.userAccount().build();
+        UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto();
+        updateRequest.setUniversity(" ");
+        Jwt jwt = jwt(subject, "ignored@example.test", true);
+        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
+
+        assertThatThrownBy(() -> userService.updateCurrentUserProfile(jwt, updateRequest))
+                .isInstanceOf(DomainException.class)
+                .hasMessage("University name must be at least 2 characters.");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Rejects a blank skill name when adding a skill to the current user.")
     void shouldRejectBlankSkillWhenAddingSkill() {
         String subject = "test-user";
