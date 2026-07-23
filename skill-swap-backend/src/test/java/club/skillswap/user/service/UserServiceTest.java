@@ -8,7 +8,6 @@ import club.skillswap.user.dto.UpdateProfileRequestDto;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.entity.UserSkill;
 import club.skillswap.user.repository.UserRepository;
-import club.skillswap.user.model.UniversityCode;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -339,89 +338,35 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("Updates a supported university without a custom name.")
-    void shouldUpdateSupportedUniversity() {
-        String subject = "university-usyd-user";
+    @DisplayName("Normalizes and stores the university name.")
+    void shouldUpdateUniversityWithNormalizedName() {
+        String subject = "university-user";
         UserAccount existingUser = TestFixtures.userAccount().build();
         UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto();
-        updateRequest.setUniversityCode(UniversityCode.USYD);
+        updateRequest.setUniversity("  Macquarie   University  ");
         Jwt jwt = jwt(subject, "ignored@example.test", true);
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
         when(userRepository.save(existingUser)).thenReturn(existingUser);
 
         userService.updateCurrentUserProfile(jwt, updateRequest);
 
-        assertThat(existingUser.getUniversityCode()).isEqualTo(UniversityCode.USYD);
-        assertThat(existingUser.getUniversityName()).isNull();
+        assertThat(existingUser.getUniversity()).isEqualTo("Macquarie University");
         verify(userRepository).save(existingUser);
     }
 
     @Test
-    @DisplayName("Normalizes a custom university name when OTHER is selected.")
-    void shouldUpdateOtherUniversityWithNormalizedName() {
-        String subject = "university-other-user";
+    @DisplayName("Rejects a blank or too-short university name.")
+    void shouldRejectTooShortUniversity() {
+        String subject = "university-too-short";
         UserAccount existingUser = TestFixtures.userAccount().build();
         UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto();
-        updateRequest.setUniversityCode(UniversityCode.OTHER);
-        updateRequest.setUniversityName("  Macquarie   University  ");
-        Jwt jwt = jwt(subject, "ignored@example.test", true);
-        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(existingUser)).thenReturn(existingUser);
-
-        userService.updateCurrentUserProfile(jwt, updateRequest);
-
-        assertThat(existingUser.getUniversityCode()).isEqualTo(UniversityCode.OTHER);
-        assertThat(existingUser.getUniversityName()).isEqualTo("Macquarie University");
-        verify(userRepository).save(existingUser);
-    }
-
-    @Test
-    @DisplayName("Rejects OTHER when a custom university name is missing.")
-    void shouldRejectOtherUniversityWithoutName() {
-        String subject = "university-other-missing-name";
-        UserAccount existingUser = TestFixtures.userAccount().build();
-        UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto();
-        updateRequest.setUniversityCode(UniversityCode.OTHER);
-        updateRequest.setUniversityName(" ");
+        updateRequest.setUniversity(" ");
         Jwt jwt = jwt(subject, "ignored@example.test", true);
         when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
 
         assertThatThrownBy(() -> userService.updateCurrentUserProfile(jwt, updateRequest))
                 .isInstanceOf(DomainException.class)
-                .hasMessage("University name must be at least 2 characters when university code is OTHER.");
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("Rejects a custom university name for a predefined university.")
-    void shouldRejectCustomNameForSupportedUniversity() {
-        String subject = "university-predefined-with-name";
-        UserAccount existingUser = TestFixtures.userAccount().build();
-        UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto();
-        updateRequest.setUniversityCode(UniversityCode.UTS);
-        updateRequest.setUniversityName("University of Technology Sydney");
-        Jwt jwt = jwt(subject, "ignored@example.test", true);
-        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
-
-        assertThatThrownBy(() -> userService.updateCurrentUserProfile(jwt, updateRequest))
-                .isInstanceOf(DomainException.class)
-                .hasMessage("University name is only allowed when university code is OTHER.");
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("Rejects a university name update without a university code.")
-    void shouldRejectUniversityNameWithoutCode() {
-        String subject = "university-name-without-code";
-        UserAccount existingUser = TestFixtures.userAccount().build();
-        UpdateProfileRequestDto updateRequest = new UpdateProfileRequestDto();
-        updateRequest.setUniversityName("Macquarie University");
-        Jwt jwt = jwt(subject, "ignored@example.test", true);
-        when(userRepository.findByAuthSubject(subject)).thenReturn(Optional.of(existingUser));
-
-        assertThatThrownBy(() -> userService.updateCurrentUserProfile(jwt, updateRequest))
-                .isInstanceOf(DomainException.class)
-                .hasMessage("University code is required when updating university.");
+                .hasMessage("University name must be at least 2 characters.");
         verify(userRepository, never()).save(any());
     }
 

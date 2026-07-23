@@ -253,7 +253,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
 
           // New and existing users without a campus complete onboarding first.
-          setCurrentPage(hydrated.universityCode ? resolvePostLoginPage() : "onboarding");
+          setCurrentPage(hydrated.university ? resolvePostLoginPage() : "onboarding");
         } catch (e) {
           console.error("❌ Failed to fetch backend profile after login:", e);
           clearAuthState("auth");

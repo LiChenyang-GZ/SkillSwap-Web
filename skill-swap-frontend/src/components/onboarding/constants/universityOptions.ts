@@ -1,14 +1,10 @@
-import type { UniversityCode } from "../../../types/user";
+// Sentinel value for the "another university" dropdown entry (not a real name).
+export const OTHER_OPTION = "__OTHER__";
 
-export const UNIVERSITY_OPTIONS: Array<{ value: UniversityCode; label: string; shortLabel: string }> = [
-  { value: "USYD", label: "University of Sydney", shortLabel: "USYD" },
-  { value: "UNSW", label: "University of New South Wales", shortLabel: "UNSW" },
-  { value: "UTS", label: "University of Technology Sydney", shortLabel: "UTS" },
-  { value: "OTHER", label: "Another university", shortLabel: "Other" },
+// Universities offered directly in the dropdown. Values are the canonical full
+// names that get stored verbatim in the single `university` column.
+export const UNIVERSITY_OPTIONS = [
+  "University of Sydney",
+  "University of New South Wales",
+  "University of Technology Sydney",
 ];
-
-export const getUniversityDisplayName = (code?: UniversityCode, customName?: string) => {
-  if (!code) return "University not set";
-  if (code === "OTHER") return customName?.trim() || "Other university";
-  return UNIVERSITY_OPTIONS.find((option) => option.value === code)?.shortLabel || code;
-};

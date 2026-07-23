@@ -1,11 +1,10 @@
-import type { UniversityCode, User } from "../../../types/user";
+import type { User } from "../../../types/user";
 
 export interface DashboardProfileUpdates {
   username?: string;
   avatarUrl?: string;
   bio?: string;
-  universityCode?: UniversityCode;
-  universityName?: string;
+  university?: string;
   skills?: string[];
 }
 

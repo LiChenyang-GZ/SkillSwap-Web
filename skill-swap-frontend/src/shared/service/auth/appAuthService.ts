@@ -1,5 +1,5 @@
 import { API_BASE_URL, resolveAssetUrl } from "../../../shared/api";
-import type { UniversityCode, User } from "../../../types/user";
+import type { User } from "../../../types/user";
 
 interface ClerkEmailLike {
   emailAddress?: string | null;
@@ -26,8 +26,7 @@ export interface BackendUserProfile {
   avatarUpdatedAt?: string;
   avatar_updated_at?: string;
   bio?: string;
-  universityCode?: UniversityCode;
-  universityName?: string;
+  university?: string;
   creditBalance?: number;
   skills?: string[];
   totalWorkshopsHosted?: number;
@@ -202,8 +201,8 @@ export function mapBackendUser(userProfile: BackendUserProfile): User {
     username: userProfile.username || "",
     avatarUrl,
     bio: userProfile.bio || "",
-    universityCode: userProfile.universityCode,
-    universityName: userProfile.universityName || "",
+    // Keep undefined (not "") when unset so the onboarding gate can detect it.
+    university: userProfile.university || undefined,
     // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
     // creditBalance: userProfile.creditBalance ?? 100,
     creditBalance: userProfile.creditBalance ?? 0,

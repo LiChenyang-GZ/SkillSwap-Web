@@ -14,7 +14,7 @@ import { useDashboardPagination } from "../hooks/useDashboardPagination";
 import { useDashboardProfileForm } from "../hooks/useDashboardProfileForm";
 import { useDashboardWorkshopView } from "../hooks/useDashboardWorkshopView";
 import { isHostedByCurrentUser } from "../utils/dashboardWorkshopUtils";
-import type { UniversityCode, User } from "../../../types/user";
+import type { User } from "../../../types/user";
 import type { Workshop } from "../../../types/workshop";
 
 interface DashboardAuthenticatedScreenProps {
@@ -27,8 +27,7 @@ interface DashboardAuthenticatedScreenProps {
     username?: string;
     avatarUrl?: string;
     bio?: string;
-    universityCode?: UniversityCode;
-    universityName?: string;
+    university?: string;
     skills?: string[];
   }) => Promise<User>;
   uploadCurrentUserAvatar: (file: File) => Promise<User>;
@@ -142,16 +141,16 @@ function DashboardAuthenticatedScreen({
         user={user}
         isEditProfileOpen={profileForm.isEditProfileOpen}
         editUsername={profileForm.editUsername}
-        editUniversityCode={profileForm.editUniversityCode}
-        editUniversityName={profileForm.editUniversityName}
+        editUniversitySelection={profileForm.editUniversitySelection}
+        editUniversityCustom={profileForm.editUniversityCustom}
         isSavingProfile={profileForm.isSavingProfile}
         pendingAvatarFile={profileForm.pendingAvatarFile}
         pendingAvatarPreviewUrl={profileForm.pendingAvatarPreviewUrl}
         profileError={profileForm.profileError}
         avatarFileInputRef={profileForm.avatarFileInputRef}
         onEditUsernameChange={profileForm.setEditUsername}
-        onEditUniversityCodeChange={profileForm.setEditUniversityCode}
-        onEditUniversityNameChange={profileForm.setEditUniversityName}
+        onEditUniversitySelectionChange={profileForm.handleEditUniversitySelectionChange}
+        onEditUniversityCustomChange={profileForm.handleEditUniversityCustomChange}
         onAvatarFileChange={profileForm.handleAvatarFileChange}
         onOpenChange={profileForm.handleEditProfileOpenChange}
         onSave={profileForm.handleSaveProfile}

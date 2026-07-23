@@ -9,7 +9,6 @@ import java.util.stream.Collectors;
 
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.entity.UserSkill;
-import club.skillswap.user.model.UniversityCode;
 
 @Data
 public class UserProfileDto {
@@ -18,8 +17,7 @@ public class UserProfileDto {
     private String email;
     private String avatarUrl;
     private String bio;
-    private UniversityCode universityCode;
-    private String universityName;
+    private String university;
     private String role;
     private List<String> skills;
     private Integer creditBalance;
@@ -40,8 +38,7 @@ public class UserProfileDto {
         dto.setEmail(user.getEmail());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
-        dto.setUniversityCode(user.getUniversityCode());
-        dto.setUniversityName(user.getUniversityName());
+        dto.setUniversity(user.getUniversity());
         dto.setRole(user.getRole());
         // 鏂扮敤鎴峰垵濮?100 credits
         dto.setCreditBalance(100);

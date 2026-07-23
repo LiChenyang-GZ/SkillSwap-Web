@@ -1,6 +1,6 @@
 import type { WorkshopUpsertPayload } from "../shared/api";
 import type { CreditTransaction } from "../types/creditTransaction";
-import type { UniversityCode, User } from "../types/user";
+import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 
 export type AuthTab = "signin" | "signup";
@@ -13,8 +13,7 @@ export interface CurrentUserProfileUpdates {
   username?: string;
   avatarUrl?: string;
   bio?: string;
-  universityCode?: UniversityCode;
-  universityName?: string;
+  university?: string;
   skills?: string[];
 }
 

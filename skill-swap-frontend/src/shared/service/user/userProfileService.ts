@@ -1,13 +1,11 @@
 import { API_BASE_URL } from "../../../shared/api";
 import { IMAGE_UPLOAD_TOO_LARGE_MESSAGE } from "../../constants/uploadLimits";
-import type { UniversityCode } from "../../../types/user";
 
 export interface UserProfileUpdatesPayload {
   username?: string;
   avatarUrl?: string;
   bio?: string;
-  universityCode?: UniversityCode;
-  universityName?: string;
+  university?: string;
   skills?: string[];
 }
 

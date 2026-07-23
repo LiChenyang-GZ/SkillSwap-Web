@@ -11,8 +11,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import club.skillswap.user.model.UniversityCode;
-
 @Entity
 @Table(name = "user_account")
 @Getter
@@ -44,12 +42,8 @@ public class UserAccount {
     @Column(name = "bio")
     private String bio;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "university_code", length = 20)
-    private UniversityCode universityCode;
-
-    @Column(name = "university_name", length = 100)
-    private String universityName;
+    @Column(name = "university", length = 100)
+    private String university;
 
     @Column(name = "role", length = 50)
     private String role;

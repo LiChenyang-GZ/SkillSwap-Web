@@ -4,7 +4,7 @@ import { Button } from "../../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
-import type { UniversityCode, User } from "../../../types/user";
+import type { User } from "../../../types/user";
 import { UniversityFields } from "../../onboarding/components/UniversityFields";
 import { DASHBOARD_PROFILE_NAME_MAX_LENGTH } from "../constants/dashboardUiConstants";
 import {
@@ -17,16 +17,16 @@ interface DashboardEditProfileDialogProps {
   user: User;
   isEditProfileOpen: boolean;
   editUsername: string;
-  editUniversityCode: UniversityCode | "";
-  editUniversityName: string;
+  editUniversitySelection: string;
+  editUniversityCustom: string;
   isSavingProfile: boolean;
   pendingAvatarFile: File | null;
   pendingAvatarPreviewUrl: string | null;
   profileError: string | null;
   avatarFileInputRef: RefObject<HTMLInputElement>;
   onEditUsernameChange: (value: string) => void;
-  onEditUniversityCodeChange: (value: UniversityCode) => void;
-  onEditUniversityNameChange: (value: string) => void;
+  onEditUniversitySelectionChange: (value: string) => void;
+  onEditUniversityCustomChange: (value: string) => void;
   onAvatarFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onOpenChange: (open: boolean) => void;
   onSave: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -36,16 +36,16 @@ export function DashboardEditProfileDialog({
   user,
   isEditProfileOpen,
   editUsername,
-  editUniversityCode,
-  editUniversityName,
+  editUniversitySelection,
+  editUniversityCustom,
   isSavingProfile,
   pendingAvatarFile,
   pendingAvatarPreviewUrl,
   profileError,
   avatarFileInputRef,
   onEditUsernameChange,
-  onEditUniversityCodeChange,
-  onEditUniversityNameChange,
+  onEditUniversitySelectionChange,
+  onEditUniversityCustomChange,
   onAvatarFileChange,
   onOpenChange,
   onSave,
@@ -115,11 +115,11 @@ export function DashboardEditProfileDialog({
 
           <UniversityFields
             idPrefix="dashboard-profile"
-            universityCode={editUniversityCode}
-            universityName={editUniversityName}
+            selection={editUniversitySelection}
+            customName={editUniversityCustom}
             disabled={isSavingProfile}
-            onUniversityCodeChange={onEditUniversityCodeChange}
-            onUniversityNameChange={onEditUniversityNameChange}
+            onSelectionChange={onEditUniversitySelectionChange}
+            onCustomNameChange={onEditUniversityCustomChange}
           />
 
           {profileError && <p className="text-sm text-destructive">{profileError}</p>}

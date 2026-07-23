@@ -87,7 +87,7 @@ function AppContent() {
   }, [currentPage, isAuthenticated, refreshData]);
 
   React.useEffect(() => {
-    if (isAuthenticated && user && !user.universityCode && currentPage !== 'onboarding') {
+    if (isAuthenticated && user && !user.university && currentPage !== 'onboarding') {
       setCurrentPage('onboarding');
     }
   }, [currentPage, isAuthenticated, setCurrentPage, user]);

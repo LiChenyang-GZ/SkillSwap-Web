@@ -1,60 +1,58 @@
-import type { UniversityCode } from "../../../types/user";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { UNIVERSITY_OPTIONS } from "../constants/universityOptions";
+import { OTHER_OPTION, UNIVERSITY_OPTIONS } from "../constants/universityOptions";
 
 interface UniversityFieldsProps {
   idPrefix: string;
-  universityCode: UniversityCode | "";
-  universityName: string;
+  selection: string;
+  customName: string;
   disabled?: boolean;
-  onUniversityCodeChange: (value: UniversityCode) => void;
-  onUniversityNameChange: (value: string) => void;
+  onSelectionChange: (value: string) => void;
+  onCustomNameChange: (value: string) => void;
 }
 
 export function UniversityFields({
   idPrefix,
-  universityCode,
-  universityName,
+  selection,
+  customName,
   disabled = false,
-  onUniversityCodeChange,
-  onUniversityNameChange,
+  onSelectionChange,
+  onCustomNameChange,
 }: UniversityFieldsProps) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-university`}>University</Label>
         <Select
-          value={universityCode}
+          value={selection}
           disabled={disabled}
           onValueChange={(value) => {
-            const nextCode = value as UniversityCode;
-            onUniversityCodeChange(nextCode);
-            if (nextCode !== "OTHER") onUniversityNameChange("");
+            onSelectionChange(value);
+            if (value !== OTHER_OPTION) onCustomNameChange("");
           }}
         >
           <SelectTrigger id={`${idPrefix}-university`} className="h-11">
             <SelectValue placeholder="Select your university" />
           </SelectTrigger>
           <SelectContent>
-            {UNIVERSITY_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <span className="font-medium">{option.shortLabel}</span>
-                <span className="text-muted-foreground">— {option.label}</span>
+            {UNIVERSITY_OPTIONS.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
               </SelectItem>
             ))}
+            <SelectItem value={OTHER_OPTION}>Another university</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {universityCode === "OTHER" && (
+      {selection === OTHER_OPTION && (
         <div className="space-y-2">
           <Label htmlFor={`${idPrefix}-university-name`}>University name</Label>
           <Input
             id={`${idPrefix}-university-name`}
-            value={universityName}
-            onChange={(event) => onUniversityNameChange(event.target.value)}
+            value={customName}
+            onChange={(event) => onCustomNameChange(event.target.value)}
             placeholder="e.g. Macquarie University"
             minLength={2}
             maxLength={100}

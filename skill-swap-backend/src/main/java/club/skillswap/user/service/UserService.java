@@ -19,7 +19,6 @@ import club.skillswap.user.dto.SkillRequestDto;
 import club.skillswap.user.entity.UserAccount;
 import club.skillswap.user.entity.UserSkill;
 import club.skillswap.user.repository.UserRepository;
-import club.skillswap.user.model.UniversityCode;
 import club.skillswap.workshop.repository.WorkshopRepository;
 import club.skillswap.workshop.repository.WorkshopParticipantRepository;
 import lombok.RequiredArgsConstructor;
@@ -88,8 +87,7 @@ public class UserService {
         dto.setEmail(user.getEmail());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
-        dto.setUniversityCode(user.getUniversityCode());
-        dto.setUniversityName(user.getUniversityName());
+        dto.setUniversity(user.getUniversity());
         dto.setRole(user.getRole());
         dto.setSkills(skillNames);
         // 积分系统已停用：不再展示/初始化 100 积分。
@@ -205,8 +203,12 @@ public class UserService {
         if (updateRequest.getBio() != null) {
             userToUpdate.setBio(updateRequest.getBio());
         }
-        if (updateRequest.getUniversityCode() != null || updateRequest.getUniversityName() != null) {
-            applyUniversityUpdate(userToUpdate, updateRequest.getUniversityCode(), updateRequest.getUniversityName());
+        if (updateRequest.getUniversity() != null) {
+            String normalizedUniversity = trimToNull(updateRequest.getUniversity());
+            if (normalizedUniversity == null || normalizedUniversity.length() < 2) {
+                throw new DomainException("University name must be at least 2 characters.");
+            }
+            userToUpdate.setUniversity(normalizedUniversity.replaceAll("\\s+", " "));
         }
         if (updateRequest.getSkills() != null) {
             userToUpdate.getSkills().clear();
@@ -299,26 +301,6 @@ public class UserService {
 
     private String normalizeSkill(String skill) {
         return skill == null ? null : skill.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private void applyUniversityUpdate(UserAccount user, UniversityCode universityCode, String universityName) {
-        if (universityCode == null) {
-            throw new DomainException("University code is required when updating university.");
-        }
-
-        String normalizedName = trimToNull(universityName);
-        if (universityCode == UniversityCode.OTHER) {
-            if (normalizedName == null || normalizedName.length() < 2) {
-                throw new DomainException("University name must be at least 2 characters when university code is OTHER.");
-            }
-            user.setUniversityName(normalizedName.replaceAll("\\s+", " "));
-        } else {
-            if (normalizedName != null) {
-                throw new DomainException("University name is only allowed when university code is OTHER.");
-            }
-            user.setUniversityName(null);
-        }
-        user.setUniversityCode(universityCode);
     }
 
     private String trimToNull(String value) {

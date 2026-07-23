@@ -1,11 +1,9 @@
-import { useState, type FormEvent } from "react";
 import { ArrowRight, CheckCircle2, GraduationCap, LogOut, Users } from "lucide-react";
-import { toast } from "sonner";
 import { useApp } from "../../../contexts/AppContext";
-import type { UniversityCode } from "../../../types/user";
 import { Button } from "../../ui/button";
 import { Card } from "../../ui/card";
 import { UniversityFields } from "../components/UniversityFields";
+import { useUniversityOnboardingForm } from "../hooks/useUniversityOnboardingForm";
 
 const BENEFITS = [
   "Find workshops and people around your campus",
@@ -14,42 +12,11 @@ const BENEFITS = [
 ];
 
 export function UniversityOnboardingScreen() {
-  const { signOut, setCurrentPage, updateCurrentUserProfile, user } = useApp();
-  const [universityCode, setUniversityCode] = useState<UniversityCode | "">(user?.universityCode || "");
-  const [universityName, setUniversityName] = useState(user?.universityName || "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { signOut, setCurrentPage, user } = useApp();
+  const { selection, setSelection, customName, setCustomName, isSaving, error, handleSubmit } =
+    useUniversityOnboardingForm();
 
   if (!user) return null;
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!universityCode) {
-      setError("Please select your university.");
-      return;
-    }
-
-    const normalizedName = universityName.trim().replace(/\s+/g, " ");
-    if (universityCode === "OTHER" && normalizedName.length < 2) {
-      setError("Please enter your university name.");
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      await updateCurrentUserProfile({
-        universityCode,
-        universityName: universityCode === "OTHER" ? normalizedName : undefined,
-      });
-      toast.success("Your campus has been added.");
-      setCurrentPage("explore");
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Failed to save your university.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_15%_10%,rgba(229,152,46,0.24),transparent_32%),radial-gradient(circle_at_90%_85%,rgba(184,51,43,0.16),transparent_34%)] px-4 py-8 sm:px-6 lg:px-8">
@@ -95,11 +62,11 @@ export function UniversityOnboardingScreen() {
             <form onSubmit={(event) => void handleSubmit(event)} className="mt-7 space-y-6">
               <UniversityFields
                 idPrefix="onboarding"
-                universityCode={universityCode}
-                universityName={universityName}
+                selection={selection}
+                customName={customName}
                 disabled={isSaving}
-                onUniversityCodeChange={setUniversityCode}
-                onUniversityNameChange={setUniversityName}
+                onSelectionChange={setSelection}
+                onCustomNameChange={setCustomName}
               />
 
               {error && <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
