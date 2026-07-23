@@ -325,7 +325,7 @@ Verified schema assets:
 |---|---|---|
 | Flyway migrations | `skill-swap-backend/src/main/resources/db/migration` | Migration files exist. |
 | Schema dump | `skill-swap-backend/src/main/resources/db/schema.sql` | Historical/current snapshot, but docs note it may not include every latest auth mapping change. |
-| Manual SQL scripts | `doc/sql` | Manual auth-subject and cleanup scripts exist. |
+| Manual SQL scripts | `doc/sql` | Manual auth-subject, cleanup, and university-profile scripts exist. |
 | Gradle Flyway plugin | `skill-swap-backend/build.gradle` | Configured for local `skill_swap_dev`. |
 
 Runtime Flyway is disabled in all inspected Spring application property files:
@@ -355,7 +355,23 @@ macOS/Linux:
 ./gradlew flywayMigrate
 ```
 
-Requires verification: the current documentation does not clearly state whether local schema setup should use Flyway, `schema.sql`, manual SQL, or an existing prepared database.
+For the university onboarding/profile feature, the checked-in manual migration is the required local schema step. From the repository root, run it before starting the backend version that maps `UserAccount.university`:
+
+```bash
+psql "<LOCAL_POSTGRES_URL>" -v ON_ERROR_STOP=1 \
+  -f "doc/sql/2026-07-16_add_university_to_user_account.up.sql"
+```
+
+Verify that the column exists before testing login or profile APIs:
+
+```bash
+psql "<LOCAL_POSTGRES_URL>" -v ON_ERROR_STOP=1 \
+  -c "SELECT column_name, data_type, character_maximum_length FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user_account' AND column_name = 'university';"
+```
+
+Expected result: one `university` row with type `character varying` and maximum length `100`. If the row is absent, do not continue with authenticated browser testing: `GET /api/v1/users/me` can otherwise fail because the JPA entity expects this column.
+
+The broader local bootstrap process still requires verification: the repository does not yet define one canonical process covering Flyway, `schema.sql`, all manual scripts, and fresh database creation.
 
 ## 8. Authentication Setup
 

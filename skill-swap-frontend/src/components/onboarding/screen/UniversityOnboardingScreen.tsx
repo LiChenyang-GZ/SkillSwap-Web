@@ -13,8 +13,15 @@ const BENEFITS = [
 
 export function UniversityOnboardingScreen() {
   const { signOut, setCurrentPage, user } = useApp();
-  const { selection, setSelection, customName, setCustomName, isSaving, error, handleSubmit } =
-    useUniversityOnboardingForm();
+  const {
+    selection,
+    customName,
+    isSaving,
+    error,
+    handleSelectionChange,
+    handleCustomNameChange,
+    handleSubmit,
+  } = useUniversityOnboardingForm();
 
   if (!user) return null;
 
@@ -65,8 +72,8 @@ export function UniversityOnboardingScreen() {
                 selection={selection}
                 customName={customName}
                 disabled={isSaving}
-                onSelectionChange={setSelection}
-                onCustomNameChange={setCustomName}
+                onSelectionChange={handleSelectionChange}
+                onCustomNameChange={handleCustomNameChange}
               />
 
               {error && <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}

@@ -14,6 +14,16 @@ export function useUniversityOnboardingForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const handleSelectionChange = (value: string) => {
+    setSelection(value);
+    setError(null);
+  };
+
+  const handleCustomNameChange = (value: string) => {
+    setCustomName(value);
+    setError(null);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selection) {
@@ -40,5 +50,13 @@ export function useUniversityOnboardingForm() {
     }
   };
 
-  return { selection, setSelection, customName, setCustomName, isSaving, error, handleSubmit };
+  return {
+    selection,
+    customName,
+    isSaving,
+    error,
+    handleSelectionChange,
+    handleCustomNameChange,
+    handleSubmit,
+  };
 }
