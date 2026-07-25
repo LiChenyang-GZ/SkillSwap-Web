@@ -33,11 +33,14 @@ const Notifications = React.lazy(() =>
 const CampusExpansion = React.lazy(() =>
   import('./components/campus/screen/CampusExpansionScreen').then((m) => ({ default: m.CampusExpansionScreen }))
 );
+const UniversityOnboarding = React.lazy(() =>
+  import('./components/onboarding/screen/UniversityOnboardingScreen').then((m) => ({ default: m.UniversityOnboardingScreen }))
+);
 
 const LOADING_FOX_SRC = '/brand/fox-empty-search.png';
 
 function AppContent() {
-  const { currentPage, isLoading, isAuthenticated, refreshData } = useApp();
+  const { currentPage, isLoading, isAuthenticated, refreshData, setCurrentPage, user } = useApp();
   const lastAutoRefreshKeyRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -74,6 +77,12 @@ function AppContent() {
 
     // Memory 页面使用独立的 memory API，不依赖 workshop 列表。
   }, [currentPage, isAuthenticated, refreshData]);
+
+  React.useEffect(() => {
+    if (isAuthenticated && user && !user.university && currentPage !== 'onboarding') {
+      setCurrentPage('onboarding');
+    }
+  }, [currentPage, isAuthenticated, setCurrentPage, user]);
 
   if (isLoading) {
     return (
@@ -130,6 +139,8 @@ function AppContent() {
         return <MemoryStudio />;
       case 'notifications':
         return <Notifications />;
+      case 'onboarding':
+        return <UniversityOnboarding />;
       default:
         // Show Hero page for non-authenticated users, Explore page for authenticated users
         return isAuthenticated ? <ExploreWorkshops /> : <HeroScreen />;
@@ -137,7 +148,8 @@ function AppContent() {
   };
 
   // Show navigation only if not on hero/auth page or if user is authenticated
-  const showNavigation = (currentPage !== 'hero' && currentPage !== 'auth') || isAuthenticated;
+  const showNavigation =
+    currentPage !== 'onboarding' && ((currentPage !== 'hero' && currentPage !== 'auth') || isAuthenticated);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

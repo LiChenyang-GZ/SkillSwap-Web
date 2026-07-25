@@ -87,6 +87,7 @@ public class UserService {
         dto.setEmail(user.getEmail());
         dto.setAvatarUrl(user.getAvatarUrl());
         dto.setBio(user.getBio());
+        dto.setUniversity(user.getUniversity());
         dto.setRole(user.getRole());
         dto.setSkills(skillNames);
         // 积分系统已停用：不再展示/初始化 100 积分。
@@ -201,6 +202,13 @@ public class UserService {
         }
         if (updateRequest.getBio() != null) {
             userToUpdate.setBio(updateRequest.getBio());
+        }
+        if (updateRequest.getUniversity() != null) {
+            String normalizedUniversity = trimToNull(updateRequest.getUniversity());
+            if (normalizedUniversity == null || normalizedUniversity.length() < 2) {
+                throw new DomainException("University name must be at least 2 characters.");
+            }
+            userToUpdate.setUniversity(normalizedUniversity.replaceAll("\\s+", " "));
         }
         if (updateRequest.getSkills() != null) {
             userToUpdate.getSkills().clear();

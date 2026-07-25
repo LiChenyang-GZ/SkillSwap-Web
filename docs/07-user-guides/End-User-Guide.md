@@ -59,7 +59,9 @@ SkillSwap uses Clerk for account registration, login, and session management.
 2. Select `Get Started` or `Join with Email` from the landing page.
 3. Use the `Sign Up` tab in the authentication screen.
 4. Complete the Clerk sign-up process.
-5. After sign-up, the application loads your SkillSwap profile and redirects you into the app.
+5. After sign-up, the application loads your SkillSwap profile and asks you to choose your university.
+6. Select your university from the list, or choose `Another university` and enter its official name.
+7. Select `Continue to SkillSwap` to finish onboarding.
 
 ### Sign In
 
@@ -101,7 +103,7 @@ Profile management is available from `Dashboard`.
 2. Open the user menu.
 3. Select `Dashboard`.
 4. Select `Edit Profile`.
-5. Update your display name if needed.
+5. Update your display name or university if needed.
 6. Choose a new avatar image if needed.
 7. Select `Save`.
 
@@ -112,6 +114,7 @@ Profile management is available from `Dashboard`.
 | Display name | Yes | Required. Cannot be blank. |
 | Avatar | Yes | Current UI accepts PNG/JPG/WEBP/GIF image files within the configured upload size limit. |
 | Email | No | Displayed as read-only in the profile dialog. |
+| University | Yes | Choose a listed university, or `Another university` and enter its official name. |
 | Bio | Partially supported | Backend supports bio, and the profile card can display it, but the current Dashboard dialog does not edit bio. |
 | Skills | Partially supported | Backend has skills endpoints, but the current Dashboard dialog does not expose skill editing. |
 
