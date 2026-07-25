@@ -8,6 +8,7 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Textarea } from "../../ui/textarea";
 import type { User } from "../../../types/user";
+import { UniversityFields } from "../../onboarding/components/UniversityFields";
 import {
   DASHBOARD_PROFILE_BIO_MAX_LENGTH,
   DASHBOARD_PROFILE_NAME_MAX_LENGTH,
@@ -28,6 +29,8 @@ interface DashboardEditProfileDialogProps {
   editSkills: string[];
   skillDraft: string;
   skillError: string | null;
+  editUniversitySelection: string;
+  editUniversityCustom: string;
   isSavingProfile: boolean;
   pendingAvatarFile: File | null;
   pendingAvatarPreviewUrl: string | null;
@@ -38,6 +41,8 @@ interface DashboardEditProfileDialogProps {
   onSkillDraftChange: (value: string) => void;
   onAddSkill: () => void;
   onRemoveSkill: (skill: string) => void;
+  onEditUniversitySelectionChange: (value: string) => void;
+  onEditUniversityCustomChange: (value: string) => void;
   onAvatarFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onOpenChange: (open: boolean) => void;
   onSave: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -51,6 +56,8 @@ export function DashboardEditProfileDialog({
   editSkills,
   skillDraft,
   skillError,
+  editUniversitySelection,
+  editUniversityCustom,
   isSavingProfile,
   pendingAvatarFile,
   pendingAvatarPreviewUrl,
@@ -61,6 +68,8 @@ export function DashboardEditProfileDialog({
   onSkillDraftChange,
   onAddSkill,
   onRemoveSkill,
+  onEditUniversitySelectionChange,
+  onEditUniversityCustomChange,
   onAvatarFileChange,
   onOpenChange,
   onSave,
@@ -133,6 +142,15 @@ export function DashboardEditProfileDialog({
             <Label htmlFor="dashboard-profile-email">Email</Label>
             <Input id="dashboard-profile-email" value={user.email} readOnly disabled />
           </div>
+
+          <UniversityFields
+            idPrefix="dashboard-profile"
+            selection={editUniversitySelection}
+            customName={editUniversityCustom}
+            disabled={isSavingProfile}
+            onSelectionChange={onEditUniversitySelectionChange}
+            onCustomNameChange={onEditUniversityCustomChange}
+          />
 
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">

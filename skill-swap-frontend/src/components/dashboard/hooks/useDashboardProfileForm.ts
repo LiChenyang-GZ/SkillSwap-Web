@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { toast } from "sonner";
 import type { User } from "../../../types/user";
+import { OTHER_OPTION } from "../../onboarding/constants/universityOptions";
+import { resolveUniversity, toUniversityDraft } from "../../onboarding/utils/universityMapper";
 import {
   DASHBOARD_PROFILE_EMPTY_NAME_MESSAGE,
   DASHBOARD_PROFILE_FAILURE_MESSAGE,
@@ -37,6 +39,8 @@ export function useDashboardProfileForm({
   const [editSkills, setEditSkills] = useState<string[]>([]);
   const [skillDraft, setSkillDraft] = useState("");
   const [skillError, setSkillError] = useState<string | null>(null);
+  const [editUniversitySelection, setEditUniversitySelection] = useState("");
+  const [editUniversityCustom, setEditUniversityCustom] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingAvatarPreviewUrl, setPendingAvatarPreviewUrl] = useState<string | null>(null);
@@ -58,6 +62,9 @@ export function useDashboardProfileForm({
     setEditSkills(user?.skills ?? []);
     setSkillDraft("");
     setSkillError(null);
+    const universityDraft = toUniversityDraft(user?.university);
+    setEditUniversitySelection(universityDraft.selection);
+    setEditUniversityCustom(universityDraft.customName);
     setPendingAvatarFile(null);
     setPendingAvatarPreviewUrl((previousUrl) => {
       if (previousUrl) {
@@ -118,6 +125,16 @@ export function useDashboardProfileForm({
     }
   };
 
+  const handleEditUniversitySelectionChange = (value: string) => {
+    setEditUniversitySelection(value);
+    setProfileError(null);
+  };
+
+  const handleEditUniversityCustomChange = (value: string) => {
+    setEditUniversityCustom(value);
+    setProfileError(null);
+  };
+
   const handleSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) {
@@ -147,8 +164,18 @@ export function useDashboardProfileForm({
 
     const nextBio = editBio.trim().slice(0, DASHBOARD_PROFILE_BIO_MAX_LENGTH);
 
-    // Send only the fields that actually changed so an avatar-only or
-    // name-only save can never clobber bio or skills.
+    if (!editUniversitySelection) {
+      setProfileError("Please select your university.");
+      return;
+    }
+    const nextUniversity = resolveUniversity(editUniversitySelection, editUniversityCustom);
+    if (editUniversitySelection === OTHER_OPTION && nextUniversity.length < 2) {
+      setProfileError("Please enter your university name.");
+      return;
+    }
+
+    // Send only the fields that actually changed so partial edits cannot
+    // clobber profile values owned by another field.
     const textUpdates: DashboardProfileUpdates = {};
     if (nextUsername !== user.username.trim()) {
       textUpdates.username = nextUsername;
@@ -158,6 +185,9 @@ export function useDashboardProfileForm({
     }
     if (!areSkillListsEqual(nextSkills, user.skills ?? [])) {
       textUpdates.skills = nextSkills;
+    }
+    if (nextUniversity !== (user.university ?? "")) {
+      textUpdates.university = nextUniversity;
     }
 
     const hasTextChange = Object.keys(textUpdates).length > 0;
@@ -229,6 +259,8 @@ export function useDashboardProfileForm({
     editSkills,
     skillDraft,
     skillError,
+    editUniversitySelection,
+    editUniversityCustom,
     isSavingProfile,
     pendingAvatarFile,
     pendingAvatarPreviewUrl,
@@ -239,6 +271,8 @@ export function useDashboardProfileForm({
     handleSkillDraftChange,
     addSkillFromDraft,
     removeSkill,
+    handleEditUniversitySelectionChange,
+    handleEditUniversityCustomChange,
     handleEditProfileOpenChange,
     handleSaveProfile,
     handleAvatarFileChange,

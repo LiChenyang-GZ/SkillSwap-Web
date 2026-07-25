@@ -27,6 +27,7 @@ interface DashboardAuthenticatedScreenProps {
     username?: string;
     avatarUrl?: string;
     bio?: string;
+    university?: string;
     skills?: string[];
   }) => Promise<User>;
   uploadCurrentUserAvatar: (file: File) => Promise<User>;
@@ -144,6 +145,8 @@ function DashboardAuthenticatedScreen({
         editSkills={profileForm.editSkills}
         skillDraft={profileForm.skillDraft}
         skillError={profileForm.skillError}
+        editUniversitySelection={profileForm.editUniversitySelection}
+        editUniversityCustom={profileForm.editUniversityCustom}
         isSavingProfile={profileForm.isSavingProfile}
         pendingAvatarFile={profileForm.pendingAvatarFile}
         pendingAvatarPreviewUrl={profileForm.pendingAvatarPreviewUrl}
@@ -154,6 +157,8 @@ function DashboardAuthenticatedScreen({
         onSkillDraftChange={profileForm.handleSkillDraftChange}
         onAddSkill={profileForm.addSkillFromDraft}
         onRemoveSkill={profileForm.removeSkill}
+        onEditUniversitySelectionChange={profileForm.handleEditUniversitySelectionChange}
+        onEditUniversityCustomChange={profileForm.handleEditUniversityCustomChange}
         onAvatarFileChange={profileForm.handleAvatarFileChange}
         onOpenChange={profileForm.handleEditProfileOpenChange}
         onSave={profileForm.handleSaveProfile}

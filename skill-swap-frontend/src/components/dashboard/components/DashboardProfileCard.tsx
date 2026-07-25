@@ -1,9 +1,10 @@
-import { Edit, Sparkles } from "lucide-react";
+import { Edit, GraduationCap, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
 import type { User } from "../../../types/user";
+import { getUniversityDisplayName } from "../../onboarding/utils/universityMapper";
 
 interface DashboardProfileCardProps {
   user: User;
@@ -27,6 +28,10 @@ export function DashboardProfileCard({ user, onEditProfile }: DashboardProfileCa
             </AvatarFallback>
           </Avatar>
           <h2 className="text-xl font-semibold mb-4 break-words">{user.username}</h2>
+          <div className="mb-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <GraduationCap className="h-4 w-4" />
+            <span>{getUniversityDisplayName(user.university)}</span>
+          </div>
 
           <Button variant="outline" size="sm" className="w-full mb-4" onClick={onEditProfile}>
             <Edit className="w-4 h-4 mr-2" />

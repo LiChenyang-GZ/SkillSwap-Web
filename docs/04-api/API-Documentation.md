@@ -217,6 +217,7 @@ Example response:
   "email": "<USER_EMAIL>",
   "avatarUrl": "<IMAGE_URL>",
   "bio": "SkillSwap member",
+  "university": "University of Sydney",
   "role": "member",
   "skills": ["design"],
   "creditBalance": 0,
@@ -290,7 +291,7 @@ Example request:
 curl -X PATCH "<API_BASE_URL>/api/v1/users/me" \
   -H "Authorization: Bearer <JWT_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{ "username": "new_name", "bio": "Learning and teaching design." }'
+  -d '{ "username": "new_name", "bio": "Learning and teaching design.", "university": "Macquarie University" }'
 ```
 
 Example response:
@@ -301,6 +302,7 @@ Example response:
   "username": "new_name",
   "email": "<USER_EMAIL>",
   "bio": "Learning and teaching design.",
+  "university": "Macquarie University",
   "skills": [],
   "creditBalance": 0,
   "totalWorkshopsHosted": 0,
@@ -312,7 +314,7 @@ Example response:
 
 Error cases:
 
-- `400`: blank username, invalid skill values, or DTO length/list-size validation failure.
+- `400`: blank username, invalid skill values, a university name shorter than 2 characters, or DTO length/list-size validation failure.
 - `401`: missing/invalid authentication.
 
 #### POST `/api/v1/users/me/avatar`
@@ -1665,6 +1667,7 @@ Unused active-code DTO: `WorkshopStatusUpdateResponseDto` exists, but no current
 |---|---|---|---|---|
 | `username` | string | No | New username, max 100 characters. Blank values rejected if supplied. | DTO/service validation |
 | `bio` | string | No | Profile bio, max 255 characters. | DTO validation |
+| `university` | string | No | University name, 2–100 characters. Omit to leave unchanged; existing users may have no value until onboarding is completed. | DTO/service validation |
 | `skills` | string[] | No | Replaces the current skill collection when supplied; max 50 skills, each max 100 characters. | DTO/service validation |
 
 Unknown JSON fields are ignored. `avatarUrl` is no longer part of `UpdateProfileRequestDto`; avatar changes must use `POST /api/v1/users/me/avatar`.
@@ -1685,6 +1688,7 @@ Unknown JSON fields are ignored. `avatarUrl` is no longer part of `UpdateProfile
 | `email` | string | Email from local user/JWT when available. | DTO/entity |
 | `avatarUrl` | string | Avatar URL. | DTO/entity |
 | `bio` | string | Profile bio. | DTO/entity |
+| `university` | string | University name, or `null` for users who have not completed onboarding. | DTO/entity |
 | `role` | string | Local role such as `member` or `admin`. | DTO/entity |
 | `skills` | string[] | Skill names. | DTO/service |
 | `creditBalance` | integer | Current profile service returns `0`; add-skill response path may return `100`. | Code inconsistency |
