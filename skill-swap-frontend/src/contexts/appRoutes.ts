@@ -1,6 +1,7 @@
 import {
   ADMIN_MEMORY_PAGE_ID,
   ADMIN_MEMORY_PATH,
+  MEMORY_ENTRY_PAGE_PREFIX,
   MEMORY_PAGE_ID,
   MEMORY_PATH,
 } from "../components/memory/constants/memoryRouteConstants";
@@ -69,11 +70,23 @@ export const pathFromPage = (page: string) => {
   return PAGE_TO_PATH[page] || "/explore";
 };
 
-// Pages a signed-out visitor may open directly by URL. The auth bootstrap
-// keeps these instead of redirecting to the hero landing page.
-const SIGNED_OUT_PRESERVED_PAGES = new Set(["campuses"]);
+// Public discovery surfaces a signed-out visitor may open directly by URL (or
+// refresh on) without the auth bootstrap bouncing them to the hero landing page.
+const SIGNED_OUT_PRESERVED_PAGES = new Set<string>([
+  "hero",
+  "home",
+  "explore",
+  "campuses",
+  MEMORY_PAGE_ID,
+]);
 
-export const isSignedOutPreservedPage = (page: string) => SIGNED_OUT_PRESERVED_PAGES.has(page);
+// Dynamic public routes resolve to prefixed page ids (e.g. `workshop-123`,
+// `memory-entry-my-slug`), so they are matched by prefix rather than exact id.
+const SIGNED_OUT_PRESERVED_PAGE_PREFIXES = ["workshop-", MEMORY_ENTRY_PAGE_PREFIX];
+
+export const isSignedOutPreservedPage = (page: string) =>
+  SIGNED_OUT_PRESERVED_PAGES.has(page) ||
+  SIGNED_OUT_PRESERVED_PAGE_PREFIXES.some((prefix) => page.startsWith(prefix));
 
 export const resolvePostLoginPage = () => {
   const requestedPage = pageFromPath(window.location.pathname);
