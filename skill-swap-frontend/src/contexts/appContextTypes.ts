@@ -1,5 +1,4 @@
 import type { WorkshopUpsertPayload } from "../shared/api";
-import type { CreditTransaction } from "../types/creditTransaction";
 import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 
@@ -26,7 +25,6 @@ export interface RecentProfileCache {
 export interface AppContextType {
   user: User | null;
   workshops: Workshop[];
-  transactions: CreditTransaction[];
   currentPage: string;
   authTab: AuthTab;
   isAuthenticated: boolean;

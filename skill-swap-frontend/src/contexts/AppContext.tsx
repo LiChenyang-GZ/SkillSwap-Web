@@ -127,7 +127,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteWorkshop,
     refreshData,
     resetWorkshopState,
-    transactions,
     upsertWorkshop,
     workshops,
   } = useWorkshopState({
@@ -309,7 +308,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo<AppContextType>(() => ({
     user,
     workshops,
-    transactions,
     currentPage,
     authTab,
     isAuthenticated,
@@ -332,7 +330,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [
     user,
     workshops,
-    transactions,
     currentPage,
     authTab,
     isAuthenticated,
