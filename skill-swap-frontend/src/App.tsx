@@ -123,10 +123,6 @@ function AppContent() {
         return <CampusExpansion />;
       case 'dashboard':
         return <Dashboard />;
-      case 'credits':
-        // 积分系统已停用：原本跳转 Credits 页面。
-        // return <Credits />;
-        return <Dashboard />;
       case 'create':
         return <CreateWorkshop />;
       case 'auth':

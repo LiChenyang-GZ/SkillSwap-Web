@@ -27,7 +27,6 @@ export interface BackendUserProfile {
   avatar_updated_at?: string;
   bio?: string;
   university?: string;
-  creditBalance?: number;
   skills?: string[];
   totalWorkshopsHosted?: number;
   totalWorkshopsAttended?: number;
@@ -203,9 +202,6 @@ export function mapBackendUser(userProfile: BackendUserProfile): User {
     bio: userProfile.bio || "",
     // Keep undefined (not "") when unset so the onboarding gate can detect it.
     university: userProfile.university || undefined,
-    // 积分系统已停用：默认值改为 0（保留旧默认值作为注释）。
-    // creditBalance: userProfile.creditBalance ?? 100,
-    creditBalance: userProfile.creditBalance ?? 0,
     skills: userProfile.skills || [],
     totalWorkshopsHosted: userProfile.totalWorkshopsHosted || 0,
     totalWorkshopsAttended: userProfile.totalWorkshopsAttended || 0,

@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { useCreateWorkshopAction } from "../shared/hooks/workshop/useCreateWorkshopAction";
 import { workshopMutationService } from "../shared/service/workshop/workshopMutationService";
 import { workshopQueryService } from "../shared/service/workshop/workshopQueryService";
-import type { CreditTransaction } from "../types/creditTransaction";
 import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 import type { GetAuthToken, RefreshDataMode } from "./appContextTypes";
@@ -36,7 +35,6 @@ export const useWorkshopState = ({
   user,
 }: UseWorkshopStateParams) => {
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
-  const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const refreshInFlightRef = useRef<{ mode: RefreshDataMode; task: Promise<void> } | null>(null);
   const workshopGenerationRef = useRef(0);
 
@@ -59,7 +57,6 @@ export const useWorkshopState = ({
   const resetWorkshopState = useCallback(() => {
     invalidateWorkshopRequests();
     setWorkshops([]);
-    setTransactions([]);
   }, [invalidateWorkshopRequests]);
 
   const fetchVisibleWorkshops = useCallback(async () => {
@@ -146,10 +143,6 @@ export const useWorkshopState = ({
           console.warn("⚠️ Failed to fetch workshops", err);
         }
       }
-
-      if (requestGeneration !== workshopGenerationRef.current) return;
-      // 积分系统已停用：不再加载 mock 交易历史。
-      setTransactions([]);
     })();
 
     refreshInFlightRef.current = { mode, task };
@@ -288,7 +281,6 @@ export const useWorkshopState = ({
     deleteWorkshop,
     refreshData,
     resetWorkshopState,
-    transactions,
     upsertWorkshop,
     workshops,
   };

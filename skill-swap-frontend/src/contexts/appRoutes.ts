@@ -21,7 +21,6 @@ const PAGE_TO_PATH: Record<string, string> = {
   adminReview: "/admin/workshops",
   auth: "/auth",
   onboarding: "/onboarding",
-  credits: "/credits",
 };
 
 const PATH_TO_PAGE: Record<string, string> = {
@@ -37,7 +36,6 @@ const PATH_TO_PAGE: Record<string, string> = {
   "/admin/workshops": "adminReview",
   "/auth": "auth",
   "/onboarding": "onboarding",
-  "/credits": "credits",
 };
 
 export const normalizePath = (pathname: string) => {
