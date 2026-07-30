@@ -25,7 +25,7 @@
 | 11 | Admin Guide | [docs/07-user-guides/Admin-Guide.md](docs/07-user-guides/Admin-Guide.md) | Admin workflows: workshop review, Memory Studio, permission boundaries |
 | 12 | End-User Guide | [docs/07-user-guides/End-User-Guide.md](docs/07-user-guides/End-User-Guide.md) | Regular user actions: sign up/in, attend, submit workshops, notifications, FAQ |
 | 13 | Testing Strategy | [docs/08-testing/Testing-Strategy.md](docs/08-testing/Testing-Strategy.md) | Backend automated testing strategy, frontend typecheck/build CI, coverage summary, CI workflows, AI-assisted testing guideline |
-| 14 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~007: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices |
+| 14 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~011: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices, plus credits retirement, light-only direction, unused rating fields, and fork↔upstream workflow |
 
 ---
 
@@ -386,6 +386,10 @@
 | ADR-005 | Use Azure Blob Storage for media | [ADR-005-Use-Azure-Blob-Storage-for-Media.md](docs/09-decision-records/ADR-005-Use-Azure-Blob-Storage-for-Media.md) |
 | ADR-006 | Use GitHub Actions + GHCR for CI/CD | [ADR-006-Use-GitHub-Actions-and-GHCR-for-CICD.md](docs/09-decision-records/ADR-006-Use-GitHub-Actions-and-GHCR-for-CICD.md) |
 | ADR-007 | Use Nginx for reverse proxy and TLS termination | [ADR-007-Use-Nginx-for-Reverse-Proxy-and-TLS-Termination.md](docs/09-decision-records/ADR-007-Use-Nginx-for-Reverse-Proxy-and-TLS-Termination.md) |
+| ADR-008 | Retire the credits / points system | [ADR-008-Retire-Credits-System.md](docs/09-decision-records/ADR-008-Retire-Credits-System.md) |
+| ADR-009 | Permanent light-only visual direction | [ADR-009-Permanent-Light-Only-Visual-Direction.md](docs/09-decision-records/ADR-009-Permanent-Light-Only-Visual-Direction.md) |
+| ADR-010 | Rating / review fields present but unused | [ADR-010-Rating-Fields-Present-But-Unused.md](docs/09-decision-records/ADR-010-Rating-Fields-Present-But-Unused.md) |
+| ADR-011 | Fork ↔ upstream relationship and solo workflow | [ADR-011-Fork-and-Upstream-Relationship.md](docs/09-decision-records/ADR-011-Fork-and-Upstream-Relationship.md) |
 
 ---
 
