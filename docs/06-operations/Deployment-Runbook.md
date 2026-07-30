@@ -434,24 +434,39 @@ Keep command output review focused on whether deployment completed and the servi
 
 ## 13. Rollback Notes
 
-Current rollback capability is limited.
+The backend workflow publishes two tags per build: the mutable `latest` and an immutable per-commit tag `ghcr.io/<IMAGE_NAME>:<commit-sha>`. The VM deploy step pulls `latest`, but every past build stays available in GHCR under its commit SHA, which makes a targeted rollback possible.
 
-The backend workflow pushes and deploys a `latest` image tag. Because formal versioned image tags are not implemented in the current workflow, rollback is not robust by default.
+### Roll back the backend to a previous build
 
-Current realistic options:
+1. Find the last-good commit SHA (from the GitHub Actions run history or `git log` on `main`).
+2. SSH into the Azure VM and redeploy that image by SHA, reusing the same environment variables as the deploy workflow's `docker run`:
 
-1. Revert the problematic commit and push the revert to `main` so the normal workflow redeploys.
-2. Re-run a previous successful GitHub Actions workflow if the previous run is available and still checks out/builds the intended commit.
-3. Manually redeploy a previous image only if a usable previous image digest or tag is available in GHCR.
+   ```bash
+   GOOD_SHA=<commit-sha>
+   echo "<GHCR_TOKEN>" | docker login ghcr.io -u <github-actor> --password-stdin
+   docker stop backend-api || true
+   docker rm backend-api || true
+   docker pull ghcr.io/<IMAGE_NAME>:$GOOD_SHA
+   docker run -d --name backend-api --restart unless-stopped \
+     -p 8080:8080 \
+     -e SPRING_DATASOURCE_URL=... -e SPRING_DATASOURCE_USERNAME=... -e SPRING_DATASOURCE_PASSWORD=... \
+     -e AZURE_STORAGE_CONNECTION_STRING=... -e AZURE_STORAGE_MEDIA_CONTAINER="media" \
+     -e CLERK_ISSUER_URI=... -e CLERK_JWKS_URI=... -e CLERK_SECRET_KEY=... \
+     ghcr.io/<IMAGE_NAME>:$GOOD_SHA
+   ```
+
+3. Verify health, then — for a durable fix — revert the bad commit on `main` so the normal `latest` flow converges back to a good build.
+
+> Caveat: rolling the backend image back does **not** roll back the database schema. Production runs `ddl-auto=validate` with manual migrations, so a rollback that crosses a schema change requires reconciling the DB manually. Do not roll back across an entity/migration change without checking the schema first.
+
+Other still-valid options: revert the problematic commit and let the workflow redeploy `latest`; or re-run a previous successful Actions run.
 
 Frontend rollback depends on Vercel's project deployment history and permissions. Use Vercel's deployment rollback controls only if available in the configured Vercel project.
-
-Recommended future improvement: add immutable image tags such as commit SHA tags, document digest-based rollback, and keep a short rollback procedure tied to GHCR image history.
 
 ## 14. Known Deployment Limitations
 
 - No formal staging or QA deployment environment was found.
-- Backend rollback is limited because the workflow deploys `latest`.
+- Backend deploys `latest`; targeted rollback is possible via the immutable per-commit SHA image tags (see §13), but image rollback does not cover database schema.
 - Database migration is manual or requires verification; no workflow migration stage exists.
 - Backend deployment targets a single Azure VM.
 - No Infrastructure as Code was found for recreating cloud resources.
