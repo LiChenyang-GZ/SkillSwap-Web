@@ -7,8 +7,12 @@ import { ExploreWorkshopsHeader } from '../components/ExploreWorkshopsHeader';
 import { useWorkshopExploreQuery } from '../hooks/useWorkshopExploreQuery';
 import { useWorkshopExploreSelection } from '../hooks/useWorkshopExploreSelection';
 
-// TODO(Claire): replace with the real Google Form URL for workshop requests.
-const WORKSHOP_REQUEST_FORM_URL = 'https://forms.gle/REPLACE-WITH-REAL-FORM';
+// Public workshop-request Google Form.
+// NOTE: this is the /viewform variant of the form owner's /edit link. If public
+// (logged-out) users cannot open it, replace it with the real shareable link
+// from Google Forms → "Send" → link (a forms.gle/... or /d/e/.../viewform URL).
+const WORKSHOP_REQUEST_FORM_URL =
+  'https://docs.google.com/forms/d/1mNi5ny7r6DPUuaNXOIXzAw4sd12rM1Cx5WU58CqrHBk/viewform';
 
 export function ExploreWorkshopsScreen() {
   const { workshops, setCurrentPage } = useApp();
