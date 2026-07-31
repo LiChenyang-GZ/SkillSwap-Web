@@ -1,8 +1,6 @@
-import { History, Search } from "lucide-react";
 import type { NavigationItem } from "../models/navigationItemModel";
-import { NAVIGATION_PAGE_KEYS } from "./navigationPageKeys";
 
-export const NAVIGATION_ITEMS: NavigationItem[] = [
-  { id: NAVIGATION_PAGE_KEYS.explore, label: "Explore", icon: Search },
-  { id: NAVIGATION_PAGE_KEYS.memory, label: "Memory", icon: History },
-];
+// The signed-in app shell is Explore-only, so the primary nav carries no page
+// links — the brand logo returns you to Explore/home and the user menu covers
+// the rest (dashboard, notifications, admin, sign out).
+export const NAVIGATION_ITEMS: NavigationItem[] = [];

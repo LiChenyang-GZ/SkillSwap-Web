@@ -17,7 +17,7 @@ export function NavigationDesktopNav({
   return (
     <nav className="hidden lg:flex fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto w-full px-6 py-4 flex items-center justify-between">
-        <NavigationBrand />
+        <NavigationBrand onClick={() => onNavigate(isAuthenticated ? "explore" : "hero")} />
 
         <div className="flex items-center space-x-1">
           <NavigationPrimaryLinks items={items} currentPage={currentPage} onNavigate={onNavigate} />
