@@ -10,7 +10,6 @@ import type { RefreshDataMode } from "./appContextTypes";
 
 const PAGE_TO_PATH: Record<string, string> = {
   hero: "/",
-  home: "/home",
   explore: "/explore",
   campuses: "/campuses",
   create: "/create",
@@ -25,7 +24,6 @@ const PAGE_TO_PATH: Record<string, string> = {
 
 const PATH_TO_PAGE: Record<string, string> = {
   "/": "hero",
-  "/home": "home",
   "/explore": "explore",
   "/campuses": "campuses",
   "/create": "create",
@@ -74,7 +72,6 @@ export const pathFromPage = (page: string) => {
 // refresh on) without the auth bootstrap bouncing them to the hero landing page.
 const SIGNED_OUT_PRESERVED_PAGES = new Set<string>([
   "hero",
-  "home",
   "explore",
   "campuses",
   MEMORY_PAGE_ID,
@@ -97,7 +94,7 @@ export const resolvePostLoginPage = () => {
 };
 
 export const resolveRefreshModeByPage = (page: string): RefreshDataMode => {
-  if (page === "home" || page === "explore") {
+  if (page === "explore") {
     return "public";
   }
   if (page === "dashboard") {

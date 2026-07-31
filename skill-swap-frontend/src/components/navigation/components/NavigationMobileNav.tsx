@@ -22,7 +22,7 @@ export function NavigationMobileNav({
   return (
     <nav className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="px-4 py-3 flex items-center justify-between">
-        <NavigationBrand compact />
+        <NavigationBrand compact onClick={() => onNavigateAndCloseMobile(isAuthenticated ? "explore" : "hero")} />
 
         <div className="flex items-center space-x-3">
           {/* 积分系统已停用：移动端导航不再展示积分入口。 */}

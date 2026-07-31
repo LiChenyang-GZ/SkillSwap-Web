@@ -8,7 +8,6 @@ import { HeroScreen } from './components/hero/screen/HeroScreen';
 import { MemoryScreen as Memory } from './components/memory/screen/MemoryScreen';
 import { ExploreWorkshopsScreen as ExploreWorkshops } from './components/workshop/screen/ExploreWorkshopsScreen';
 
-const HomePage = React.lazy(() => import('./components/archive/HomePage').then((m) => ({ default: m.HomePage })));
 const Dashboard = React.lazy(() =>
   import('./components/dashboard/screen/DashboardScreen').then((m) => ({ default: m.DashboardScreen }))
 );
@@ -51,13 +50,13 @@ function AppContent() {
     }
     lastAutoRefreshKeyRef.current = refreshKey;
 
-    if (!isAuthenticated && currentPage !== 'home' && currentPage !== 'explore') {
+    if (!isAuthenticated && currentPage !== 'explore') {
       return;
     }
 
-    const isPublicPage = currentPage === 'home' || currentPage === 'explore';
+    const isPublicPage = currentPage === 'explore';
     const previousPage = previousKey?.split(':')[0] ?? null;
-    const wasPublicPage = previousPage === 'home' || previousPage === 'explore';
+    const wasPublicPage = previousPage === 'explore';
 
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
     if (isPublicPage) {
@@ -115,8 +114,6 @@ function AppContent() {
     switch (currentPage) {
       case 'hero':
         return <HeroScreen />;
-      case 'home':
-        return <HomePage />;
       case 'explore':
         return <ExploreWorkshops />;
       case 'campuses':

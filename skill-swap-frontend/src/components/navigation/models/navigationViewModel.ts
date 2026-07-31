@@ -10,6 +10,7 @@ export interface NavigationPrimaryLinksProps {
 
 export interface NavigationBrandProps {
   compact?: boolean;
+  onClick?: () => void;
 }
 
 export interface NavigationNotificationDotProps {
