@@ -6,17 +6,13 @@ export function NavigationBrand({ compact = false, onClick }: NavigationBrandPro
   const content = (
     <>
       <div
-        className={`${compact ? "w-7 h-7" : "w-8 h-8"} bg-secondary rounded-full flex items-center justify-center overflow-hidden`}
+        className={`${compact ? "h-9 w-9" : "h-10 w-10"} overflow-hidden rounded-xl bg-secondary shadow-sm`}
       >
-        <img src={BRAND_LOGO_SRC} alt="Skill Swap Club" className="h-full w-full object-cover" />
+        <img src={BRAND_LOGO_SRC} alt="" className="h-full w-full object-cover" />
       </div>
-      <h1 className={compact ? "text-lg font-semibold" : "text-xl font-semibold"}>
-        {compact ? "Skill Swap" : "Skill Swap Club"}
-      </h1>
+      <span className="ml-3 text-lg font-bold tracking-tight text-foreground">SkillSwap</span>
     </>
   );
-
-  const layoutClass = `flex items-center ${compact ? "space-x-2" : "space-x-3"}`;
 
   if (onClick) {
     return (
@@ -24,12 +20,12 @@ export function NavigationBrand({ compact = false, onClick }: NavigationBrandPro
         type="button"
         onClick={onClick}
         aria-label="Go to SkillSwap home"
-        className={`${layoutClass} rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        className="flex items-center rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {content}
       </button>
     );
   }
 
-  return <div className={layoutClass}>{content}</div>;
+  return <div className="flex items-center">{content}</div>;
 }
