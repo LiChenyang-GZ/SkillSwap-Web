@@ -99,18 +99,19 @@ export function useDashboardProfileForm({
     return null;
   };
 
-  const addSkillFromDraft = (): boolean => {
+  const addSkillFromDraft = (): string[] | null => {
     const candidate = skillDraft.trim();
     const message = validateNewSkill(candidate, editSkills);
     if (message) {
       setSkillError(message);
-      return false;
+      return null;
     }
 
-    setEditSkills((previous) => [...previous, candidate]);
+    const nextSkills = [...editSkills, candidate];
+    setEditSkills(nextSkills);
     setSkillDraft("");
     setSkillError(null);
-    return true;
+    return nextSkills;
   };
 
   const removeSkill = (skillToRemove: string) => {
@@ -151,15 +152,11 @@ export function useDashboardProfileForm({
     // or surface its validation message and keep the dialog open.
     let nextSkills = editSkills;
     if (skillDraft.trim()) {
-      const candidate = skillDraft.trim();
-      const message = validateNewSkill(candidate, editSkills);
-      if (message) {
-        setSkillError(message);
+      const skillsWithDraft = addSkillFromDraft();
+      if (!skillsWithDraft) {
         return;
       }
-      nextSkills = [...editSkills, candidate];
-      setEditSkills(nextSkills);
-      setSkillDraft("");
+      nextSkills = skillsWithDraft;
     }
 
     const nextBio = editBio.trim().slice(0, DASHBOARD_PROFILE_BIO_MAX_LENGTH);

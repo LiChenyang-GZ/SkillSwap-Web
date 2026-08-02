@@ -1,4 +1,4 @@
-import type { ChangeEvent, FormEvent, KeyboardEvent, RefObject } from "react";
+import type { ChangeEvent, FormEvent, RefObject } from "react";
 import { X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { Badge } from "../../ui/badge";
@@ -74,12 +74,6 @@ export function DashboardEditProfileDialog({
   onOpenChange,
   onSave,
 }: DashboardEditProfileDialogProps) {
-  const handleSkillInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter" || event.key === ",") {
-      event.preventDefault();
-      onAddSkill();
-    }
-  };
   return (
     <Dialog open={isEditProfileOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
@@ -166,7 +160,7 @@ export function DashboardEditProfileDialog({
             <Textarea
               id="dashboard-profile-bio"
               value={editBio}
-              onChange={(event) => onEditBioChange(event.target.value.slice(0, DASHBOARD_PROFILE_BIO_MAX_LENGTH))}
+              onChange={(event) => onEditBioChange(event.target.value)}
               maxLength={DASHBOARD_PROFILE_BIO_MAX_LENGTH}
               rows={3}
               placeholder="Tell the community a little about yourself"
@@ -201,7 +195,12 @@ export function DashboardEditProfileDialog({
                 id="dashboard-profile-skill-input"
                 value={skillDraft}
                 onChange={(event) => onSkillDraftChange(event.target.value)}
-                onKeyDown={handleSkillInputKeyDown}
+                // Enter here must not submit the whole profile form; skills are added via the Add button.
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                  }
+                }}
                 maxLength={DASHBOARD_PROFILE_SKILL_MAX_LENGTH}
                 placeholder="e.g. Watercolour basics"
                 disabled={isSavingProfile}
@@ -218,7 +217,7 @@ export function DashboardEditProfileDialog({
               </Button>
             </div>
             <p id="dashboard-profile-skill-help" className="text-xs text-muted-foreground">
-              Press Enter or comma to add. Up to {DASHBOARD_PROFILE_SKILLS_MAX_COUNT} skills.
+              Type a skill, then press Add. Up to {DASHBOARD_PROFILE_SKILLS_MAX_COUNT} skills.
             </p>
             {skillError && (
               <p id="dashboard-profile-skill-error" role="alert" className="text-sm text-destructive">
