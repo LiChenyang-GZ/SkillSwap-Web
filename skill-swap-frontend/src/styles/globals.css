@@ -60,6 +60,10 @@
   --color-red-800: #991B1B;
   --color-red-900: #7F1D1D;
 
+  /* Warm terracotta used by the mascot speech bubble on the landing page. */
+  --color-terracotta-500: #B75B3E;
+  --color-terracotta-900: #6B342E;
+
   --radius-sm: 0.25rem;
   --radius: 0.5rem;
   --radius-md: 0.75rem;

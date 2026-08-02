@@ -4,7 +4,7 @@ import type { NavigationItem } from "./navigationItemModel";
 export interface NavigationPrimaryLinksProps {
   items: NavigationItem[];
   currentPage: string;
-  onNavigate: (page: string) => void;
+  onNavigate: (item: NavigationItem) => void;
   isMobile?: boolean;
 }
 
@@ -35,6 +35,8 @@ export interface NavigationDesktopNavProps {
   isAuthenticated: boolean;
   notificationsUnreadCount: number;
   onNavigate: (page: string) => void;
+  onNavigateToItem: (item: NavigationItem) => void;
+  onHostSwap: () => void;
   onSignOut: () => Promise<void>;
   onPreloadCreate: () => void;
 }
@@ -49,6 +51,7 @@ export interface NavigationMobileNavProps {
   notificationsUnreadCount: number;
   onToggleMobileMenu: () => void;
   onNavigateAndCloseMobile: (page: string) => void;
-  onNavigateToCreateAndCloseMobile: () => void;
+  onNavigateToItemAndCloseMobile: (item: NavigationItem) => void;
+  onHostSwap: () => void;
   onSignOutAndCloseMobile: () => Promise<void>;
 }

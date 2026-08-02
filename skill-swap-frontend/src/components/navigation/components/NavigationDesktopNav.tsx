@@ -1,4 +1,6 @@
+import { ArrowRight } from "lucide-react";
 import type { NavigationDesktopNavProps } from "../models/navigationViewModel";
+import { Button } from "../../ui/button";
 import { NavigationBrand } from "./NavigationBrand";
 import { NavigationPrimaryLinks } from "./NavigationPrimaryLinks";
 import { NavigationUserMenu } from "./NavigationUserMenu";
@@ -11,6 +13,8 @@ export function NavigationDesktopNav({
   isAuthenticated,
   notificationsUnreadCount,
   onNavigate,
+  onNavigateToItem,
+  onHostSwap,
   onSignOut,
   onPreloadCreate,
 }: NavigationDesktopNavProps) {
@@ -20,10 +24,21 @@ export function NavigationDesktopNav({
         <NavigationBrand onClick={() => onNavigate(isAuthenticated ? "explore" : "hero")} />
 
         <div className="flex items-center space-x-1">
-          <NavigationPrimaryLinks items={items} currentPage={currentPage} onNavigate={onNavigate} />
+          <NavigationPrimaryLinks items={items} currentPage={currentPage} onNavigate={onNavigateToItem} />
         </div>
 
         <div className="flex items-center space-x-4">
+          <Button
+            onClick={onHostSwap}
+            onMouseEnter={onPreloadCreate}
+            onFocus={onPreloadCreate}
+            size="sm"
+            className="rounded-full px-5"
+          >
+            Host a swap
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+
           <NavigationUserMenu
             user={user}
             isAdmin={isAdmin}

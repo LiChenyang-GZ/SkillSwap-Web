@@ -1,3 +1,5 @@
+export const HERO_FEATURED_MEMORY_COUNT = 3;
+
 export const HERO_BASE_STATS = {
   members: "1,000+",
   swaps: "20+",

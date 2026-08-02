@@ -1,28 +1,25 @@
 import { useCallback } from "react";
+import type { NavigationItem } from "../models/navigationItemModel";
 import type { NavigationMenuActions } from "../models/navigationMenuActionModel";
-import { NAVIGATION_PAGE_KEYS } from "../constants/navigationPageKeys";
+
+const scrollToSectionAfterRender = (sectionId: string) => {
+  requestAnimationFrame(() => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+};
 
 interface UseNavigationMenuActionsInput {
   setCurrentPage: (page: string) => void;
   closeMobileMenu: () => void;
-  preloadCreateWorkshopScreen: () => void;
   signOut: () => Promise<void>;
 }
 
 export function useNavigationMenuActions({
   setCurrentPage,
   closeMobileMenu,
-  preloadCreateWorkshopScreen,
   signOut,
 }: UseNavigationMenuActionsInput): NavigationMenuActions {
   const navigateToPage = useCallback(
-    (page: string) => {
-      setCurrentPage(page);
-    },
-    [setCurrentPage]
-  );
-
-  const navigateToPageAndCloseMobile = useCallback(
     (page: string) => {
       setCurrentPage(page);
       closeMobileMenu();
@@ -30,11 +27,15 @@ export function useNavigationMenuActions({
     [closeMobileMenu, setCurrentPage]
   );
 
-  const navigateToCreateAndCloseMobile = useCallback(() => {
-    preloadCreateWorkshopScreen();
-    setCurrentPage(NAVIGATION_PAGE_KEYS.create);
-    closeMobileMenu();
-  }, [closeMobileMenu, preloadCreateWorkshopScreen, setCurrentPage]);
+  const navigateToItem = useCallback(
+    (item: NavigationItem) => {
+      navigateToPage(item.page);
+      if (item.sectionId) {
+        scrollToSectionAfterRender(item.sectionId);
+      }
+    },
+    [navigateToPage]
+  );
 
   const signOutAndCloseMobile = useCallback(async () => {
     try {
@@ -47,8 +48,7 @@ export function useNavigationMenuActions({
 
   return {
     navigateToPage,
-    navigateToPageAndCloseMobile,
-    navigateToCreateAndCloseMobile,
+    navigateToItem,
     signOutAndCloseMobile,
   };
 }

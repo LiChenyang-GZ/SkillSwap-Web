@@ -1,4 +1,5 @@
 import { ArrowRight, MapPin } from "lucide-react";
+import { BRAND_MASCOT_SRC } from "../../../shared/constants";
 import { Button } from "../../ui/button";
 
 interface CampusHeroSectionProps {
@@ -6,12 +7,10 @@ interface CampusHeroSectionProps {
   onHost: () => void;
 }
 
-const MASCOT_SRC = "/brand/fox-mascot.png";
-
 export function CampusHeroSection({ onExplore, onHost }: CampusHeroSectionProps) {
   return (
-    <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,rgba(229,152,46,0.24),transparent_34%),radial-gradient(circle_at_88%_30%,rgba(184,51,43,0.14),transparent_30%)]" />
+    <section className="relative overflow-hidden pt-20 lg:pt-24">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_16%,color-mix(in_srgb,var(--color-secondary)_24%,transparent),transparent_34%),radial-gradient(circle_at_88%_30%,color-mix(in_srgb,var(--color-primary)_14%,transparent),transparent_30%)]" />
       <div className="absolute -left-24 top-32 h-64 w-64 rounded-full border border-secondary/30" aria-hidden="true" />
       <div className="absolute -right-20 bottom-10 h-72 w-72 rounded-full border border-primary/20" aria-hidden="true" />
 
@@ -50,7 +49,7 @@ export function CampusHeroSection({ onExplore, onHost }: CampusHeroSectionProps)
         <div className="relative mx-auto hidden w-full max-w-xs lg:block">
           <div className="absolute inset-x-8 bottom-2 top-10 rounded-[50%] bg-secondary/20" aria-hidden="true" />
           <img
-            src={MASCOT_SRC}
+            src={BRAND_MASCOT_SRC}
             alt="SkillSwap's friendly fox mascot waving hello"
             className="relative w-full object-contain"
           />

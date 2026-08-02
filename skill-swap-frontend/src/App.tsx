@@ -140,9 +140,7 @@ function AppContent() {
     }
   };
 
-  // Show navigation only if not on hero/auth page or if user is authenticated
-  const showNavigation =
-    currentPage !== 'onboarding' && ((currentPage !== 'hero' && currentPage !== 'auth') || isAuthenticated);
+  const showNavigation = currentPage !== 'onboarding' && (currentPage !== 'auth' || isAuthenticated);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -1,22 +1,17 @@
 import { ArrowRight, Sparkles } from "lucide-react";
+import { BRAND_MASCOT_SRC } from "../../../shared/constants";
 import { Button } from "../../ui/button";
+import { HERO_BASE_STATS } from "../constants/heroUiConstants";
 
 interface HeroIntroSectionProps {
-  stats: {
-    members: string;
-    swaps: string;
-    campuses: string;
-  };
   onExplore: () => void;
   onHost: () => void;
 }
 
-const MASCOT_SRC = "/brand/fox-mascot.png";
-
-export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionProps) {
+export function HeroIntroSection({ onExplore, onHost }: HeroIntroSectionProps) {
   return (
-    <section className="relative overflow-hidden pt-16">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(229,152,46,0.28),transparent_32%),radial-gradient(circle_at_90%_28%,rgba(184,51,43,0.16),transparent_28%)]" />
+    <section className="relative overflow-hidden pt-20 lg:pt-24">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,color-mix(in_srgb,var(--color-secondary)_28%,transparent),transparent_32%),radial-gradient(circle_at_90%_28%,color-mix(in_srgb,var(--color-primary)_16%,transparent),transparent_28%)]" />
       <div className="absolute -left-24 top-36 h-64 w-64 rounded-full border border-secondary/30" />
       <div className="absolute -right-20 bottom-16 h-72 w-72 rounded-full border border-primary/20" />
 
@@ -48,34 +43,34 @@ export function HeroIntroSection({ stats, onExplore, onHost }: HeroIntroSectionP
 
           <div className="mt-10 grid max-w-2xl grid-cols-3 divide-x divide-foreground/15 border-y border-foreground/15 py-5">
             <div className="pr-3">
-              <strong className="block text-2xl font-bold text-foreground sm:text-3xl">{stats.members}</strong>
+              <strong className="block text-2xl font-bold text-foreground sm:text-3xl">{HERO_BASE_STATS.members}</strong>
               <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">USYD members</span>
             </div>
             <div className="px-3 sm:px-6">
-              <strong className="block text-2xl font-bold text-foreground sm:text-3xl">{stats.swaps}</strong>
+              <strong className="block text-2xl font-bold text-foreground sm:text-3xl">{HERO_BASE_STATS.swaps}</strong>
               <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">SkillSwaps so far</span>
             </div>
             <div className="pl-3 sm:pl-6">
-              <strong className="block text-lg font-bold leading-tight text-foreground sm:text-3xl">{stats.campuses}</strong>
+              <strong className="block text-lg font-bold leading-tight text-foreground sm:text-3xl">{HERO_BASE_STATS.campuses}</strong>
               <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">next on the map</span>
             </div>
           </div>
         </div>
 
         <div className="relative mx-auto min-h-[480px] w-full max-w-md sm:min-h-[520px]">
-          <div className="relative z-10 mr-8 max-w-sm -translate-y-6 rounded-[50%] border border-[#B75B3E]/25 bg-[#FFF8ED] px-10 py-10 text-center text-[#6B342E] shadow-[0_18px_55px_rgba(107,52,46,0.14)] sm:mr-12 sm:-translate-y-12 sm:px-12 sm:py-12">
+          <div className="relative z-10 mr-8 max-w-sm -translate-y-6 rounded-[50%] border border-terracotta-500/25 bg-orange-50 px-10 py-10 text-center text-terracotta-900 shadow-[0_18px_55px_color-mix(in_srgb,var(--color-terracotta-900)_14%,transparent)] sm:mr-12 sm:-translate-y-12 sm:px-12 sm:py-12">
             <p className="text-3xl font-semibold leading-[1.2] tracking-[-0.025em] sm:text-4xl">
               Come curious.
               <br />
               Leave connected.
             </p>
             <span
-              className="absolute -bottom-4 right-14 h-8 w-8 rotate-45 border-b border-r border-[#B75B3E]/25 bg-[#FFF8ED] sm:right-16"
+              className="absolute -bottom-4 right-14 h-8 w-8 rotate-45 border-b border-r border-terracotta-500/25 bg-orange-50 sm:right-16"
               aria-hidden="true"
             />
           </div>
           <img
-            src={MASCOT_SRC}
+            src={BRAND_MASCOT_SRC}
             alt="SkillSwap's friendly fox mascot waving hello"
             className="absolute bottom-12 right-0 z-20 w-[82%] max-w-[360px] sm:bottom-0 sm:w-[90%] sm:max-w-[396px]"
           />

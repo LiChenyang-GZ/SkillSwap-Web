@@ -1,4 +1,3 @@
-import { LayoutDashboard, PenSquare, Plus, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "../../ui/avatar";
 import { Button } from "../../ui/button";
 import {
@@ -11,8 +10,9 @@ import {
 } from "../../ui/dropdown-menu";
 import { NAVIGATION_PAGE_KEYS } from "../constants/navigationPageKeys";
 import type { NavigationUserMenuProps } from "../models/navigationViewModel";
+import { selectVisibleMenuEntries } from "../utils/navigationMenuUtils";
 import { getUserInitials } from "../utils/navigationUserUtils";
-import { NavigationNotificationDot } from "./NavigationNotificationDot";
+import { NavigationMenuEntryIcon } from "./NavigationMenuEntryIcon";
 
 export function NavigationUserMenu({
   user,
@@ -25,7 +25,12 @@ export function NavigationUserMenu({
 }: NavigationUserMenuProps) {
   if (!user) {
     return (
-      <Button variant="default" size="sm" onClick={() => onNavigate(NAVIGATION_PAGE_KEYS.auth)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onNavigate(NAVIGATION_PAGE_KEYS.auth)}
+        className="text-muted-foreground hover:text-foreground"
+      >
         Sign In
       </Button>
     );
@@ -47,34 +52,17 @@ export function NavigationUserMenu({
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onNavigate(NAVIGATION_PAGE_KEYS.dashboard)}>
-          <LayoutDashboard className="w-4 h-4" />
-          Dashboard
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onMouseEnter={onPreloadCreate}
-          onFocus={onPreloadCreate}
-          onClick={() => onNavigate(NAVIGATION_PAGE_KEYS.create)}
-        >
-          <Plus className="w-4 h-4" />
-          Host a Workshop
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onNavigate(NAVIGATION_PAGE_KEYS.notifications)}>
-          <NavigationNotificationDot unreadCount={notificationsUnreadCount} />
-          Notifications
-        </DropdownMenuItem>
-        {isAdmin && (
-          <DropdownMenuItem onClick={() => onNavigate(NAVIGATION_PAGE_KEYS.adminReview)}>
-            <ShieldCheck className="w-4 h-4" />
-            Admin Review
+        {selectVisibleMenuEntries(isAdmin).map((entry) => (
+          <DropdownMenuItem
+            key={entry.page}
+            onMouseEnter={entry.preload ? onPreloadCreate : undefined}
+            onFocus={entry.preload ? onPreloadCreate : undefined}
+            onClick={() => onNavigate(entry.page)}
+          >
+            <NavigationMenuEntryIcon entry={entry} notificationsUnreadCount={notificationsUnreadCount} />
+            {entry.label}
           </DropdownMenuItem>
-        )}
-        {isAdmin && (
-          <DropdownMenuItem onClick={() => onNavigate(NAVIGATION_PAGE_KEYS.adminMemory)}>
-            <PenSquare className="w-4 h-4" />
-            Memory Studio
-          </DropdownMenuItem>
-        )}
+        ))}
         <DropdownMenuSeparator />
         {isAuthenticated ? (
           <DropdownMenuItem variant="destructive" onClick={onSignOut}>

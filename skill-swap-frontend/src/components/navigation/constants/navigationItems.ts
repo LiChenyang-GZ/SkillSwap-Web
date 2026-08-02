@@ -1,6 +1,8 @@
 import type { NavigationItem } from "../models/navigationItemModel";
+import { NAVIGATION_PAGE_KEYS } from "./navigationPageKeys";
 
-// The signed-in app shell is Explore-only, so the primary nav carries no page
-// links — the brand logo returns you to Explore/home and the user menu covers
-// the rest (dashboard, notifications, admin, sign out).
-export const NAVIGATION_ITEMS: NavigationItem[] = [];
+export const NAVIGATION_ITEMS: NavigationItem[] = [
+  { key: "how-it-works", page: NAVIGATION_PAGE_KEYS.hero, sectionId: "how-it-works", label: "How it works" },
+  { key: "our-stories", page: NAVIGATION_PAGE_KEYS.hero, sectionId: "memories", label: "Our stories" },
+  { key: NAVIGATION_PAGE_KEYS.explore, page: NAVIGATION_PAGE_KEYS.explore, label: "Explore" },
+];
