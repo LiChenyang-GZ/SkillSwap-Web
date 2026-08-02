@@ -73,14 +73,14 @@ function AppContent() {
       return;
     }
 
-    const isPublicPage = currentPage === 'explore';
+    const isExplorePage = currentPage === 'explore';
     const previousPage = previousKey?.split(':')[0] ?? null;
-    const wasPublicPage = previousPage === 'explore';
+    const wasExplorePage = previousPage === 'explore';
 
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
-    if (isPublicPage) {
+    if (isExplorePage) {
       // Home 与 Explore 共享同一批 public 数据，互相切换时不重复请求。
-      if (wasPublicPage) {
+      if (wasExplorePage) {
         return;
       }
       void refreshData('public');
