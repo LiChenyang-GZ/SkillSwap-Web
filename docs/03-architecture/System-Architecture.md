@@ -75,29 +75,35 @@ The frontend is a React 18, TypeScript, and Vite application located under `skil
 |---|---|---|
 | Entry point | `main.tsx` renders the React app inside `ClerkProvider` | Code |
 | Main shell | `App.tsx` directly imports common public/auth screens and lazy-loads lower-frequency or heavier screens before rendering the selected page | Code |
-| Application context | `contexts/AppContext.tsx` exposes the global `AppProvider`/`useApp` API and composes focused internal hooks in `contexts/` for routing helpers, theme state, workshop cache/actions, notification unread count, and user profile actions | Code |
+| Application context | `contexts/AppContext.tsx` exposes the global `AppProvider`/`useApp` API and composes focused internal hooks in `contexts/` for routing helpers, workshop cache/actions, notification unread count, and user profile actions | Code |
 | Feature structure | Feature folders under `components`, with screens, hooks, components, constants, models, and utilities | Code |
 | Shared API services | `shared/api.ts` and `shared/service` contain the base API helper, response mapping helpers, and domain-specific backend API wrappers | Code |
 
 ### Routing Structure
 
-The frontend uses an internal page identifier and browser history mapping pattern. This is inferred from `AppContext.tsx`.
+The frontend uses an internal page identifier and browser history mapping pattern. The route table lives in `contexts/appRoutes.ts`, which declares each page's path together with its access level; `AppContext.tsx` and `App.tsx` consume it.
 
-| Path | Page identifier | Screen / behaviour | Source |
-|---|---|---|---|
-| `/` | `hero` | Landing screen | Code |
-| `/home` | `home` | Archive/home view | Code |
-| `/explore` | `explore` | Workshop browsing | Code |
-| `/workshops/{id}` | `workshop-{id}` | Workshop detail view | Code |
-| `/create` | `create` | Workshop submission form | Code |
-| `/dashboard` | `dashboard` | Profile, hosted workshops, and attended workshops | Code |
-| `/memory` | `memory` | Public memory wall | Code |
-| `/memory/{slug}` | memory detail page | Public memory entry detail | Code |
-| `/admin/workshops` | `adminReview` | Admin workshop review screen | Code |
-| `/admin/memory` | `adminMemory` | Admin memory studio | Code |
-| `/notifications` | `notifications` | User notification inbox | Code |
-| `/auth` | `auth` | Clerk sign-in/sign-up screen | Code |
-| `/credits` | `credits` | Redirects to dashboard because the credit system is disabled | Code |
+Access levels: **Public** pages are reachable without a session, **Signed-in** pages require an authenticated user, and **Admin** pages additionally require the admin role.
+
+| Path | Page identifier | Access | Screen / behaviour | Source |
+|---|---|---|---|---|
+| `/` | `hero` | Public | Landing screen | Code |
+| `/explore` | `explore` | Public | Workshop browsing | Code |
+| `/campuses` | `campuses` | Public | Campus expansion information screen | Code |
+| `/workshops/{id}` | `workshop-{id}` | Public | Workshop detail view | Code |
+| `/memory` | `memory` | Public | Public memory wall | Code |
+| `/memory/{slug}` | `memory-entry-{slug}` | Public | Public memory entry detail | Code |
+| `/auth` | `auth` | Public | Clerk sign-in/sign-up screen | Code |
+| `/create` | `create` | Signed-in | Workshop submission form | Code |
+| `/dashboard` | `dashboard` | Signed-in | Profile, hosted workshops, and attended workshops | Code |
+| `/notifications` | `notifications` | Signed-in | User notification inbox | Code |
+| `/onboarding` | `onboarding` | Signed-in | Campus selection for users without a university | Code |
+| `/admin/workshops` | `adminReview` | Admin | Admin workshop review screen | Code |
+| `/admin/memory` | `adminMemory` | Admin | Admin memory studio | Code |
+
+Access is applied in two places. During auth bootstrap, a signed-out visitor is left on a public page (so public URLs survive a direct open or refresh) and is redirected to `hero` otherwise. Because browser back/forward updates the page through `popstate` without re-running bootstrap, `App.tsx` repeats the same check at render time: private pages fall back to `hero`, and admin pages render an access notice without rewriting the URL.
+
+Unknown paths resolve to `explore`. This client-side routing is a navigation and UX layer; the backend independently enforces authentication and admin authority on every protected endpoint.
 
 ### Key Feature Areas
 
@@ -110,10 +116,11 @@ The frontend uses an internal page identifier and browser history mapping patter
 | Dashboard | Profile card, profile edit dialog, hosted and attended workshop views | Supported |
 | Notifications | Notification list, unread count, mark-read actions | Supported |
 | Memory pages | Public memory wall and detail pages, Markdown rendering with sanitisation | Supported |
+| Campus expansion | Static informational screen reached from the landing page | Supported |
 | Admin workshop review | Admin list/detail workflow, approval/rejection/cancellation, image upload | Supported for admin users |
 | Admin memory studio | Admin CRUD, media upload, edit locks | Supported for admin users |
 | Feedback/ratings | Not exposed in current UI | Not currently implemented |
-| Credits | Historical fields exist, but current frontend comments indicate credit transactions are disabled | Partially supported / disabled |
+| Credits | No frontend surface remains; the credits screen, route, and client-side transaction state were removed. `creditCost` / `creditReward` are still carried in workshop types as passive backend fields | Removed from the frontend |
 
 ### API Communication Pattern
 
@@ -641,7 +648,7 @@ These are not currently implemented unless separately verified:
 | Area | Limitation / assumption | Status |
 |---|---|---|
 | Feedback/reviews | No active frontend route or backend API is currently exposed | Unsupported in current code |
-| Credits | Credit-related fields exist, but frontend comments indicate the credit system is disabled | Partially supported |
+| Credits | Backend columns and DTO fields remain (`credit_balance`, `creditCost`, `creditReward`), but no frontend surface or transaction logic is active | Backend fields retained, feature retired |
 | User management | No admin user-management module was found | Unsupported in current code |
 | Reports/flags/complaints | No reporting or complaint workflow found | Unsupported in current code |
 | Audit logs | No dedicated audit log entity or admin audit screen found | Unsupported in current code |

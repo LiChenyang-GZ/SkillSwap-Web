@@ -126,6 +126,14 @@ The requirements were drafted from the current repository, including the Project
 | FR-041 | Admin users can delete workshops through a backend endpoint, but a complete admin UI delete flow was not verified. | Could | Code | Backend deletion requires admin authentication; frontend admin delete capability requires verification. |
 | FR-042 | Admin users must be able to access memory studio only when authenticated as admin. | Must | Code | Memory admin APIs reject unauthenticated or non-admin requests. |
 
+### Public Information Pages
+
+> Identifiers are allocated in append order, so this section continues from the highest existing identifier rather than from the block above.
+
+| ID | Requirement | Priority | Source | Acceptance Criteria |
+|---|---|---|---|---|
+| FR-048 | Public users must be able to view campus expansion information without signing in. | Should | Code | The `/campuses` route renders for signed-out visitors and survives a direct URL open or refresh; it presents the established campus alongside campuses that have not launched yet, with calls to action for exploring and hosting. |
+
 ## Technical/System Functional Requirements
 
 | ID | Requirement | Priority | Source | Acceptance Criteria |
@@ -167,6 +175,7 @@ The requirements were drafted from the current repository, including the Project
 | Workshop management | Workshop creation, browsing, joining/leaving, host dashboard, approval, rejection, cancellation, and notifications follow the business rules above. |
 | Admin review | Admin-only endpoints reject non-admin users and enforce status/timing constraints. |
 | Memory management | Public memory pages expose only published content; admin draft editing respects edit locks. |
+| Public information pages | Public routes render for signed-out visitors and remain reachable by direct URL. |
 | Media upload | Upload workflows accept valid image files and reject invalid or oversized files. |
 | Error handling | Validation, not found, forbidden, conflict, locked, payload-too-large, and server errors return structured responses. |
 

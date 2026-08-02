@@ -49,6 +49,7 @@ Requires verification: the repository does not include an admin self-service pro
 | Backend authentication | Spring Security validates bearer JWTs using issuer/JWKS configuration. | Code |
 | Admin role mapping | `JwtConverter` looks up the local user and grants `ROLE_ADMIN` when the stored role matches admin semantics. | Code |
 | Frontend admin navigation | Admin-only menu items are shown when the loaded profile role is admin. | Code |
+| Frontend admin routes | Admin routes are declared `adminOnly` in the route table, so opening one directly is checked even when the menu item is hidden. | Code |
 | Backend enforcement | Admin services reject unauthorized requests with `401` or `403`. | Code |
 
 Operational note: frontend navigation is a convenience layer only. The backend enforces admin permissions and should be treated as the source of truth.
@@ -62,7 +63,14 @@ Admin users see additional menu items after signing in:
 | `Admin Review` | `/admin/workshops` | Review and manage workshop submissions. |
 | `Memory Studio` | `/admin/memory` | Create and maintain public memory entries. |
 
-If an admin route is opened without the correct permissions, the user may see a sign-in prompt, an admin-access message, or an API error such as `Admin access required`.
+If an admin route is opened directly without the correct permissions, the outcome depends on the session:
+
+| Visitor | Result |
+|---|---|
+| Not signed in | Redirected to the landing page. The admin route is not confirmed to exist. |
+| Signed in, not an admin | Stays on the URL and sees an `Admin Access Required` notice with a link back to Explore. |
+
+Both admin routes behave the same way. If a request still reaches the backend without admin authority, the API responds with an error such as `Admin access required`.
 
 ## Workshop Administration
 
@@ -353,6 +361,7 @@ Admins can correct some data through existing screens:
 | Boundary | Behavior |
 |---|---|
 | Admin-only API access | Backend checks authenticated admin authority. |
+| Admin-only page access | Frontend route guard blocks non-admins from the admin screens. This is a UX layer only; the backend check above remains the enforcement point. |
 | Regular user workshop visibility | Pending and rejected workshops are restricted to admins or the facilitator. |
 | Sensitive workshop fields | Contact number and submitter email are returned only to admins or the facilitator. |
 | Memory drafts | Draft and archived entries are not public. |

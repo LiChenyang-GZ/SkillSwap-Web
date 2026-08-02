@@ -25,7 +25,7 @@
 | 11 | Admin Guide | [docs/07-user-guides/Admin-Guide.md](docs/07-user-guides/Admin-Guide.md) | Admin workflows: workshop review, Memory Studio, permission boundaries |
 | 12 | End-User Guide | [docs/07-user-guides/End-User-Guide.md](docs/07-user-guides/End-User-Guide.md) | Regular user actions: sign up/in, attend, submit workshops, notifications, FAQ |
 | 13 | Testing Strategy | [docs/08-testing/Testing-Strategy.md](docs/08-testing/Testing-Strategy.md) | Backend automated testing strategy, frontend typecheck/build CI, coverage summary, CI workflows, AI-assisted testing guideline |
-| 14 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~011: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices, plus credits retirement, light-only direction, unused rating fields, and fork↔upstream workflow |
+| 14 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~007: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices |
 
 ---
 
@@ -34,41 +34,41 @@
 > When changing one of the categories below, jump straight to the matching document section.
 
 ### Authentication / Login / Clerk / JWT
-- Architecture: [System-Architecture.md §7 Authentication and Authorization Architecture](docs/03-architecture/System-Architecture.md#L308), [§4 Frontend Auth Integration](docs/03-architecture/System-Architecture.md#L133)
+- Architecture: [System-Architecture.md §7 Authentication and Authorization Architecture](docs/03-architecture/System-Architecture.md#L316), [§4 Frontend Auth Integration](docs/03-architecture/System-Architecture.md#L139)
 - Security detail: [Security-Design.md §4 Authentication](docs/03-architecture/Security-Design.md#L84), [§5 JWT Validation](docs/03-architecture/Security-Design.md#L168), [§6 RBAC](docs/03-architecture/Security-Design.md#L218)
 - Requirements: [Functional-Requirements.md → Authentication And User Accounts (FR-001~005)](docs/02-requirements/Functional-Requirements.md#L52)
-- Local config: [Local-Development-Guide.md §8 Authentication Setup](docs/05-development/Local-Development-Guide.md#L363)
+- Local config: [Local-Development-Guide.md §8 Authentication Setup](docs/05-development/Local-Development-Guide.md#L360)
 - Claim contract: [Security-Design.md §4 Authentication Design → Clerk/JWT Claim Contract](docs/03-architecture/Security-Design.md#clerkjwt-claim-contract)
 - Decision rationale: [ADR-001 Use Clerk for Authentication](docs/09-decision-records/ADR-001-Use-Clerk-for-Authentication.md)
-- Troubleshooting: [Troubleshooting-Guide.md §9 Authentication and Authorization Issues](docs/06-operations/Troubleshooting-Guide.md#L708)
+- Troubleshooting: [Troubleshooting-Guide.md §9 Authentication and Authorization Issues](docs/06-operations/Troubleshooting-Guide.md#L707)
 
 ### Workshops (discovery / submission / attendance / review)
 - Requirements: [Functional-Requirements.md → Workshop Discovery/Submission/Participation (FR-011~022)](docs/02-requirements/Functional-Requirements.md#L72), [Admin Workflows (FR-036~042)](docs/02-requirements/Functional-Requirements.md#L117)
-- Architecture sequences: [System-Architecture.md §9.2 Creating a Workshop](docs/03-architecture/System-Architecture.md#L433), [§9.3 Join/Leave](docs/03-architecture/System-Architecture.md#L456), [§9.4 Admin Review](docs/03-architecture/System-Architecture.md#L474)
-- API: [API-Documentation.md §7.3 Workshops](docs/04-api/API-Documentation.md#L440), [§7.4 Admin Workshop Review](docs/04-api/API-Documentation.md#L849)
-- Tables: [Database-Design.md §5.3 workshops](docs/03-architecture/Database-Design.md#L234), [§5.4 workshop_participants](docs/03-architecture/Database-Design.md#L247)
-- Business rules: [Functional-Requirements.md → Business Rules (BR-001~012)](docs/02-requirements/Functional-Requirements.md#L139)
-- Admin actions: [Admin-Guide.md → Workshop Administration](docs/07-user-guides/Admin-Guide.md#L67)
-- User actions: [End-User-Guide.md → Core User Workflows](docs/07-user-guides/End-User-Guide.md#L119)
+- Architecture sequences: [System-Architecture.md §9.2 Creating a Workshop](docs/03-architecture/System-Architecture.md#L443), [§9.3 Join/Leave](docs/03-architecture/System-Architecture.md#L466), [§9.4 Admin Review](docs/03-architecture/System-Architecture.md#L484)
+- API: [API-Documentation.md §7.3 Workshops](docs/04-api/API-Documentation.md#L442), [§7.4 Admin Workshop Review](docs/04-api/API-Documentation.md#L851)
+- Tables: [Database-Design.md §5.3 workshops](docs/03-architecture/Database-Design.md#L233), [§5.4 workshop_participants](docs/03-architecture/Database-Design.md#L246)
+- Business rules: [Functional-Requirements.md → Business Rules (BR-001~012)](docs/02-requirements/Functional-Requirements.md#L147)
+- Admin actions: [Admin-Guide.md → Workshop Administration](docs/07-user-guides/Admin-Guide.md#L75)
+- User actions: [End-User-Guide.md → Core User Workflows](docs/07-user-guides/End-User-Guide.md#L132)
 
 ### Memory Pages / Memory Studio / Edit Locks
 - Requirements: [Functional-Requirements.md → Core Content And Memory Features (FR-027~031)](docs/02-requirements/Functional-Requirements.md#L98)
-- Architecture sequence: [System-Architecture.md §9.6 Admin Memory Editing with Locks](docs/03-architecture/System-Architecture.md#L520)
-- API: [API-Documentation.md §7.6 Public Memories](docs/04-api/API-Documentation.md#L1244), [§7.7 Admin Memory Studio](docs/04-api/API-Documentation.md#L1304)
-- Tables: [Database-Design.md §5.6 memory_entries](docs/03-architecture/Database-Design.md#L273), [§5.7 memory_media](docs/03-architecture/Database-Design.md#L286)
-- Admin actions: [Admin-Guide.md → Memory Studio Administration](docs/07-user-guides/Admin-Guide.md#L194)
+- Architecture sequence: [System-Architecture.md §9.6 Admin Memory Editing with Locks](docs/03-architecture/System-Architecture.md#L530)
+- API: [API-Documentation.md §7.6 Public Memories](docs/04-api/API-Documentation.md#L1246), [§7.7 Admin Memory Studio](docs/04-api/API-Documentation.md#L1308)
+- Tables: [Database-Design.md §5.6 memory_entries](docs/03-architecture/Database-Design.md#L272), [§5.7 memory_media](docs/03-architecture/Database-Design.md#L285)
+- Admin actions: [Admin-Guide.md → Memory Studio Administration](docs/07-user-guides/Admin-Guide.md#L203)
 - Note: version-based optimistic locking is not active; the current model is edit locks (stated across multiple documents)
 
 ### Notifications
 - Requirements: [Functional-Requirements.md → Notifications (FR-023~026)](docs/02-requirements/Functional-Requirements.md#L89)
-- API: [API-Documentation.md §7.5 Notifications](docs/04-api/API-Documentation.md#L1124)
-- Table: [Database-Design.md §5.5 notifications](docs/03-architecture/Database-Design.md#L260)
+- API: [API-Documentation.md §7.5 Notifications](docs/04-api/API-Documentation.md#L1126)
+- Table: [Database-Design.md §5.5 notifications](docs/03-architecture/Database-Design.md#L259)
 
 ### User Profile / Skills / Avatar
 - Requirements: [Functional-Requirements.md → User Profile Management (FR-006~010)](docs/02-requirements/Functional-Requirements.md#L62)
 - API: [API-Documentation.md §7.2 User Accounts And Profiles](docs/04-api/API-Documentation.md#L193)
-- Tables: [Database-Design.md §5.1 user_account](docs/03-architecture/Database-Design.md#L208), [§5.2 user_skill](docs/03-architecture/Database-Design.md#L221)
-- User actions: [End-User-Guide.md → User Profile Management](docs/07-user-guides/End-User-Guide.md#L95)
+- Tables: [Database-Design.md §5.1 user_account](docs/03-architecture/Database-Design.md#L207), [§5.2 user_skill](docs/03-architecture/Database-Design.md#L220)
+- User actions: [End-User-Guide.md → User Profile Management](docs/07-user-guides/End-User-Guide.md#L107)
 
 ### Frontend UI / Brand Assets / Favicon
 - Architecture: [System-Architecture.md §4 Frontend Architecture → Styling and UI Approach](docs/03-architecture/System-Architecture.md#styling-and-ui-approach)
@@ -76,49 +76,49 @@
 - Scope: static frontend-only assets such as favicon, navigation/auth logo, loading illustration, mascot, and empty-state artwork.
 
 ### Media / File Upload (avatar / workshop image / memory media)
-- Architecture: [System-Architecture.md §8 Media / File Storage Architecture](docs/03-architecture/System-Architecture.md#L366)
-- Database references: [Database-Design.md §8 Media and File Reference Storage](docs/03-architecture/Database-Design.md#L330)
-- API behaviour: [API-Documentation.md §11 File Upload And Media API Behaviour](docs/04-api/API-Documentation.md#L1820)
-- Security: [Security-Design.md §13 Azure Blob Storage Security](docs/03-architecture/Security-Design.md#L435)
-- Local config: [Local-Development-Guide.md §9 Media / File Upload Setup](docs/05-development/Local-Development-Guide.md#L382)
+- Architecture: [System-Architecture.md §8 Media / File Storage Architecture](docs/03-architecture/System-Architecture.md#L374)
+- Database references: [Database-Design.md §8 Media and File Reference Storage](docs/03-architecture/Database-Design.md#L329)
+- API behaviour: [API-Documentation.md §11 File Upload And Media API Behaviour](docs/04-api/API-Documentation.md#L1830)
+- Security: [Security-Design.md §13 Azure Blob Storage Security](docs/03-architecture/Security-Design.md#L485)
+- Local config: [Local-Development-Guide.md §9 Media / File Upload Setup](docs/05-development/Local-Development-Guide.md#L379)
 - Decision: [ADR-005 Use Azure Blob Storage for Media](docs/09-decision-records/ADR-005-Use-Azure-Blob-Storage-for-Media.md)
 - Storage variable: backend and current deployment workflow use `AZURE_STORAGE_MEDIA_CONTAINER`; live container access/SAS behaviour still requires environment verification.
 
 ### Database Tables / Fields / Relationships / Indexes / Migrations
-- All in [Database-Design.md](docs/03-architecture/Database-Design.md): ER diagram [§4](docs/03-architecture/Database-Design.md#L76), table catalogue [§5](docs/03-architecture/Database-Design.md#L206), relationships [§6](docs/03-architecture/Database-Design.md#L299), indexes [§12](docs/03-architecture/Database-Design.md#L429), migration/recovery [§14](docs/03-architecture/Database-Design.md#L469)
+- All in [Database-Design.md](docs/03-architecture/Database-Design.md): ER diagram [§4](docs/03-architecture/Database-Design.md#L75), table catalogue [§5](docs/03-architecture/Database-Design.md#L205), relationships [§6](docs/03-architecture/Database-Design.md#L298), indexes [§12](docs/03-architecture/Database-Design.md#L427), migration/recovery [§14](docs/03-architecture/Database-Design.md#L467)
 - Decision: [ADR-004 Use Azure PostgreSQL for Database](docs/09-decision-records/ADR-004-Use-Azure-PostgreSQL-for-Database.md)
 
 ### REST API Endpoints (add/modify an endpoint)
 - Check the endpoint summary first: [API-Documentation.md §6 Endpoint Summary](docs/04-api/API-Documentation.md#L120)
-- Detailed by domain: Health [§7.1](docs/04-api/API-Documentation.md#L169), User [§7.2](docs/04-api/API-Documentation.md#L193), Workshops [§7.3](docs/04-api/API-Documentation.md#L440), Admin Workshop [§7.4](docs/04-api/API-Documentation.md#L849), Notifications [§7.5](docs/04-api/API-Documentation.md#L1124), Public Memories [§7.6](docs/04-api/API-Documentation.md#L1244), Admin Memory [§7.7](docs/04-api/API-Documentation.md#L1304)
-- Request/response models: [§8 Request And Response Models](docs/04-api/API-Documentation.md#L1530)
-- Validation rules: [§10 Validation Rules](docs/04-api/API-Documentation.md#L1791)
+- Detailed by domain: Health [§7.1](docs/04-api/API-Documentation.md#L169), User [§7.2](docs/04-api/API-Documentation.md#L193), Workshops [§7.3](docs/04-api/API-Documentation.md#L442), Admin Workshop [§7.4](docs/04-api/API-Documentation.md#L851), Notifications [§7.5](docs/04-api/API-Documentation.md#L1126), Public Memories [§7.6](docs/04-api/API-Documentation.md#L1246), Admin Memory [§7.7](docs/04-api/API-Documentation.md#L1308)
+- Request/response models: [§8 Request And Response Models](docs/04-api/API-Documentation.md#L1535)
+- Validation rules: [§10 Validation Rules](docs/04-api/API-Documentation.md#L1799)
 
 ### Deployment / CI/CD / Environment Variables / Rollback
-- Process and commands: [Deployment-Runbook.md](docs/06-operations/Deployment-Runbook.md) — backend auto-deploy [§7](docs/06-operations/Deployment-Runbook.md#L135), frontend [§8](docs/06-operations/Deployment-Runbook.md#L222), manual fallback [§9](docs/06-operations/Deployment-Runbook.md#L263), rollback [§13](docs/06-operations/Deployment-Runbook.md#L442)
-- Secrets/env var lists: [Deployment-Runbook.md §6](docs/06-operations/Deployment-Runbook.md#L77), [Local-Development-Guide.md §10](docs/05-development/Local-Development-Guide.md#L415)
+- Process and commands: [Deployment-Runbook.md](docs/06-operations/Deployment-Runbook.md) — backend auto-deploy [§7](docs/06-operations/Deployment-Runbook.md#L128), frontend [§8](docs/06-operations/Deployment-Runbook.md#L215), manual fallback [§9](docs/06-operations/Deployment-Runbook.md#L256), rollback [§13](docs/06-operations/Deployment-Runbook.md#L435)
+- Secrets/env var lists: [Deployment-Runbook.md §6](docs/06-operations/Deployment-Runbook.md#L77), [Local-Development-Guide.md §10](docs/05-development/Local-Development-Guide.md#L411)
 - Decisions: [ADR-002 Vercel](docs/09-decision-records/ADR-002-Use-Vercel-for-Frontend-Hosting.md), [ADR-003 Azure VM](docs/09-decision-records/ADR-003-Use-Azure-VM-for-Backend-Hosting.md), [ADR-006 GitHub Actions+GHCR](docs/09-decision-records/ADR-006-Use-GitHub-Actions-and-GHCR-for-CICD.md), [ADR-007 Nginx](docs/09-decision-records/ADR-007-Use-Nginx-for-Reverse-Proxy-and-TLS-Termination.md)
 
 ### Testing / Frontend CI / Backend CI / AI-Assisted Test Workflow
 - Strategy: [Testing-Strategy.md](docs/08-testing/Testing-Strategy.md)
-- Current backend testing scope: [Testing-Strategy.md §2 Testing Scope](docs/08-testing/Testing-Strategy.md#L23), [§5 Test Types Used](docs/08-testing/Testing-Strategy.md#L109)
-- Module coverage summary: [Testing-Strategy.md §6 Module Coverage Summary](docs/08-testing/Testing-Strategy.md#L186), [§7 Backend Test Coverage Table](docs/08-testing/Testing-Strategy.md#L201)
-- Authentication/JWT testing: [Testing-Strategy.md §8 Authentication and Authorization Testing](docs/08-testing/Testing-Strategy.md#L216)
-- Database/testing infrastructure: [Testing-Strategy.md §4 Backend Test Infrastructure](docs/08-testing/Testing-Strategy.md#L52), [§9 Database Testing Approach](docs/08-testing/Testing-Strategy.md#L252)
-- CI workflows: [Testing-Strategy.md §11 CI Workflows](docs/08-testing/Testing-Strategy.md#L284)
-- Frontend local quality commands: [Local-Development-Guide.md §13 Code Quality and Build Commands](docs/05-development/Local-Development-Guide.md#L572)
-- AI-assisted testing convention: [Testing-Strategy.md §12 AI-Assisted Testing Workflow](docs/08-testing/Testing-Strategy.md#L300), source convention [`.codex/skills/test-skill/SKILL.md`](../.codex/skills/test-skill/SKILL.md)
+- Current backend testing scope: [Testing-Strategy.md §2 Testing Scope](docs/08-testing/Testing-Strategy.md#L22), [§5 Test Types Used](docs/08-testing/Testing-Strategy.md#L109)
+- Module coverage summary: [Testing-Strategy.md §6 Module Coverage Summary](docs/08-testing/Testing-Strategy.md#L188), [§7 Backend Test Coverage Table](docs/08-testing/Testing-Strategy.md#L202)
+- Authentication/JWT testing: [Testing-Strategy.md §8 Authentication and Authorization Testing](docs/08-testing/Testing-Strategy.md#L218)
+- Database/testing infrastructure: [Testing-Strategy.md §4 Backend Test Infrastructure](docs/08-testing/Testing-Strategy.md#L52), [§9 Database Testing Approach](docs/08-testing/Testing-Strategy.md#L254)
+- CI workflows: [Testing-Strategy.md §11 CI Workflows](docs/08-testing/Testing-Strategy.md#L283)
+- Frontend local quality commands: [Local-Development-Guide.md §13 Code Quality and Build Commands](docs/05-development/Local-Development-Guide.md#L583)
+- AI-assisted testing convention: [Testing-Strategy.md §12 AI-Assisted Testing Workflow](docs/08-testing/Testing-Strategy.md#L323), source convention [`.codex/skills/test-skill/SKILL.md`](../.codex/skills/test-skill/SKILL.md)
 - SkillSwap-specific roadmap: [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intentionally excluded from this index's per-document section list)
 
 ### Security (CORS / secret management / network / TLS / risks)
-- All in [Security-Design.md](docs/03-architecture/Security-Design.md): API security incl. CORS [§7](docs/03-architecture/Security-Design.md#L215), secrets [§9](docs/03-architecture/Security-Design.md#L307), network [§10](docs/03-architecture/Security-Design.md#L347), TLS [§11](docs/03-architecture/Security-Design.md#L378), risks and mitigations [§17](docs/03-architecture/Security-Design.md#L595), recommended improvements [§20](docs/03-architecture/Security-Design.md#L651)
+- All in [Security-Design.md](docs/03-architecture/Security-Design.md): API security incl. CORS [§7](docs/03-architecture/Security-Design.md#L261), secrets [§9](docs/03-architecture/Security-Design.md#L357), network [§10](docs/03-architecture/Security-Design.md#L397), TLS [§11](docs/03-architecture/Security-Design.md#L428), risks and mitigations [§17](docs/03-architecture/Security-Design.md#L644), recommended improvements [§20](docs/03-architecture/Security-Design.md#L700)
 
 ### Run Locally / Debug Local Issues
 - Startup: [Local-Development-Guide.md](docs/05-development/Local-Development-Guide.md) (frontend §5, backend §6, database §7, full run §11)
-- Local errors: [Local-Development-Guide.md §14 Troubleshooting Local Setup](docs/05-development/Local-Development-Guide.md#L595) or [Troubleshooting-Guide.md §6/§7](docs/06-operations/Troubleshooting-Guide.md#L232)
+- Local errors: [Local-Development-Guide.md §14 Troubleshooting Local Setup](docs/05-development/Local-Development-Guide.md#L610) or [Troubleshooting-Guide.md §6/§7](docs/06-operations/Troubleshooting-Guide.md#L232)
 
 ### Production / Live Environment Issues
-- [Troubleshooting-Guide.md §15 Production Runtime Issues](docs/06-operations/Troubleshooting-Guide.md#L1349); look up by HTTP status code in [§8 API Issues](docs/06-operations/Troubleshooting-Guide.md#L535)
+- [Troubleshooting-Guide.md §15 Production Runtime Issues](docs/06-operations/Troubleshooting-Guide.md#L1346); look up by HTTP status code in [§8 API Issues](docs/06-operations/Troubleshooting-Guide.md#L534)
 
 ---
 
@@ -131,14 +131,14 @@
 - 2. Business Problem / User Need — L16
 - 3. Target Users — L30
 - 4. Core Features (Workshop / Submission / Auth / Notifications / Memory / Media / Eng Ops) — L38
-- 5. Technical Stack — L88
-- 6. High-Level Architecture — L100
-- 7. My Contribution — L139
-- 8. Documentation And Operational Work Completed — L155
-- 9. Current Deployment Status — L176
-- 10. Limitations And Future Improvements — L190
-- Professional Relevance — L204
-- Evidence Reviewed — L222
+- 5. Technical Stack — L87
+- 6. High-Level Architecture — L99
+- 7. My Contribution — L138
+- 8. Documentation And Operational Work Completed — L154
+- 9. Current Deployment Status — L177
+- 10. Limitations And Future Improvements — L191
+- Professional Relevance — L205
+- Evidence Reviewed — L223
 
 ### 2. [docs/02-requirements/Functional-Requirements.md](docs/02-requirements/Functional-Requirements.md)
 - Document Purpose — L3
@@ -153,12 +153,13 @@
   - Core Content And Memory Features (FR-027~031) — L98
   - Image And Media Upload Features (FR-032~035) — L108
   - Admin Workflows (FR-036~042) — L117
-- Technical/System Functional Requirements (FR-043~047) — L129
-- Business Rules (BR-001~018) — L139
-- Acceptance Criteria Summary — L162
-- Out-Of-Scope Or Unsupported Features — L173
-- Assumptions And Inferred Requirements — L184
-- Verification Notes — L193
+  - Public Information Pages (FR-048) — L129
+- Technical/System Functional Requirements (FR-043~047) — L137
+- Business Rules (BR-001~018) — L147
+- Acceptance Criteria Summary — L170
+- Out-Of-Scope Or Unsupported Features — L182
+- Assumptions And Inferred Requirements — L193
+- Verification Notes — L202
 
 ### 3. [docs/02-requirements/Non-Functional-Requirements.md](docs/02-requirements/Non-Functional-Requirements.md)
 - Document Purpose — L3
@@ -183,36 +184,36 @@
 - 2. Architecture Summary — L11
 - 3. High-Level System Architecture (with mermaid diagram) — L27
 - 4. Frontend Architecture (Structure / Routing / Feature Areas / API Pattern / Auth / State / Styling) — L68
-- 5. Backend Architecture (Runtime / Layered / Modules / Request Lifecycle / Auth Enforcement) — L149
-- 6. Data Architecture (DB Tech / Entities / Relationships / Ownership / Clerk Mapping) — L244
-- 7. Authentication and Authorization Architecture — L308
-- 8. Media / File Storage Architecture — L366
-- 9. Core Request and Data Flows (9.1 Login / 9.2 Create Workshop / 9.3 Join-Leave / 9.4 Review / 9.5 Upload / 9.6 Memory Lock) — L405
-- 10. External Integrations — L545
-- 11. Deployment Context Summary — L561
-- 12. Key Architecture Decisions — L577
-- 13. Scalability, Reliability, Maintainability — L595
-- 14. Known Limitations and Assumptions — L637
-- 15. Verification Notes — L653
+- 5. Backend Architecture (Runtime / Layered / Modules / Request Lifecycle / Auth Enforcement) — L159
+- 6. Data Architecture (DB Tech / Entities / Relationships / Ownership / Clerk Mapping) — L252
+- 7. Authentication and Authorization Architecture — L316
+- 8. Media / File Storage Architecture — L374
+- 9. Core Request and Data Flows (9.1 Login / 9.2 Create Workshop / 9.3 Join-Leave / 9.4 Review / 9.5 Upload / 9.6 Memory Lock) — L415
+- 10. External Integrations — L555
+- 11. Deployment Context Summary — L570
+- 12. Key Architecture Decisions — L586
+- 13. Scalability, Reliability, and Maintainability Considerations — L604
+- 14. Known Limitations and Assumptions — L646
+- 15. Verification Notes — L662
 
 ### 5. [docs/03-architecture/Database-Design.md](docs/03-architecture/Database-Design.md)
 - 1. Document Purpose — L5
 - 2. Database Overview (incl. Schema Management Status) — L22
-- 3. Persistence Architecture — L50
-- 4. Entity Relationship Diagram (ER mermaid diagram + fields) — L76
-- 5. Table / Entity Catalogue — L206
+- 3. Persistence Architecture — L49
+- 4. Entity Relationship Diagram (ER mermaid diagram + fields) — L75
+- 5. Table / Entity Catalogue — L205
   - 5.1 user_account — L208 / 5.2 user_skill — L221 / 5.3 workshops — L234 / 5.4 workshop_participants — L247 / 5.5 notifications — L260 / 5.6 memory_entries — L273 / 5.7 memory_media — L286
-- 6. Relationship Documentation — L299
-- 7. User Identity and Authentication Mapping — L314
-- 8. Media and File Reference Storage — L330
-- 9. Data Lifecycle (Users/Skills, Workshops/Attendance, Notifications, Memories) — L344
-- 10. Database Configuration — L383
-- 11. Data Integrity and Validation — L401
-- 12. Indexes and Performance Considerations — L429
-- 13. Seed Data and Admin Records — L457
-- 14. Backup, Migration, and Recovery — L469
-- 15. Known Limitations and Future Improvements — L482
-- 16. Verification Notes — L510
+- 6. Relationship Documentation — L298
+- 7. User Identity and Authentication Mapping — L313
+- 8. Media and File Reference Storage — L329
+- 9. Data Lifecycle (Users/Skills, Workshops/Attendance, Notifications, Memories) — L343
+- 10. Database Configuration — L382
+- 11. Data Integrity and Validation — L399
+- 12. Indexes and Performance Considerations — L427
+- 13. Seed Data and Admin Records — L455
+- 14. Backup, Migration, and Recovery — L467
+- 15. Known Limitations and Future Improvements — L480
+- 16. Verification Notes — L508
 
 ### 6. [docs/03-architecture/Security-Design.md](docs/03-architecture/Security-Design.md)
 - 1. Document Purpose — L3
@@ -252,35 +253,35 @@
   - 7.5 Notifications (list / unread-count / read / read-all) — L1124
   - 7.6 Public Memories (list / {slug}) — L1244
   - 7.7 Admin Memory Studio (list / create / PUT / delete / lock / unlock / media) — L1304
-- 8. Request And Response Models (Common / Workshop / User / Notification / Memory models) — L1530
-- 9. Error Handling — L1758
-- 10. Validation Rules (Bean Validation / Service-Level) — L1791
-- 11. File Upload And Media API Behaviour — L1820
-- 12. Admin API Behaviour — L1847
-- 13. Frontend Integration Notes — L1883
-- 14. Security Considerations — L1910
-- 15. Known Limitations And Future Improvements — L1932
-- 16. Verification Notes — L1961
+- 8. Request And Response Models (Common / Workshop / User / Notification / Memory models) — L1535
+- 9. Error Handling — L1766
+- 10. Validation Rules (Bean Validation / Service-Level) — L1799
+- 11. File Upload And Media API Behaviour — L1830
+- 12. Admin API Behaviour — L1858
+- 13. Frontend Integration Notes — L1894
+- 14. Security Considerations — L1921
+- 15. Known Limitations And Future Improvements — L1943
+- 16. Verification Notes — L1970
 
 ### 8. [docs/05-development/Local-Development-Guide.md](docs/05-development/Local-Development-Guide.md)
 - 1. Document Purpose — L5
 - 2. Prerequisites — L13
-- 3. Repository Structure — L27
-- 4. Initial Setup — L40
-- 5. Frontend Local Setup (Directory / Install / Dev Server / Env File / Connect to Backend / Common Issues) — L90
-- 6. Backend Local Setup (Directory / Build / Run / Local Profile / Env File / Clerk Fallback / Common Issues) — L171
-- 7. Database Local Setup — L302
-- 8. Authentication Setup — L363
-- 9. Media / File Upload Setup — L382
-- 10. Environment Variables (Frontend / Backend / Production-only) — L415
-- 11. Running the Full Application Locally — L471
-- 12. Running Tests (no frontend tests / backend context-load) — L530
-- 13. Code Quality and Build Commands — L568
-- 14. Troubleshooting Local Setup — L595
-- 15. Local vs Production Differences — L612
-- 16. Verification Checklist — L626
-- 17. Known Limitations and Assumptions — L644
-- 18. Verification Notes — L677
+- 3. Repository Structure — L26
+- 4. Initial Setup — L39
+- 5. Frontend Local Setup (Directory / Install / Dev Server / Env File / Connect to Backend / Common Issues) — L89
+- 6. Backend Local Setup (Directory / Build / Run / Local Profile / Env File / Clerk Fallback / Common Issues) — L168
+- 7. Database Local Setup — L300
+- 8. Authentication Setup — L360
+- 9. Media / File Upload Setup — L379
+- 10. Environment Variables (Frontend / Backend / Production-only) — L411
+- 11. Running the Full Application Locally — L459
+- 12. Running Tests (no frontend tests / backend context-load) — L518
+- 13. Code Quality and Build Commands — L583
+- 14. Troubleshooting Local Setup — L610
+- 15. Local vs Production Differences — L627
+- 16. Verification Checklist — L641
+- 17. Known Limitations and Assumptions — L662
+- 18. Verification Notes — L693
 
 ### 9. [docs/06-operations/Deployment-Runbook.md](docs/06-operations/Deployment-Runbook.md)
 - 1. Document Purpose — L5
@@ -289,15 +290,15 @@
 - 4. Deployment Environments — L52
 - 5. Pre-Deployment Checklist — L61
 - 6. Required Secrets and Environment Variables (A. GitHub Actions / B. Backend Runtime / C. Frontend) — L77
-- 7. Automated Backend Deployment (Trigger / Pipeline / Build / VM Redeploy) — L135
-- 8. Automated Frontend Deployment — L222
-- 9. Manual Backend Deployment Fallback (Fallback A / B / Artifact Transfer) — L263
-- 10. Database Migration or Setup During Deployment — L362
-- 11. Post-Deployment Verification Checklist — L390
-- 12. Basic Verification Commands — L408
-- 13. Rollback Notes — L442
-- 14. Known Deployment Limitations — L458
-- 15. Verification Notes — L471
+- 7. Automated Backend Deployment (Trigger / Pipeline / Build / VM Redeploy) — L128
+- 8. Automated Frontend Deployment — L215
+- 9. Manual Backend Deployment Fallback (Fallback A / B / Artifact Transfer) — L256
+- 10. Database Migration or Setup During Deployment — L355
+- 11. Post-Deployment Verification Checklist — L383
+- 12. Basic Verification Commands — L401
+- 13. Rollback Notes — L435
+- 14. Known Deployment Limitations — L466
+- 15. Verification Notes — L479
 
 ### 10. [docs/06-operations/Troubleshooting-Guide.md](docs/06-operations/Troubleshooting-Guide.md)
 - 1. Document Purpose — L5
@@ -306,19 +307,19 @@
 - 4. Common Diagnostic Commands (Frontend / Backend / API / VM-Docker / Nginx / CI) — L59
 - 5. Troubleshooting Format — L215
 - 6. Frontend Issues (6.1~6.7: startup / build / blank page / reach backend / env vars / auth UI / CORS) — L232
-- 7. Backend Local Development Issues (7.1~7.7) — L386
-- 8. API Issues (by status code 400/401/403/404/409/413/423/500/502) — L535
-- 9. Authentication and Authorization Issues (9.1~9.5) — L708
-- 10. Database Issues (10.1~10.7) — L804
-- 11. Azure Blob Storage / Media Upload Issues (11.1~11.3) — L937
-- 12. Docker and Backend Container Issues (12.1~12.5) — L1002
-- 13. Nginx / HTTPS / Reverse Proxy Issues (13.1~13.5) — L1102
-- 14. CI/CD and Deployment Pipeline Issues (14.1~14.8) — L1198
-- 15. Production Runtime Issues (15.1~15.6) — L1349
-- 16. Log Locations and Useful Evidence — L1469
-- 17. Escalation and Recovery Notes — L1506
-- 18. Known Troubleshooting Limitations — L1537
-- 19. Verification Notes — L1552
+- 7. Backend Local Development Issues (7.1~7.7) — L385
+- 8. API Issues (by status code 400/401/403/404/409/413/423/500/502) — L534
+- 9. Authentication and Authorization Issues (9.1~9.5) — L707
+- 10. Database Issues (10.1~10.7) — L803
+- 11. Azure Blob Storage / Media Upload Issues (11.1~11.3) — L936
+- 12. Docker and Backend Container Issues (12.1~12.5) — L999
+- 13. Nginx / HTTPS / Reverse Proxy Issues (13.1~13.5) — L1099
+- 14. CI/CD and Deployment Pipeline Issues (14.1~14.8) — L1195
+- 15. Production Runtime Issues (15.1~15.6) — L1346
+- 16. Log Locations and Useful Evidence — L1466
+- 17. Escalation and Recovery Notes — L1503
+- 18. Known Troubleshooting Limitations — L1534
+- 19. Verification Notes — L1549
 
 ### 11. [docs/07-user-guides/Admin-Guide.md](docs/07-user-guides/Admin-Guide.md)
 - Document Purpose — L5
@@ -326,19 +327,19 @@
 - Admin Role Overview — L18
 - Admin Access Prerequisites — L32
 - Admin Authentication And Authorization Model — L44
-- Admin Navigation — L56
-- Workshop Administration (open / review / edit / upload cover / approve / reject / cancel / participant export / backend delete) — L67
-- Memory Studio Administration (statuses / open / create / edit draft / edit published / upload images / publish-archive / delete) — L194
-- Notifications For Admins — L298
-- Viewing And Managing Users — L312
-- Reports, Flags, Complaints, And Audit Logs — L326
-- Data Correction And Support Requests — L337
-- Permission Boundaries — L350
-- Operational Cautions — L361
-- Common Admin Errors And Troubleshooting — L373
-- Escalation Notes For Technical Issues — L389
-- Admin-Facing Limitations — L411
-- Verification Notes — L422
+- Admin Navigation — L57
+- Workshop Administration (open / review / edit / upload cover / approve / reject / cancel / participant export / backend delete) — L75
+- Memory Studio Administration (statuses / open / create / edit draft / edit published / upload images / publish-archive / delete) — L203
+- Notifications For Admins — L307
+- Viewing And Managing Users — L321
+- Reports, Flags, Complaints, And Audit Logs — L335
+- Data Correction And Support Requests — L346
+- Permission Boundaries — L359
+- Operational Cautions — L371
+- Common Admin Errors And Troubleshooting — L383
+- Escalation Notes For Technical Issues — L399
+- Admin-Facing Limitations — L421
+- Verification Notes — L432
 
 ### 12. [docs/07-user-guides/End-User-Guide.md](docs/07-user-guides/End-User-Guide.md)
 - Document Purpose — L5
@@ -346,33 +347,33 @@
 - Product Overview — L21
 - What Users Can Do — L32
 - Account Registration And Login (Sign Up / Sign In / Auth Options) — L52
-- Main User Navigation — L81
-- User Profile Management (Edit / Fields) — L95
-- Core User Workflows (browse / attend / cancel / submit workshop / manage hosted / view attended / upload / notifications / memory) — L119
-- Common Validation Errors — L234
-- Common User Troubleshooting — L250
-- User-Facing Limitations — L262
-- Frequently Asked Questions — L272
-- Verification Notes — L306
+- Main User Navigation — L83
+- User Profile Management (Edit / Fields) — L107
+- Core User Workflows (browse / attend / cancel / submit workshop / manage hosted / view attended / upload / notifications / memory) — L132
+- Common Validation Errors — L247
+- Common User Troubleshooting — L263
+- User-Facing Limitations — L275
+- Frequently Asked Questions — L285
+- Verification Notes — L319
 
 ### 13. [docs/08-testing/Testing-Strategy.md](docs/08-testing/Testing-Strategy.md)
 - 1. Document Purpose — L3
-- 2. Testing Scope — L23
-- 3. Testing Principles — L36
+- 2. Testing Scope — L22
+- 3. Testing Principles — L38
 - 4. Backend Test Infrastructure — L52
 - 5. Test Types Used — L109
-- 6. Module Coverage Summary — L186
-- 7. Backend Test Coverage Table — L201
-- 8. Authentication and Authorization Testing — L216
-- 9. Database Testing Approach — L252
-- 10. External Service Isolation — L268
-- 11. CI Workflows — L284
-- 12. AI-Assisted Testing Workflow — L300
-- 13. Behavioural Inconsistencies Discovered by Tests — L321
-- 14. Current Limitations — L334
-- 15. Future Testing Improvements — L349
-- 16. How to Run Tests — L362
-- 17. Verification Notes — L412
+- 6. Module Coverage Summary — L188
+- 7. Backend Test Coverage Table — L202
+- 8. Authentication and Authorization Testing — L218
+- 9. Database Testing Approach — L254
+- 10. External Service Isolation — L270
+- 11. CI Workflows — L283
+- 12. AI-Assisted Testing Workflow — L323
+- 13. Behavioural Inconsistencies Discovered by Tests — L344
+- 14. Current Limitations — L357
+- 15. Future Testing Improvements — L371
+- 16. How to Run Tests — L387
+- 17. Verification Notes — L441
 
 ### 14. Decision Records (ADR) — [docs/09-decision-records/](docs/09-decision-records/)
 > All 7 ADRs share the same structure: Status / Date / Context / Decision / Rationale / Alternatives Considered / Consequences (Positive, Negative, Future) / Related Documentation.
@@ -386,10 +387,6 @@
 | ADR-005 | Use Azure Blob Storage for media | [ADR-005-Use-Azure-Blob-Storage-for-Media.md](docs/09-decision-records/ADR-005-Use-Azure-Blob-Storage-for-Media.md) |
 | ADR-006 | Use GitHub Actions + GHCR for CI/CD | [ADR-006-Use-GitHub-Actions-and-GHCR-for-CICD.md](docs/09-decision-records/ADR-006-Use-GitHub-Actions-and-GHCR-for-CICD.md) |
 | ADR-007 | Use Nginx for reverse proxy and TLS termination | [ADR-007-Use-Nginx-for-Reverse-Proxy-and-TLS-Termination.md](docs/09-decision-records/ADR-007-Use-Nginx-for-Reverse-Proxy-and-TLS-Termination.md) |
-| ADR-008 | Retire the credits / points system | [ADR-008-Retire-Credits-System.md](docs/09-decision-records/ADR-008-Retire-Credits-System.md) |
-| ADR-009 | Permanent light-only visual direction | [ADR-009-Permanent-Light-Only-Visual-Direction.md](docs/09-decision-records/ADR-009-Permanent-Light-Only-Visual-Direction.md) |
-| ADR-010 | Rating / review fields present but unused | [ADR-010-Rating-Fields-Present-But-Unused.md](docs/09-decision-records/ADR-010-Rating-Fields-Present-But-Unused.md) |
-| ADR-011 | Fork ↔ upstream relationship and solo workflow | [ADR-011-Fork-and-Upstream-Relationship.md](docs/09-decision-records/ADR-011-Fork-and-Upstream-Relationship.md) |
 
 ---
 

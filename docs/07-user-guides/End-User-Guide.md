@@ -82,16 +82,27 @@ If Google sign-in fails with an account-linking message, use `Sign Up` once with
 
 ## Main User Navigation
 
+The same top navigation bar is shown on every page.
+
 | Navigation Item | Who Can Access | Purpose |
 |---|---|---|
+| `How it works` | Public and signed-in users | Jumps to the explanation section on the landing page. |
+| `Our stories` | Public and signed-in users | Jumps to the stories section on the landing page. |
 | `Explore` | Public and signed-in users | Browse visible workshops. |
-| `Memory` | Public and signed-in users | View published memory pages. |
-| `Dashboard` | Signed-in users | View profile, upcoming workshops, attended workshops, and hosted workshops. |
-| `Host a Workshop` | Signed-in users | Submit a workshop for review. |
-| `Notifications` | Signed-in users | View workshop-related updates. |
-| `Sign In` / `Sign Out` | All users as applicable | Manage account session. |
+| `Host a swap` | All users | Opens the submission form when signed in, otherwise the sign-up screen. |
+| `Sign In` / user menu | All users as applicable | Manage account session. |
 
-Admin-only items such as `Admin Review` and `Memory Studio` are not part of the regular user workflow.
+Signed-in users get a user menu in place of `Sign In`, containing:
+
+| Menu Item | Purpose |
+|---|---|
+| `Dashboard` | View profile, upcoming workshops, attended workshops, and hosted workshops. |
+| `Host a Workshop` | Submit a workshop for review. |
+| `Notifications` | View workshop-related updates. |
+
+Two further public pages are not in the top bar and are reached from the landing page instead: the memory wall (from the stories section) and the campus expansion page (from the campus invitation section). Both can also be opened directly by URL without signing in.
+
+Admin-only items such as `Admin Review` and `Memory Studio` appear in the user menu for admin accounts only, and are not part of the regular user workflow.
 
 ## User Profile Management
 
