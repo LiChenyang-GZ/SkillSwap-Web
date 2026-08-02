@@ -20,7 +20,10 @@
   --color-border: color-mix(in srgb, #1A2530 18%, transparent);
   --color-input: #FDFBF7;
   --color-ring: #E5982E;
-  
+  /* Switch off-state track: needs 3:1 against page (#F7F3E9), card (#FEFCF7)
+     and the white thumb, otherwise the control disappears into the surface. */
+  --color-switch-background: #918878;
+
   /* Custom color palette */
   --color-cream-50: #FEFCF7;
   --color-cream-100: #F7F3E9;

@@ -3,6 +3,9 @@ import { AppProvider, useApp } from './contexts/AppContext';
 import { NavigationScreen } from './components/navigation/screen/NavigationScreen';
 import { Toaster } from './components/ui/sonner';
 import { MEMORY_ENTRY_PAGE_PREFIX } from './components/memory/constants/memoryRouteConstants';
+import { WORKSHOP_PAGE_PREFIX, isAdminOnlyPage, isPublicPage } from './contexts/appRoutes';
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { AuthScreen } from './components/auth/screen/AuthScreen';
 import { HeroScreen } from './components/hero/screen/HeroScreen';
 import { MemoryScreen as Memory } from './components/memory/screen/MemoryScreen';
@@ -38,8 +41,24 @@ const UniversityOnboarding = React.lazy(() =>
 
 const LOADING_FOX_SRC = '/brand/fox-empty-search.png';
 
+function AdminAccessRequired({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center px-4">
+      <Card className="max-w-xl w-full">
+        <CardHeader>
+          <CardTitle>Admin Access Required</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">This page is limited to Skill Swap Club admins.</p>
+          <Button onClick={onBack}>Back to Explore</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function AppContent() {
-  const { currentPage, isLoading, isAuthenticated, refreshData, setCurrentPage, user } = useApp();
+  const { currentPage, isLoading, isAdmin, isAuthenticated, refreshData, setCurrentPage, user } = useApp();
   const lastAutoRefreshKeyRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
@@ -83,6 +102,13 @@ function AppContent() {
     }
   }, [currentPage, isAuthenticated, setCurrentPage, user]);
 
+  React.useEffect(() => {
+    if (isLoading || isAuthenticated || isPublicPage(currentPage)) {
+      return;
+    }
+    setCurrentPage('hero');
+  }, [currentPage, isAuthenticated, isLoading, setCurrentPage]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -100,9 +126,17 @@ function AppContent() {
 
   // Page Switcher - Return HeroPage by default for non-authenticated users
   const renderPage = () => {
+    if (!isAuthenticated && !isPublicPage(currentPage)) {
+      return <HeroScreen />;
+    }
+
+    if (isAdminOnlyPage(currentPage) && !isAdmin) {
+      return <AdminAccessRequired onBack={() => setCurrentPage('explore')} />;
+    }
+
     // Check if currentPage is a workshop detail page (workshop-{id})
-    if (currentPage.startsWith('workshop-')) {
-      const workshopId = currentPage.substring('workshop-'.length);
+    if (currentPage.startsWith(WORKSHOP_PAGE_PREFIX)) {
+      const workshopId = currentPage.substring(WORKSHOP_PAGE_PREFIX.length);
       return <WorkshopDetails workshopId={workshopId} />;
     }
 

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useApp } from "../../../contexts/AppContext";
 import type { MemoryEntry } from "../../../types/memory";
-import { Button } from "../../ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { MEMORY_EMPTY_DOC } from "../constants/memoryUiConstants";
 import { MemoryStudioDeleteDialog } from "../components/MemoryStudioDeleteDialog";
 import { MemoryStudioEditorPanel } from "../components/MemoryStudioEditorPanel";
@@ -17,7 +15,8 @@ import { useMemoryStudioSelection } from "../hooks/useMemoryStudioSelection";
 import { buildMemoryDocumentFromEntry } from "../utils/memoryDocument";
 
 export function MemoryStudioScreen() {
-  const { isAuthenticated, getAuthToken, isAdmin, setCurrentPage, user } = useApp();
+  // Admin gating lives in the route guard (see `adminOnly` in appRoutes).
+  const { isAuthenticated, getAuthToken, setCurrentPage, user } = useApp();
   const hasSession = isAuthenticated;
   const currentUserId = user?.id ? String(user.id) : null;
 
@@ -144,22 +143,6 @@ export function MemoryStudioScreen() {
     startCreateNew();
     resetDocument();
   };
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center px-4">
-        <Card className="max-w-xl w-full">
-          <CardHeader>
-            <CardTitle>Admin Access Required</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-muted-foreground">Only admins can edit memories.</p>
-            <Button onClick={() => setCurrentPage("memory")}>Back to Memory</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background pt-20 lg:pt-24">

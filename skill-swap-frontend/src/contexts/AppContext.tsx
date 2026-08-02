@@ -25,7 +25,7 @@ import type {
   RecentProfileCache,
 } from "./appContextTypes";
 import {
-  isSignedOutPreservedPage,
+  isPublicPage,
   normalizePath,
   pageFromPath,
   pathFromPage,
@@ -188,9 +188,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // 初次 bootstrap 成功后，若仍处于登录态：clerkUser 引用在 Clerk 内部刷新
-    // session 时会变化导致本 effect 重跑。此时只更新身份兜底信息，不再走完整
-    // bootstrap（否则会在 token 轮换窗口拿到 null 而误清空登录态）。
     if (initializedRef.current && hasBackendProfileRef.current && isSignedIn) {
       setUser((prev) => (prev ? buildIdentityFallback(prev, clerkUser) : prev));
       return;
@@ -209,10 +206,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (authErrorMessage) {
             sessionStorage.setItem("skill_swap_auth_error", authErrorMessage);
             clearAuthState("auth");
-          } else if (currentPageFromPath === "auth") {
-            clearAuthState("auth");
-          } else if (isSignedOutPreservedPage(currentPageFromPath)) {
-            // Public pages stay directly reachable by URL for signed-out visitors.
+          } else if (isPublicPage(currentPageFromPath)) {
             clearAuthState(currentPageFromPath);
           } else {
             clearAuthState("hero");
