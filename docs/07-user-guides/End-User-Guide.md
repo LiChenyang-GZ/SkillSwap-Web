@@ -87,7 +87,7 @@ The same top navigation bar is shown on every page.
 | Navigation Item | Who Can Access | Purpose |
 |---|---|---|
 | `How it works` | Public and signed-in users | Jumps to the explanation section on the landing page. |
-| `Our stories` | Public and signed-in users | Jumps to the stories section on the landing page. |
+| `Our stories` | Public and signed-in users | Opens the memory wall at `/memory`. |
 | `Explore` | Public and signed-in users | Browse visible workshops. |
 | `Host a swap` | All users | Opens the submission form when signed in, otherwise the sign-up screen. |
 | `Sign In` / user menu | All users as applicable | Manage account session. |
