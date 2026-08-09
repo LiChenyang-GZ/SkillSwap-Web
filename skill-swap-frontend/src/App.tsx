@@ -3,12 +3,14 @@ import { AppProvider, useApp } from './contexts/AppContext';
 import { NavigationScreen } from './components/navigation/screen/NavigationScreen';
 import { Toaster } from './components/ui/sonner';
 import { MEMORY_ENTRY_PAGE_PREFIX } from './components/memory/constants/memoryRouteConstants';
+import { WORKSHOP_PAGE_PREFIX, isAdminOnlyPage, isPublicPage } from './contexts/appRoutes';
+import { Button } from './components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { AuthScreen } from './components/auth/screen/AuthScreen';
 import { HeroScreen } from './components/hero/screen/HeroScreen';
 import { MemoryScreen as Memory } from './components/memory/screen/MemoryScreen';
 import { ExploreWorkshopsScreen as ExploreWorkshops } from './components/workshop/screen/ExploreWorkshopsScreen';
 
-const HomePage = React.lazy(() => import('./components/archive/HomePage').then((m) => ({ default: m.HomePage })));
 const Dashboard = React.lazy(() =>
   import('./components/dashboard/screen/DashboardScreen').then((m) => ({ default: m.DashboardScreen }))
 );
@@ -30,26 +32,34 @@ const MemoryStudio = React.lazy(() =>
 const Notifications = React.lazy(() =>
   import('./components/notifications/screen/NotificationsScreen').then((m) => ({ default: m.NotificationsScreen }))
 );
+const CampusExpansion = React.lazy(() =>
+  import('./components/campus/screen/CampusExpansionScreen').then((m) => ({ default: m.CampusExpansionScreen }))
+);
 const UniversityOnboarding = React.lazy(() =>
   import('./components/onboarding/screen/UniversityOnboardingScreen').then((m) => ({ default: m.UniversityOnboardingScreen }))
 );
 
 const LOADING_FOX_SRC = '/brand/fox-empty-search.png';
 
-function AppContent() {
-  const { currentPage, isLoading, isDarkMode, isAuthenticated, refreshData, setCurrentPage, user } = useApp();
-  const lastAutoRefreshKeyRef = React.useRef<string | null>(null);
+function AdminAccessRequired({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="min-h-screen bg-background pt-20 lg:pt-24 flex items-center justify-center px-4">
+      <Card className="max-w-xl w-full">
+        <CardHeader>
+          <CardTitle>Admin Access Required</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">This page is limited to Skill Swap Club admins.</p>
+          <Button onClick={onBack}>Back to Explore</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
-  // Apply theme class to html element
-  React.useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
+function AppContent() {
+  const { currentPage, isLoading, isAdmin, isAuthenticated, refreshData, setCurrentPage, user } = useApp();
+  const lastAutoRefreshKeyRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     const refreshKey = `${currentPage}:${isAuthenticated ? 'auth' : 'anon'}`;
@@ -59,18 +69,18 @@ function AppContent() {
     }
     lastAutoRefreshKeyRef.current = refreshKey;
 
-    if (!isAuthenticated && currentPage !== 'home' && currentPage !== 'explore') {
+    if (!isAuthenticated && currentPage !== 'explore') {
       return;
     }
 
-    const isPublicPage = currentPage === 'home' || currentPage === 'explore';
+    const isExplorePage = currentPage === 'explore';
     const previousPage = previousKey?.split(':')[0] ?? null;
-    const wasPublicPage = previousPage === 'home' || previousPage === 'explore';
+    const wasExplorePage = previousPage === 'explore';
 
     // 首页/探索页只拉公开列表，避免额外个人数据请求拖慢首屏。
-    if (isPublicPage) {
+    if (isExplorePage) {
       // Home 与 Explore 共享同一批 public 数据，互相切换时不重复请求。
-      if (wasPublicPage) {
+      if (wasExplorePage) {
         return;
       }
       void refreshData('public');
@@ -92,6 +102,13 @@ function AppContent() {
     }
   }, [currentPage, isAuthenticated, setCurrentPage, user]);
 
+  React.useEffect(() => {
+    if (isLoading || isAuthenticated || isPublicPage(currentPage)) {
+      return;
+    }
+    setCurrentPage('hero');
+  }, [currentPage, isAuthenticated, isLoading, setCurrentPage]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -109,9 +126,17 @@ function AppContent() {
 
   // Page Switcher - Return HeroPage by default for non-authenticated users
   const renderPage = () => {
+    if (!isAuthenticated && !isPublicPage(currentPage)) {
+      return <HeroScreen />;
+    }
+
+    if (isAdminOnlyPage(currentPage) && !isAdmin) {
+      return <AdminAccessRequired onBack={() => setCurrentPage('explore')} />;
+    }
+
     // Check if currentPage is a workshop detail page (workshop-{id})
-    if (currentPage.startsWith('workshop-')) {
-      const workshopId = currentPage.substring('workshop-'.length);
+    if (currentPage.startsWith(WORKSHOP_PAGE_PREFIX)) {
+      const workshopId = currentPage.substring(WORKSHOP_PAGE_PREFIX.length);
       return <WorkshopDetails workshopId={workshopId} />;
     }
 
@@ -123,15 +148,11 @@ function AppContent() {
     switch (currentPage) {
       case 'hero':
         return <HeroScreen />;
-      case 'home':
-        return <HomePage />;
       case 'explore':
         return <ExploreWorkshops />;
+      case 'campuses':
+        return <CampusExpansion />;
       case 'dashboard':
-        return <Dashboard />;
-      case 'credits':
-        // 积分系统已停用：原本跳转 Credits 页面。
-        // return <Credits />;
         return <Dashboard />;
       case 'create':
         return <CreateWorkshop />;
@@ -153,9 +174,7 @@ function AppContent() {
     }
   };
 
-  // Show navigation only if not on hero/auth page or if user is authenticated
-  const showNavigation =
-    currentPage !== 'onboarding' && ((currentPage !== 'hero' && currentPage !== 'auth') || isAuthenticated);
+  const showNavigation = currentPage !== 'onboarding' && (currentPage !== 'auth' || isAuthenticated);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -4,12 +4,13 @@ import type { NavigationItem } from "./navigationItemModel";
 export interface NavigationPrimaryLinksProps {
   items: NavigationItem[];
   currentPage: string;
-  onNavigate: (page: string) => void;
+  onNavigate: (item: NavigationItem) => void;
   isMobile?: boolean;
 }
 
 export interface NavigationBrandProps {
   compact?: boolean;
+  onClick?: () => void;
 }
 
 export interface NavigationNotificationDotProps {
@@ -29,13 +30,13 @@ export interface NavigationUserMenuProps {
 export interface NavigationDesktopNavProps {
   items: NavigationItem[];
   currentPage: string;
-  isDarkMode: boolean;
-  onToggleDarkMode: () => void;
   user: User | null;
   isAdmin: boolean;
   isAuthenticated: boolean;
   notificationsUnreadCount: number;
   onNavigate: (page: string) => void;
+  onNavigateToItem: (item: NavigationItem) => void;
+  onHostSwap: () => void;
   onSignOut: () => Promise<void>;
   onPreloadCreate: () => void;
 }
@@ -43,15 +44,14 @@ export interface NavigationDesktopNavProps {
 export interface NavigationMobileNavProps {
   items: NavigationItem[];
   currentPage: string;
-  isDarkMode: boolean;
   isMobileMenuOpen: boolean;
   user: User | null;
   isAdmin: boolean;
   isAuthenticated: boolean;
   notificationsUnreadCount: number;
-  onToggleDarkMode: () => void;
   onToggleMobileMenu: () => void;
   onNavigateAndCloseMobile: (page: string) => void;
-  onNavigateToCreateAndCloseMobile: () => void;
+  onNavigateToItemAndCloseMobile: (item: NavigationItem) => void;
+  onHostSwap: () => void;
   onSignOutAndCloseMobile: () => Promise<void>;
 }

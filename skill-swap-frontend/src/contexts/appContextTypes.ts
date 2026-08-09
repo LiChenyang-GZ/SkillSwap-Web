@@ -1,5 +1,4 @@
 import type { WorkshopUpsertPayload } from "../shared/api";
-import type { CreditTransaction } from "../types/creditTransaction";
 import type { User } from "../types/user";
 import type { Workshop } from "../types/workshop";
 
@@ -26,10 +25,8 @@ export interface RecentProfileCache {
 export interface AppContextType {
   user: User | null;
   workshops: Workshop[];
-  transactions: CreditTransaction[];
   currentPage: string;
   authTab: AuthTab;
-  isDarkMode: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
   notificationsUnreadCount: number;
@@ -37,7 +34,6 @@ export interface AppContextType {
   isLoading: boolean;
   getAuthToken: GetAuthToken;
   setCurrentPage: (page: string, authTab?: AuthTab) => void;
-  toggleDarkMode: () => void;
   attendWorkshop: (workshopId: string) => Promise<void>;
   cancelWorkshopAttendance: (workshopId: string) => Promise<void>;
   createWorkshop: (workshopData: WorkshopUpsertPayload) => Promise<boolean>;

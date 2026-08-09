@@ -1,7 +1,18 @@
 import type { LucideIcon } from "lucide-react";
 
 export interface NavigationItem {
-  id: string;
+  key: string;
+  page: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  sectionId?: string;
+}
+
+export interface NavigationMenuEntry {
+  page: string;
+  label: string;
+  icon?: LucideIcon;
+  showUnreadDot?: boolean;
+  adminOnly?: boolean;
+  preload?: boolean;
 }

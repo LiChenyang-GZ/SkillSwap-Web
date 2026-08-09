@@ -4,8 +4,6 @@ export function useNavigationContextState() {
   const {
     currentPage,
     setCurrentPage,
-    isDarkMode,
-    toggleDarkMode,
     user,
     isAuthenticated,
     isAdmin,
@@ -16,8 +14,6 @@ export function useNavigationContextState() {
   return {
     currentPage,
     setCurrentPage,
-    isDarkMode,
-    toggleDarkMode,
     user,
     isAuthenticated,
     isAdmin,

@@ -1,4 +1,5 @@
 export const NAVIGATION_PAGE_KEYS = {
+  hero: "hero",
   explore: "explore",
   memory: "memory",
   dashboard: "dashboard",

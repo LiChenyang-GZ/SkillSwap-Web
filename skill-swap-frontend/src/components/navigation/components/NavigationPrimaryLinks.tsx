@@ -11,20 +11,21 @@ export function NavigationPrimaryLinks({
     <>
       {items.map((item) => {
         const Icon = item.icon;
+        const isActive = currentPage === item.key;
         return (
           <Button
-            key={item.id}
-            variant={currentPage === item.id ? "secondary" : "ghost"}
+            key={item.key}
+            variant={isActive ? "secondary" : "ghost"}
             size="sm"
-            onClick={() => onNavigate(item.id)}
+            onClick={() => onNavigate(item)}
             className={
               isMobile
-                ? `w-full justify-start flex items-center space-x-3 ${currentPage === item.id ? "" : "text-muted-foreground hover:text-foreground"}`
-                : `flex items-center space-x-2 ${currentPage === item.id ? "" : "text-muted-foreground hover:text-foreground"}`
+                ? `w-full justify-start flex items-center space-x-3 ${isActive ? "" : "text-muted-foreground hover:text-foreground"}`
+                : `flex items-center gap-2 ${isActive ? "" : "text-muted-foreground hover:text-foreground"}`
             }
           >
-            <Icon className="w-4 h-4" />
-            {isMobile ? <span>{item.label}</span> : <span className="hidden xl:inline">{item.label}</span>}
+            {Icon && <Icon className="w-4 h-4" />}
+            <span>{item.label}</span>
           </Button>
         );
       })}

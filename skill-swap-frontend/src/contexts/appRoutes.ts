@@ -1,41 +1,41 @@
 import {
   ADMIN_MEMORY_PAGE_ID,
   ADMIN_MEMORY_PATH,
+  MEMORY_ENTRY_PAGE_PREFIX,
   MEMORY_PAGE_ID,
   MEMORY_PATH,
 } from "../components/memory/constants/memoryRouteConstants";
 import { pageFromMemoryPath, pathFromMemoryPage } from "../components/memory/utils/memoryRoute";
 import type { RefreshDataMode } from "./appContextTypes";
 
-const PAGE_TO_PATH: Record<string, string> = {
-  hero: "/",
-  home: "/home",
-  explore: "/explore",
-  create: "/create",
-  dashboard: "/dashboard",
-  [MEMORY_PAGE_ID]: MEMORY_PATH,
-  [ADMIN_MEMORY_PAGE_ID]: ADMIN_MEMORY_PATH,
-  notifications: "/notifications",
-  adminReview: "/admin/workshops",
-  auth: "/auth",
-  onboarding: "/onboarding",
-  credits: "/credits",
+export const WORKSHOP_PAGE_PREFIX = "workshop-";
+const WORKSHOP_PATH_PREFIX = "/workshops/";
+
+interface RouteDefinition {
+  path: string;
+  isPublic?: boolean;
+  adminOnly?: boolean;
+}
+
+const ROUTES: Record<string, RouteDefinition> = {
+  hero: { path: "/", isPublic: true },
+  explore: { path: "/explore", isPublic: true },
+  campuses: { path: "/campuses", isPublic: true },
+  create: { path: "/create" },
+  dashboard: { path: "/dashboard" },
+  [MEMORY_PAGE_ID]: { path: MEMORY_PATH, isPublic: true },
+  [ADMIN_MEMORY_PAGE_ID]: { path: ADMIN_MEMORY_PATH, adminOnly: true },
+  notifications: { path: "/notifications" },
+  adminReview: { path: "/admin/workshops", adminOnly: true },
+  auth: { path: "/auth", isPublic: true },
+  onboarding: { path: "/onboarding" },
 };
 
-const PATH_TO_PAGE: Record<string, string> = {
-  "/": "hero",
-  "/home": "home",
-  "/explore": "explore",
-  "/create": "create",
-  "/dashboard": "dashboard",
-  [MEMORY_PATH]: MEMORY_PAGE_ID,
-  [ADMIN_MEMORY_PATH]: ADMIN_MEMORY_PAGE_ID,
-  "/notifications": "notifications",
-  "/admin/workshops": "adminReview",
-  "/auth": "auth",
-  "/onboarding": "onboarding",
-  "/credits": "credits",
-};
+const PATH_TO_PAGE: Record<string, string> = Object.fromEntries(
+  Object.entries(ROUTES).map(([page, route]) => [route.path, page])
+);
+
+const PUBLIC_PAGE_PREFIXES = [WORKSHOP_PAGE_PREFIX, MEMORY_ENTRY_PAGE_PREFIX];
 
 export const normalizePath = (pathname: string) => {
   if (!pathname) return "/";
@@ -46,9 +46,9 @@ export const normalizePath = (pathname: string) => {
 
 export const pageFromPath = (pathname: string) => {
   const normalizedPath = normalizePath(pathname);
-  if (normalizedPath.startsWith("/workshops/")) {
-    const workshopId = decodeURIComponent(normalizedPath.slice("/workshops/".length));
-    return workshopId ? `workshop-${workshopId}` : "explore";
+  if (normalizedPath.startsWith(WORKSHOP_PATH_PREFIX)) {
+    const workshopId = decodeURIComponent(normalizedPath.slice(WORKSHOP_PATH_PREFIX.length));
+    return workshopId ? `${WORKSHOP_PAGE_PREFIX}${workshopId}` : "explore";
   }
   const memoryPage = pageFromMemoryPath(normalizedPath);
   if (memoryPage) {
@@ -58,16 +58,22 @@ export const pageFromPath = (pathname: string) => {
 };
 
 export const pathFromPage = (page: string) => {
-  if (page.startsWith("workshop-")) {
-    const workshopId = page.slice("workshop-".length);
-    return `/workshops/${encodeURIComponent(workshopId)}`;
+  if (page.startsWith(WORKSHOP_PAGE_PREFIX)) {
+    const workshopId = page.slice(WORKSHOP_PAGE_PREFIX.length);
+    return `${WORKSHOP_PATH_PREFIX}${encodeURIComponent(workshopId)}`;
   }
   const memoryPath = pathFromMemoryPage(page);
   if (memoryPath) {
     return memoryPath;
   }
-  return PAGE_TO_PATH[page] || "/explore";
+  return ROUTES[page]?.path || "/explore";
 };
+
+export const isPublicPage = (page: string) =>
+  ROUTES[page]?.isPublic === true ||
+  PUBLIC_PAGE_PREFIXES.some((prefix) => page.startsWith(prefix));
+
+export const isAdminOnlyPage = (page: string) => ROUTES[page]?.adminOnly === true;
 
 export const resolvePostLoginPage = () => {
   const requestedPage = pageFromPath(window.location.pathname);
@@ -78,7 +84,7 @@ export const resolvePostLoginPage = () => {
 };
 
 export const resolveRefreshModeByPage = (page: string): RefreshDataMode => {
-  if (page === "home" || page === "explore") {
+  if (page === "explore") {
     return "public";
   }
   if (page === "dashboard") {

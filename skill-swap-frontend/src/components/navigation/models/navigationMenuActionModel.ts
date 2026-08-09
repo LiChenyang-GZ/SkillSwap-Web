@@ -1,6 +1,7 @@
+import type { NavigationItem } from "./navigationItemModel";
+
 export interface NavigationMenuActions {
   navigateToPage: (page: string) => void;
-  navigateToPageAndCloseMobile: (page: string) => void;
-  navigateToCreateAndCloseMobile: () => void;
+  navigateToItem: (item: NavigationItem) => void;
   signOutAndCloseMobile: () => Promise<void>;
 }

@@ -1,63 +1,79 @@
-import { ArrowRight, Users } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { BRAND_MASCOT_SRC } from "../../../shared/constants";
 import { Button } from "../../ui/button";
+import { HERO_BASE_STATS } from "../constants/heroUiConstants";
 
 interface HeroIntroSectionProps {
-  stats: {
-    members: number;
-    skills: number;
-    workshops: number;
-  };
-  onJoinWithEmail: () => void;
-  onSignIn: () => void;
+  onExplore: () => void;
+  onHost: () => void;
 }
 
-export function HeroIntroSection({ stats, onJoinWithEmail, onSignIn }: HeroIntroSectionProps) {
+export function HeroIntroSection({ onExplore, onHost }: HeroIntroSectionProps) {
   return (
-    <section className="relative overflow-hidden ">
-      <div className="absolute inset-0 bg-gradient-to-br from-cream-100 via-background to-cream-200 opacity-60"></div>
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 lg:pt-24 pb-16">
-        <div className="text-center max-w-4xl mx-auto">
-          <h1 className="text-display lg:text-6xl mb-6 text-foreground">
-            Welcome to <span className="text-secondary">Skill Swap Club</span>
+    <section className="relative overflow-hidden pt-20 lg:pt-24">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,color-mix(in_srgb,var(--color-secondary)_28%,transparent),transparent_32%),radial-gradient(circle_at_90%_28%,color-mix(in_srgb,var(--color-primary)_16%,transparent),transparent_28%)]" />
+      <div className="absolute -left-24 top-36 h-64 w-64 rounded-full border border-secondary/30" />
+      <div className="absolute -right-20 bottom-16 h-72 w-72 rounded-full border border-primary/20" />
+
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.12fr_0.88fr] lg:px-8 lg:py-24">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-secondary/35 bg-card/80 px-4 py-2 text-sm font-semibold shadow-sm">
+            <Sparkles className="h-4 w-4 text-secondary" aria-hidden="true" />
+            Student-led. Sydney-grown.
+          </div>
+
+          <h1 className="mt-7 max-w-4xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-foreground sm:text-6xl lg:text-7xl">
+            Learn something new from someone who was once{" "}
+            <span className="text-primary">exactly where you are.</span>
           </h1>
 
-          <p className="text-h3 lg:text-2xl text-muted-foreground mb-8 leading-relaxed">
-            Learn new skills, teach what you know, and grow together.
-            <br />
-            <span className="text-secondary">Join workshops to learn • Host workshops to share</span>
+          <p className="mt-7 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            SkillSwap is where university students teach the things they love, learn by doing, and find their people along the way.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Button onClick={onJoinWithEmail} size="lg" className="px-8 py-3 text-lg min-w-[200px] group">
-              <Users className="w-5 h-5 mr-3" />
-              Join with Email
-              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Button onClick={onExplore} size="lg" className="group h-13 rounded-full px-7 text-base">
+              Explore a Swap
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
             </Button>
-
-            <Button
-              onClick={onSignIn}
-              variant="outline"
-              size="lg"
-              className="px-8 py-3 text-lg min-w-[200px] border-2 border-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
-            >
-              Sign In
+            <Button onClick={onHost} variant="outline" size="lg" className="h-13 rounded-full border-foreground/25 bg-card/75 px-7 text-base">
+              Host a SkillSwap
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-2xl mx-auto">
-            <div className="text-center">
-              <div className="text-h1 text-secondary mb-2">{stats.members}+</div>
-              <div className="text-caption text-muted-foreground">Active Members</div>
+          <div className="mt-10 grid max-w-2xl grid-cols-3 divide-x divide-foreground/15 border-y border-foreground/15 py-5">
+            <div className="pr-3">
+              <strong className="block text-2xl font-bold text-foreground sm:text-3xl">{HERO_BASE_STATS.members}</strong>
+              <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">USYD members</span>
             </div>
-            <div className="text-center">
-              <div className="text-h1 text-secondary mb-2">{stats.skills}+</div>
-              <div className="text-caption text-muted-foreground">Skills Available</div>
+            <div className="px-3 sm:px-6">
+              <strong className="block text-2xl font-bold text-foreground sm:text-3xl">{HERO_BASE_STATS.swaps}</strong>
+              <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">SkillSwaps so far</span>
             </div>
-            <div className="text-center">
-              <div className="text-h1 text-secondary mb-2">{stats.workshops}+</div>
-              <div className="text-caption text-muted-foreground">Workshops Hosted</div>
+            <div className="pl-3 sm:pl-6">
+              <strong className="block text-lg font-bold leading-tight text-foreground sm:text-3xl">{HERO_BASE_STATS.campuses}</strong>
+              <span className="mt-1 block text-xs leading-tight text-muted-foreground sm:text-sm">next on the map</span>
             </div>
           </div>
+        </div>
+
+        <div className="relative mx-auto min-h-[480px] w-full max-w-md sm:min-h-[520px]">
+          <div className="relative z-10 mr-8 max-w-sm -translate-y-6 rounded-[50%] border border-terracotta-500/25 bg-orange-50 px-10 py-10 text-center text-terracotta-900 shadow-[0_18px_55px_color-mix(in_srgb,var(--color-terracotta-900)_14%,transparent)] sm:mr-12 sm:-translate-y-12 sm:px-12 sm:py-12">
+            <p className="text-3xl font-semibold leading-[1.2] tracking-[-0.025em] sm:text-4xl">
+              Come curious.
+              <br />
+              Leave connected.
+            </p>
+            <span
+              className="absolute -bottom-4 right-14 h-8 w-8 rotate-45 border-b border-r border-terracotta-500/25 bg-orange-50 sm:right-16"
+              aria-hidden="true"
+            />
+          </div>
+          <img
+            src={BRAND_MASCOT_SRC}
+            alt="SkillSwap's friendly fox mascot waving hello"
+            className="absolute bottom-12 right-0 z-20 w-[82%] max-w-[360px] sm:bottom-0 sm:w-[90%] sm:max-w-[396px]"
+          />
         </div>
       </div>
     </section>

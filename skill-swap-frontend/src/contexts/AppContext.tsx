@@ -25,6 +25,7 @@ import type {
   RecentProfileCache,
 } from "./appContextTypes";
 import {
+  isPublicPage,
   normalizePath,
   pageFromPath,
   pathFromPage,
@@ -32,7 +33,6 @@ import {
 } from "./appRoutes";
 import { useCurrentUserProfileActions } from "./useCurrentUserProfileActions";
 import { useNotificationUnreadCount } from "./useNotificationUnreadCount";
-import { useThemeMode } from "./useThemeMode";
 import { useWorkshopState } from "./useWorkshopState";
 
 export type { GetAuthToken } from "./appContextTypes";
@@ -60,8 +60,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 区分“用户主动登出”与“session 被动过期”：主动登出已有自己的提示，
   // 不应再弹“会话过期”。
   const explicitSignOutRef = useRef(false);
-
-  const { isDarkMode, toggleDarkMode } = useThemeMode();
 
   // Clerk 内部已对 getToken() 做缓存与自动刷新：每次调用按需取最新 token，
   // 不再把 token 存进 React state（避免过期后变成陈旧值导致被强制登出）。
@@ -129,7 +127,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteWorkshop,
     refreshData,
     resetWorkshopState,
-    transactions,
     upsertWorkshop,
     workshops,
   } = useWorkshopState({
@@ -158,7 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser,
   });
 
-  const clearAuthState = useCallback((targetPage: "hero" | "auth" = "hero") => {
+  const clearAuthState = useCallback((targetPage: string = "hero") => {
     setUser(null);
     setIsAuthenticated(false);
     clearWorkshopList();
@@ -191,9 +188,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // 初次 bootstrap 成功后，若仍处于登录态：clerkUser 引用在 Clerk 内部刷新
-    // session 时会变化导致本 effect 重跑。此时只更新身份兜底信息，不再走完整
-    // bootstrap（否则会在 token 轮换窗口拿到 null 而误清空登录态）。
     if (initializedRef.current && hasBackendProfileRef.current && isSignedIn) {
       setUser((prev) => (prev ? buildIdentityFallback(prev, clerkUser) : prev));
       return;
@@ -212,8 +206,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (authErrorMessage) {
             sessionStorage.setItem("skill_swap_auth_error", authErrorMessage);
             clearAuthState("auth");
-          } else if (currentPageFromPath === "auth") {
-            clearAuthState("auth");
+          } else if (isPublicPage(currentPageFromPath)) {
+            clearAuthState(currentPageFromPath);
           } else {
             clearAuthState("hero");
           }
@@ -308,10 +302,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo<AppContextType>(() => ({
     user,
     workshops,
-    transactions,
     currentPage,
     authTab,
-    isDarkMode,
     isAuthenticated,
     isAdmin,
     notificationsUnreadCount,
@@ -319,7 +311,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoading,
     getAuthToken,
     setCurrentPage,
-    toggleDarkMode,
     attendWorkshop,
     cancelWorkshopAttendance,
     createWorkshop,
@@ -333,10 +324,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }), [
     user,
     workshops,
-    transactions,
     currentPage,
     authTab,
-    isDarkMode,
     isAuthenticated,
     isAdmin,
     notificationsUnreadCount,
@@ -344,7 +333,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoading,
     getAuthToken,
     setCurrentPage,
-    toggleDarkMode,
     attendWorkshop,
     cancelWorkshopAttendance,
     createWorkshop,

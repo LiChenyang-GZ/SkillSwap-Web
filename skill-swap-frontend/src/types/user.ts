@@ -2,7 +2,6 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  creditBalance: number;
   avatarUrl?: string;
   bio?: string;
   university?: string;

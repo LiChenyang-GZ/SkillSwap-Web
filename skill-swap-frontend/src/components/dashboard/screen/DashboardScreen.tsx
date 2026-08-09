@@ -141,6 +141,10 @@ function DashboardAuthenticatedScreen({
         user={user}
         isEditProfileOpen={profileForm.isEditProfileOpen}
         editUsername={profileForm.editUsername}
+        editBio={profileForm.editBio}
+        editSkills={profileForm.editSkills}
+        skillDraft={profileForm.skillDraft}
+        skillError={profileForm.skillError}
         editUniversitySelection={profileForm.editUniversitySelection}
         editUniversityCustom={profileForm.editUniversityCustom}
         isSavingProfile={profileForm.isSavingProfile}
@@ -149,6 +153,10 @@ function DashboardAuthenticatedScreen({
         profileError={profileForm.profileError}
         avatarFileInputRef={profileForm.avatarFileInputRef}
         onEditUsernameChange={profileForm.setEditUsername}
+        onEditBioChange={profileForm.setEditBio}
+        onSkillDraftChange={profileForm.handleSkillDraftChange}
+        onAddSkill={profileForm.addSkillFromDraft}
+        onRemoveSkill={profileForm.removeSkill}
         onEditUniversitySelectionChange={profileForm.handleEditUniversitySelectionChange}
         onEditUniversityCustomChange={profileForm.handleEditUniversityCustomChange}
         onAvatarFileChange={profileForm.handleAvatarFileChange}
