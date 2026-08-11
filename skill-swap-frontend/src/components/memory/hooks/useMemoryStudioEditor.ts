@@ -2,10 +2,16 @@ import type { ChangeEvent, ClipboardEvent } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { memoryAdminService } from "../../../shared/service/memory/memoryAdminService";
-import type { MemoryEditorMode } from "../models/memoryFormModel";
+import type { MemoryEditorMode, MemoryImageWidth } from "../models/memoryFormModel";
 import type { MemoryUploadQueueItem } from "../models/memoryActionModel";
 import { MEMORY_EMPTY_DOC } from "../constants/memoryUiConstants";
 import { parseMemoryDocument } from "../utils/memoryDocument";
+import type { MemoryUploadedImage } from "../utils/memoryImage";
+import {
+  readStoredMemoryImageWidth,
+  resolveMemoryImageInsertion,
+  storeMemoryImageWidth,
+} from "../utils/memoryImage";
 import { getMemoryErrorMessage, getMemoryErrorStatus } from "../utils/memoryError";
 import {
   IMAGE_UPLOAD_ALLOWED_MIME_TYPES,
@@ -24,10 +30,20 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
   const [documentText, setDocumentText] = useState<string>(MEMORY_EMPTY_DOC);
   const [mode, setMode] = useState<MemoryEditorMode>("split");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [bodyImageWidth, setBodyImageWidthState] = useState<MemoryImageWidth>(readStoredMemoryImageWidth);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadQueueRef = useRef<MemoryUploadQueueItem[]>([]);
   const uploadQueueRunningRef = useRef(false);
+  // Insertion happens after an await, so the queue reads the width from a ref to pick up
+  // a change made while the upload was still in flight.
+  const bodyImageWidthRef = useRef<MemoryImageWidth>(bodyImageWidth);
+
+  const setBodyImageWidth = useCallback((width: MemoryImageWidth) => {
+    bodyImageWidthRef.current = width;
+    setBodyImageWidthState(width);
+    storeMemoryImageWidth(width);
+  }, []);
 
   const parsedDoc = useMemo(() => parseMemoryDocument(documentText), [documentText]);
 
@@ -89,11 +105,11 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     return true;
   };
 
-  const uploadImageMarkdown = async (file: File, token: string) => {
+  const uploadImageAsset = async (file: File, token: string): Promise<MemoryUploadedImage | null> => {
     try {
       const result = await memoryAdminService.uploadMediaByAdmin(file, token);
       const fallbackAlt = file.name ? file.name.replace(/\.[^.]+$/, "") : "image";
-      return `<div align="center">\n  <img src="${result.url || result.path}" alt="${fallbackAlt || "image"}" width="250" />\n</div>`;
+      return { url: result.url || result.path, alt: fallbackAlt || "image" };
     } catch (error) {
       console.error(error);
       const status = getMemoryErrorStatus(error);
@@ -113,9 +129,9 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
   };
 
   const uploadBatchWithLimit = async (batch: MemoryUploadQueueItem[], token: string) => {
-    const uploadedItems: Array<MemoryUploadQueueItem & { markdown: string | null }> = batch.map((item) => ({
+    const uploadedItems: Array<MemoryUploadQueueItem & { image: MemoryUploadedImage | null }> = batch.map((item) => ({
       ...item,
-      markdown: null,
+      image: null,
     }));
     const workerCount = Math.min(MEMORY_IMAGE_UPLOAD_CONCURRENCY, batch.length);
 
@@ -126,7 +142,7 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
 
       uploadedItems[index] = {
         ...batch[index],
-        markdown: await uploadImageMarkdown(batch[index].file, token),
+        image: await uploadImageAsset(batch[index].file, token),
       };
       await uploadWorker(index + workerCount);
     };
@@ -138,7 +154,7 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     return uploadedItems;
   };
 
-  const insertUploadedImages = (uploadedItems: Array<MemoryUploadQueueItem & { markdown: string | null }>) => {
+  const insertUploadedImages = (uploadedItems: Array<MemoryUploadQueueItem & { image: MemoryUploadedImage | null }>) => {
     const editor = editorRef.current;
     if (!editor) return;
 
@@ -149,27 +165,37 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     let insertedCount = 0;
 
     uploadedItems.forEach((item) => {
-      if (!item.markdown) {
+      if (!item.image) {
         return;
       }
 
       const rangeStart = item.start;
       const rangeEnd = item.end;
       const hasExplicitRange = typeof rangeStart === "number" && typeof rangeEnd === "number";
-      const insertionStart = hasExplicitRange
+      const caretStart = hasExplicitRange
         ? Math.min(Math.max(0, rangeStart + explicitRangeOffset), nextText.length)
         : selectionStart;
-      const insertionEnd = hasExplicitRange
-        ? Math.min(Math.max(insertionStart, rangeEnd + explicitRangeOffset), nextText.length)
+      const caretEnd = hasExplicitRange
+        ? Math.min(Math.max(caretStart, rangeEnd + explicitRangeOffset), nextText.length)
         : selectionEnd;
 
-      nextText = `${nextText.slice(0, insertionStart)}${item.markdown}${nextText.slice(insertionEnd)}`;
-      selectionStart = insertionStart + item.markdown.length;
+      // Resolved against the text as it stands now, so each image in a batch sees the
+      // ranges the ones before it already shifted.
+      const insertion = resolveMemoryImageInsertion(
+        nextText,
+        caretStart,
+        caretEnd,
+        item.image,
+        bodyImageWidthRef.current
+      );
+
+      nextText = `${nextText.slice(0, insertion.start)}${insertion.snippet}${nextText.slice(insertion.end)}`;
+      selectionStart = insertion.start + insertion.snippet.length;
       selectionEnd = selectionStart;
       insertedCount += 1;
 
       if (hasExplicitRange) {
-        explicitRangeOffset += item.markdown.length - (insertionEnd - insertionStart);
+        explicitRangeOffset += insertion.snippet.length - (insertion.end - insertion.start);
       }
     });
 
@@ -280,6 +306,8 @@ export function useMemoryStudioEditor({ getAuthToken }: UseMemoryStudioEditorPar
     setMode,
     parsedDoc,
     isUploadingImage,
+    bodyImageWidth,
+    setBodyImageWidth,
     editorRef,
     fileInputRef,
     uploadQueueRunningRef,

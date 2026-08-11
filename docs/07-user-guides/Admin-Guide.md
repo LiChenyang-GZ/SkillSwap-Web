@@ -243,6 +243,8 @@ Write the memory story here.
 6. Select `Save Draft`.
 7. After saving, use the entry actions menu and select `Publish` when the entry is ready for public viewing.
 
+The `cover:` line holds the cover image URL for the entry. Leave it empty here and fill it through the image upload workflow below.
+
 Business rule: a memory title is required. If no slug is provided, the backend generates one from the title.
 
 ### Workflow: Edit A Draft Memory Entry
@@ -270,10 +272,21 @@ Published and archived entries are read-only in the editor until moved to draft.
 ### Workflow: Upload Memory Images
 
 1. Open a draft memory entry where you hold the edit lock.
-2. Use the image upload toolbar button, or paste an image into the editor.
-3. Wait for the upload to complete.
-4. Confirm that a Markdown image link is inserted into the document.
-5. Select `Save Draft`.
+2. Place the cursor where the image belongs:
+   - Anywhere inside the front matter block to set the entry cover.
+   - Anywhere in the body to place the image in the story.
+3. Use the image upload toolbar button, or paste an image into the editor.
+4. Wait for the upload to complete.
+5. Confirm what was inserted:
+   - A cover upload writes a plain image URL onto the `cover:` line, replacing whatever value was there.
+   - A body upload inserts a centred HTML image block, because a Markdown image link cannot carry a width.
+6. Select `Save Draft`.
+
+Body image width:
+
+- The `Image width` selector in the editor toolbar sets the width applied to body images: `Small · 250px`, `Medium · 400px`, `Large · 640px`, or `Full width`.
+- The selection is remembered in the browser and applies to every later upload until it is changed, so it does not have to be set per image.
+- To resize one image after it has been inserted, edit the `width` attribute on that image's `<img>` tag directly.
 
 Upload constraints:
 

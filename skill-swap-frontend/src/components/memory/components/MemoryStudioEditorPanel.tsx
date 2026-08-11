@@ -21,11 +21,13 @@ import {
   Video,
 } from "lucide-react";
 import type { MemoryEntry } from "../../../types/memory";
-import type { MemoryEditorMode } from "../models/memoryFormModel";
+import type { MemoryEditorMode, MemoryImageWidth } from "../models/memoryFormModel";
 import { Button } from "../../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { MemoryMarkdownRenderer } from "./MemoryMarkdownRenderer";
 import { toMemoryStatusLabel } from "../utils/memoryStatusLabels";
+import { MEMORY_IMAGE_WIDTH_OPTIONS, isMemoryImageWidth } from "../constants/memoryUiConstants";
 import { IMAGE_UPLOAD_ACCEPT } from "../../../shared/constants/uploadLimits";
 
 interface MemoryStudioEditorPanelProps {
@@ -35,6 +37,8 @@ interface MemoryStudioEditorPanelProps {
   parsedBody: string;
   isSaving: boolean;
   isUploadingImage: boolean;
+  bodyImageWidth: MemoryImageWidth;
+  onBodyImageWidthChange: (width: MemoryImageWidth) => void;
   isDraftContext: boolean;
   hasUnsavedDraftChanges: boolean;
   isDraftEntry: boolean;
@@ -74,6 +78,8 @@ export function MemoryStudioEditorPanel({
   parsedBody,
   isSaving,
   isUploadingImage,
+  bodyImageWidth,
+  onBodyImageWidthChange,
   isDraftContext,
   hasUnsavedDraftChanges,
   isDraftEntry,
@@ -228,6 +234,28 @@ export function MemoryStudioEditorPanel({
           <Button variant="ghost" size="sm" onClick={onInsertDivider} disabled={editorActionsDisabled} aria-label="Insert divider">
             <Minus className="w-4 h-4" />
           </Button>
+          <div className="flex items-center gap-2 pl-3 ml-1 border-l border-border">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Image width</span>
+            <Select
+              value={bodyImageWidth}
+              onValueChange={(value: string) => {
+                if (isMemoryImageWidth(value)) {
+                  onBodyImageWidthChange(value);
+                }
+              }}
+            >
+              <SelectTrigger size="sm" className="w-40" aria-label="Width applied to images inserted into the body">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MEMORY_IMAGE_WIDTH_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <input ref={fileInputRef} type="file" accept={IMAGE_UPLOAD_ACCEPT} className="hidden" aria-label="Upload memory image" onChange={(e) => void onPickImage(e)} />
         </div>
 
