@@ -45,7 +45,9 @@ public class MemoryServiceImpl implements MemoryService {
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
     private static final long DEFAULT_EDIT_LOCK_SECONDS = 180L;
     private static final Pattern MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^\\]]*\\]\\(([^)]+)\\)");
-    private static final Pattern RAW_URL_PATTERN = Pattern.compile("https?://[^\\s)]+", Pattern.CASE_INSENSITIVE);
+    private static final Pattern HTML_IMAGE_PATTERN = Pattern.compile(
+            "<img\\b[^>]*?\\ssrc\\s*=\\s*[\"']([^\"']+)[\"']", Pattern.CASE_INSENSITIVE);
+    private static final Pattern RAW_URL_PATTERN = Pattern.compile("https?://[^\\s)\"'<>]+", Pattern.CASE_INSENSITIVE);
     private static final Pattern MEDIA_FILE_PATTERN = Pattern.compile(".*\\.(png|jpg|jpeg|gif|webp|svg|mp4|mov|webm)(\\?.*)?$", Pattern.CASE_INSENSITIVE);
 
     private final MemoryEntryRepository memoryEntryRepository;
@@ -416,6 +418,16 @@ public class MemoryServiceImpl implements MemoryService {
         Matcher markdownMatcher = MARKDOWN_IMAGE_PATTERN.matcher(normalizedContent);
         while (markdownMatcher.find()) {
             String url = trimToNull(markdownMatcher.group(1));
+            if (url != null) {
+                urls.add(url);
+            }
+        }
+
+        // Body images are written as HTML so they can carry a width. The raw URL sweep below
+        // cannot see them: it stops at the closing quote and then fails the extension check.
+        Matcher htmlImageMatcher = HTML_IMAGE_PATTERN.matcher(normalizedContent);
+        while (htmlImageMatcher.find()) {
+            String url = trimToNull(htmlImageMatcher.group(1));
             if (url != null) {
                 urls.add(url);
             }

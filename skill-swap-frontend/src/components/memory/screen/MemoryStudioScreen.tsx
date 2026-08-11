@@ -47,6 +47,8 @@ export function MemoryStudioScreen() {
     setMode,
     parsedDoc,
     isUploadingImage,
+    bodyImageWidth,
+    setBodyImageWidth,
     editorRef,
     fileInputRef,
     insertAroundSelection,
@@ -180,6 +182,8 @@ export function MemoryStudioScreen() {
             parsedBody={parsedDoc.body}
             isSaving={mutations.isSaving}
             isUploadingImage={isUploadingImage}
+            bodyImageWidth={bodyImageWidth}
+            onBodyImageWidthChange={setBodyImageWidth}
             isDraftContext={isDraftContext}
             hasUnsavedDraftChanges={hasUnsavedDraftChanges}
             isDraftEntry={locking.isDraftEntry}

@@ -409,6 +409,35 @@ class MemoryServiceImplTest {
     }
 
     @Test
+    @DisplayName("Cleans up HTML image URLs embedded in memory content.")
+    void shouldCleanUpHtmlImageUrlsFromContent() {
+        Jwt jwt = jwt("admin-delete-html-media");
+        MemoryEntry entry = publishedMemory(30L, "Delete Html Media", "delete-html-media");
+        // The Memory Studio editor writes body images as HTML so they can carry a width.
+        entry.setContent("""
+                <div align="center">
+                  <img src="https://skillswaptest.blob.core.windows.net/media/body-1.png" alt="one" width="250" />
+                </div>
+
+                <div align="center">
+                  <img src="https://skillswaptest.blob.core.windows.net/media/body-2.jpg" alt="two" width="100%" />
+                </div>
+                """);
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(adminUser());
+        when(memoryEntryRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(entry));
+
+        memoryService.deleteMemory(30L, adminAuthentication(jwt));
+
+        verify(memoryEntryRepository).delete(entry);
+        ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(azureBlobStorageService, times(2)).deleteByUrlQuietly(urlCaptor.capture());
+        assertThat(urlCaptor.getAllValues()).containsExactlyInAnyOrder(
+                azureUrl("body-1.png"),
+                azureUrl("body-2.jpg")
+        );
+    }
+
+    @Test
     @DisplayName("Deletes a memory without storage cleanup when no media URLs are present.")
     void shouldDeleteMemoryWithoutStorageCleanupWhenNoUrls() {
         Jwt jwt = jwt("admin-delete-no-media");

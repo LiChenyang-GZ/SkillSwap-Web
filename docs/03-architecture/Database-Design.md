@@ -492,6 +492,7 @@ Current conclusion: migration and recovery support exists at a basic/manual docu
 - Automated backup, restore, and retention policies are not documented.
 - Credit-related columns remain, but credit transaction workflows are disabled and historical credit tables were cleaned up.
 - Review/rating/audit tables are historical and not active in the current persistence model.
+- Memory entries saved before the delete-cleanup scan learned to read HTML `<img>` tags may have body image blobs that were never recorded in `memory_media` and are not discoverable from `memory_entries.content` by the earlier scan. Deleting such an entry can leave orphaned objects in Azure Blob Storage, which need a separate storage-side reconciliation to identify.
 
 ### Future Improvements
 

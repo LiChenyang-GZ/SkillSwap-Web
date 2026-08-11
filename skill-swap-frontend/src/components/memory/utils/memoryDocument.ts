@@ -35,6 +35,12 @@ function normalizeMemoryCoverValue(value?: string): string {
     return markdownImage[1].trim();
   }
 
+  // Tolerates covers that were written as raw HTML before uploads became caret-aware.
+  const htmlImage = unquoted.match(/<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/i);
+  if (htmlImage?.[1]) {
+    return htmlImage[1].trim();
+  }
+
   return unquoted;
 }
 
@@ -48,7 +54,16 @@ function extractMemoryMediaUrls(markdown: string): string[] {
     if (url) urls.add(url);
   }
 
-  const rawUrlRegex = /(https?:\/\/[^\s)]+)/g;
+  // Body images are inserted as HTML so they can carry a width, so the plain URL sweep
+  // below never sees them: it stops at the closing quote and fails the extension test.
+  const htmlImageRegex = /<img\b[^>]*?\ssrc\s*=\s*["']([^"']+)["']/gi;
+  let htmlImageMatch: RegExpExecArray | null = null;
+  while ((htmlImageMatch = htmlImageRegex.exec(markdown)) !== null) {
+    const url = htmlImageMatch[1].trim();
+    if (url) urls.add(url);
+  }
+
+  const rawUrlRegex = /(https?:\/\/[^\s)"'<>]+)/g;
   let rawMatch: RegExpExecArray | null = null;
   while ((rawMatch = rawUrlRegex.exec(markdown)) !== null) {
     const url = rawMatch[1].trim();

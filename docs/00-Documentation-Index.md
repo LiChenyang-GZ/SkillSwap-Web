@@ -81,6 +81,7 @@
 - API behaviour: [API-Documentation.md §11 File Upload And Media API Behaviour](docs/04-api/API-Documentation.md#L1830)
 - Security: [Security-Design.md §13 Azure Blob Storage Security](docs/03-architecture/Security-Design.md#L485)
 - Local config: [Local-Development-Guide.md §9 Media / File Upload Setup](docs/05-development/Local-Development-Guide.md#L379)
+- Memory editor insertion behaviour (cover URL vs. sized HTML body image, body image width selector): [Admin-Guide.md → Workflow: Upload Memory Images](docs/07-user-guides/Admin-Guide.md#L272)
 - Decision: [ADR-005 Use Azure Blob Storage for Media](docs/09-decision-records/ADR-005-Use-Azure-Blob-Storage-for-Media.md)
 - Storage variable: backend and current deployment workflow use `AZURE_STORAGE_MEDIA_CONTAINER`; live container access/SAS behaviour still requires environment verification.
 
@@ -213,7 +214,7 @@
 - 13. Seed Data and Admin Records — L455
 - 14. Backup, Migration, and Recovery — L467
 - 15. Known Limitations and Future Improvements — L480
-- 16. Verification Notes — L508
+- 16. Verification Notes — L509
 
 ### 6. [docs/03-architecture/Security-Design.md](docs/03-architecture/Security-Design.md)
 - 1. Document Purpose — L3
@@ -329,17 +330,17 @@
 - Admin Authentication And Authorization Model — L44
 - Admin Navigation — L57
 - Workshop Administration (open / review / edit / upload cover / approve / reject / cancel / participant export / backend delete) — L75
-- Memory Studio Administration (statuses / open / create / edit draft / edit published / upload images / publish-archive / delete) — L203
-- Notifications For Admins — L307
-- Viewing And Managing Users — L321
-- Reports, Flags, Complaints, And Audit Logs — L335
-- Data Correction And Support Requests — L346
-- Permission Boundaries — L359
-- Operational Cautions — L371
-- Common Admin Errors And Troubleshooting — L383
-- Escalation Notes For Technical Issues — L399
-- Admin-Facing Limitations — L421
-- Verification Notes — L432
+- Memory Studio Administration (statuses / open / create / edit draft / edit published / upload images and body image width / publish-archive / delete) — L203
+- Notifications For Admins — L320
+- Viewing And Managing Users — L334
+- Reports, Flags, Complaints, And Audit Logs — L348
+- Data Correction And Support Requests — L359
+- Permission Boundaries — L372
+- Operational Cautions — L384
+- Common Admin Errors And Troubleshooting — L396
+- Escalation Notes For Technical Issues — L412
+- Admin-Facing Limitations — L434
+- Verification Notes — L445
 
 ### 12. [docs/07-user-guides/End-User-Guide.md](docs/07-user-guides/End-User-Guide.md)
 - Document Purpose — L5
