@@ -163,7 +163,8 @@ enabled, permission to read Key Vault secrets and access Blob data.
 
 Bicep creates resources; it does not move data.
 
-The later migration runbook needs to cover:
+The data copy and cutover are documented step by step in
+[`docs/06-operations/Azure-Migration-Runbook.md`](../../docs/06-operations/Azure-Migration-Runbook.md). It covers:
 
 1. `pg_dump` from the source PostgreSQL server.
 2. Restore into the target PostgreSQL server.

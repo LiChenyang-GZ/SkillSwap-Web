@@ -10,6 +10,7 @@ Detailed architecture, troubleshooting, security design, and testing strategy ar
 
 - Architecture: `docs/03-architecture/System-Architecture.md`
 - Cloud deployment background: `doc/cloud/SkillSwap-Cloud-Deployment.md`
+- Moving to another Azure subscription: `docs/06-operations/Azure-Migration-Runbook.md`
 - Local development: `docs/05-development/Local-Development-Guide.md`
 - Troubleshooting: `docs/06-operations/Troubleshooting-Guide.md`
 - Security design: `docs/03-architecture/Security-Design.md`
