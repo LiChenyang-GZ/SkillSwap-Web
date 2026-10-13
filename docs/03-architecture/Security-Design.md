@@ -79,7 +79,7 @@ flowchart LR
 | Configuration-based controls | Clerk issuer/JWKS settings, RS256 JWT validation configuration, CORS origin list, production datasource SSL mode, multipart limits, Azure Blob Storage container/SAS settings. |
 | Operational practices | GitHub Actions secret injection, Vercel environment variables, SSH-based VM deployment, Nginx/Certbot HTTPS setup, Docker log rotation. |
 | Known limitations | No documented rate limiting, WAF, centralized security monitoring, automated secret rotation, vulnerability scanning, signed images, formal retention policy, or formal penetration testing. |
-| Recommended future improvements | Add rate limiting, stricter upload validation, signed/private media access where needed, audit logging, vulnerability scanning, immutable image tags, monitoring, IaC, backup/restore documentation, and secret rotation. |
+| Recommended future improvements | Add rate limiting, stricter upload validation, signed/private media access where needed, audit logging, vulnerability scanning, immutable image tags, monitoring, using the `infra/azure` IaC for production, backup/restore documentation, and secret rotation. |
 
 ## 4. Authentication Design
 
@@ -560,7 +560,7 @@ The workflow uses GitHub Container Registry for backend image publishing. Authen
 - No signed container image process was identified.
 - No container vulnerability scanning workflow was identified.
 - No SAST or dependency security scanning workflow was identified.
-- No Infrastructure as Code definition was identified for the production VM, Nginx, NSG, database, or storage resources.
+- Bicep definitions in `infra/azure` describe the VM, base Nginx proxy, NSG, database, storage, and Key Vault, but production was provisioned manually before them and they do not include the TLS/Certbot setup.
 - SSH deployment gives the workflow operational access to the VM. Key protection and least privilege should be reviewed.
 - Branch protection rules are not visible from repository contents and therefore **Require verification**.
 
@@ -693,7 +693,7 @@ The current design relies on the following assumptions:
 - No documented admin audit logging.
 - No documented automated database migration step in production deployment.
 - No verified database backup and restore procedure in the repository.
-- No documented Infrastructure as Code for cloud resources.
+- Infrastructure as Code (`infra/azure`) exists for rebuilding cloud resources but has not been used to provision the current production environment, and does not cover TLS certificates.
 - No documented VM OS patch automation.
 - Production Nginx, NSG, Certbot, and cloud resource settings require live verification.
 
@@ -710,7 +710,7 @@ Future work should be tracked separately from implemented controls:
 - Publish immutable container image tags using commit SHA or release version.
 - Add a safer rollback procedure for backend deployments.
 - Add centralized logging, metrics, uptime checks, and security alerting.
-- Add Infrastructure as Code for Azure VM, NSG, PostgreSQL, Blob Storage, and Nginx-related configuration.
+- Extend the `infra/azure` Bicep templates to cover the HTTPS/Certbot configuration and adopt them as the source of truth for production.
 - Add a documented backup and restore procedure for PostgreSQL.
 - Add a documented secret rotation process.
 - Remove local/dev hardcoded credentials and diagnostic password preview logging.

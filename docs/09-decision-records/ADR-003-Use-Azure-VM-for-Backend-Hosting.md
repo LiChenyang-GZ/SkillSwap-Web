@@ -70,11 +70,11 @@ The backend is built into a Docker image, published to GHCR, pulled by the VM, a
 - Deployment depends on SSH access from GitHub Actions to the VM.
 - No managed container orchestration, health-based rescheduling, or autoscaling is implemented.
 - Protection against direct public access to port `8080` depends on live VM/firewall/NSG configuration and should be verified.
-- No Infrastructure as Code was found for recreating the VM and related configuration.
+- Bicep definitions for the resource group, VM (with cloud-init for Docker, Nginx and swap), VNet/NSG, public IP, PostgreSQL Flexible Server, Storage account and `media` container, Key Vault and the VM's role assignments live in `infra/azure` (see its README). The current production resources were created through the Azure portal before these templates existed; the templates are for rebuilding or migrating the platform and do not cover DNS, Certbot/TLS certificates, or deploying the backend container.
 
 ### Future Considerations
 - Move to Azure Container Apps, App Service, or another managed container platform if operational load increases.
-- Add Infrastructure as Code for VM, firewall/NSG, Nginx, database, and storage setup.
+- Extend `infra/azure` to cover TLS certificate setup and use it for the next environment rebuild, so production is reproducible from code.
 - Bind the backend container only to localhost or a private network behind Nginx if not already enforced.
 - Add centralized logs, metrics, uptime checks, and alerting.
 - Add a documented rollback path using immutable image tags.

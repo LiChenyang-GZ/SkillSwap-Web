@@ -21,11 +21,12 @@
 | 7 | API Documentation | [docs/04-api/API-Documentation.md](docs/04-api/API-Documentation.md) | All REST endpoints, request/response models, error handling, validation rules |
 | 8 | Local Development Guide | [docs/05-development/Local-Development-Guide.md](docs/05-development/Local-Development-Guide.md) | Local frontend/backend startup, database, Clerk, environment variables, running tests |
 | 9 | Deployment Runbook | [docs/06-operations/Deployment-Runbook.md](docs/06-operations/Deployment-Runbook.md) | Backend/frontend deployment, secrets list, manual fallback, rollback, migration |
-| 10 | Troubleshooting Guide | [docs/06-operations/Troubleshooting-Guide.md](docs/06-operations/Troubleshooting-Guide.md) | Symptom-based troubleshooting: frontend / backend / API / DB / storage / Docker / Nginx / CI |
-| 11 | Admin Guide | [docs/07-user-guides/Admin-Guide.md](docs/07-user-guides/Admin-Guide.md) | Admin workflows: workshop review, Memory Studio, permission boundaries |
-| 12 | End-User Guide | [docs/07-user-guides/End-User-Guide.md](docs/07-user-guides/End-User-Guide.md) | Regular user actions: sign up/in, attend, submit workshops, notifications, FAQ |
-| 13 | Testing Strategy | [docs/08-testing/Testing-Strategy.md](docs/08-testing/Testing-Strategy.md) | Backend automated testing strategy, frontend typecheck/build CI, coverage summary, CI workflows, AI-assisted testing guideline |
-| 14 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~007: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices |
+| 10 | Azure Migration Runbook | [docs/06-operations/Azure-Migration-Runbook.md](docs/06-operations/Azure-Migration-Runbook.md) | Moving the backend platform to another Azure subscription with Bicep: data and media copy, URL rewrite, secrets, DNS/TLS cutover, rollback |
+| 11 | Troubleshooting Guide | [docs/06-operations/Troubleshooting-Guide.md](docs/06-operations/Troubleshooting-Guide.md) | Symptom-based troubleshooting: frontend / backend / API / DB / storage / Docker / Nginx / CI |
+| 12 | Admin Guide | [docs/07-user-guides/Admin-Guide.md](docs/07-user-guides/Admin-Guide.md) | Admin workflows: workshop review, Memory Studio, permission boundaries |
+| 13 | End-User Guide | [docs/07-user-guides/End-User-Guide.md](docs/07-user-guides/End-User-Guide.md) | Regular user actions: sign up/in, attend, submit workshops, notifications, FAQ |
+| 14 | Testing Strategy | [docs/08-testing/Testing-Strategy.md](docs/08-testing/Testing-Strategy.md) | Backend automated testing strategy, frontend typecheck/build CI, coverage summary, CI workflows, AI-assisted testing guideline |
+| 15 | Decision Records (ADR) | [docs/09-decision-records/](docs/09-decision-records/) | ADR-001~007: rationale for Clerk / Vercel / Azure VM / PostgreSQL / Blob / CI / Nginx choices |
 
 ---
 

@@ -10,6 +10,7 @@ Detailed architecture, troubleshooting, security design, and testing strategy ar
 
 - Architecture: `docs/03-architecture/System-Architecture.md`
 - Cloud deployment background: `doc/cloud/SkillSwap-Cloud-Deployment.md`
+- Moving to another Azure subscription: `docs/06-operations/Azure-Migration-Runbook.md`
 - Local development: `docs/05-development/Local-Development-Guide.md`
 - Troubleshooting: `docs/06-operations/Troubleshooting-Guide.md`
 - Security design: `docs/03-architecture/Security-Design.md`
@@ -469,7 +470,7 @@ Frontend rollback depends on Vercel's project deployment history and permissions
 - Backend deploys `latest`; targeted rollback is possible via the immutable per-commit SHA image tags (see §13), but image rollback does not cover database schema.
 - Database migration is manual or requires verification; no workflow migration stage exists.
 - Backend deployment targets a single Azure VM.
-- No Infrastructure as Code was found for recreating cloud resources.
+- Bicep templates in `infra/azure` can recreate the cloud resources, but DNS, Certbot/TLS, data migration, and the first container deployment remain manual (see `infra/azure/README.md`).
 - Limited monitoring or alerting is documented in the repository.
 - Deployment depends on GitHub Actions availability.
 - Deployment depends on Azure VM SSH availability.
