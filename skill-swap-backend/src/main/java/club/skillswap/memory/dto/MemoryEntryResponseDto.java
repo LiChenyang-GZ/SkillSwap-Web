@@ -18,6 +18,7 @@ public record MemoryEntryResponseDto(
         String updatedBy,
         String editLockOwnerId,
         String editLockOwnerName,
-        LocalDateTime editLockExpiresAt
+        LocalDateTime editLockExpiresAt,
+        Long version
 ) {
 }

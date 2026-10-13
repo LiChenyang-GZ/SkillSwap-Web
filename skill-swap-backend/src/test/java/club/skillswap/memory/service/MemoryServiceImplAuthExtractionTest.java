@@ -130,7 +130,7 @@ class MemoryServiceImplAuthExtractionTest {
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(admin);
         when(memoryEntryRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(entry));
         when(memoryEntryRepository.existsBySlugAndIdNot("updated-memory", 11L)).thenReturn(false);
-        when(memoryEntryRepository.save(any(MemoryEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(memoryEntryRepository.saveAndFlush(any(MemoryEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = memoryService.updateMemory(
                 11L,
@@ -153,7 +153,7 @@ class MemoryServiceImplAuthExtractionTest {
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(admin);
         when(memoryEntryRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(entry));
 
-        memoryService.deleteMemory(12L, jwtAdminAuthentication(jwt));
+        memoryService.deleteMemory(12L, 0L, jwtAdminAuthentication(jwt));
 
         verify(userService).findOrCreateCurrentUser(jwt);
         verify(userService, never()).findUserByStringId(anyString());
@@ -336,7 +336,7 @@ class MemoryServiceImplAuthExtractionTest {
     }
 
     private MemoryEntryRequestDto request(String title, String slug, String status) {
-        return new MemoryEntryRequestDto(title, slug, null, "Memory content", List.of(), status, null);
+        return new MemoryEntryRequestDto(title, slug, null, "Memory content", List.of(), status, null, 0L);
     }
 
     private MemoryEntry publishedMemory(Long id, String slug) {
@@ -346,6 +346,7 @@ class MemoryServiceImplAuthExtractionTest {
         entry.setSlug(slug);
         entry.setStatus("published");
         entry.setPublishedAt(LocalDateTime.now().minusDays(1));
+        entry.setVersion(0L);
         return entry;
     }
 

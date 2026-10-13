@@ -21,6 +21,7 @@ export interface MemoryApiPayload {
   edit_lock_owner_name?: string;
   editLockExpiresAt?: string;
   edit_lock_expires_at?: string;
+  version?: number;
 }
 
 function normalizeMemoryUrl(value?: string): string {
@@ -52,5 +53,6 @@ export function mapMemoryEntry(payload: MemoryApiPayload): MemoryEntry {
     editLockOwnerId: payload.editLockOwnerId || payload.editLockOwner || payload.edit_lock_owner,
     editLockOwnerName: payload.editLockOwnerName || payload.edit_lock_owner_name,
     editLockExpiresAt: payload.editLockExpiresAt || payload.edit_lock_expires_at,
+    version: payload.version,
   };
 }

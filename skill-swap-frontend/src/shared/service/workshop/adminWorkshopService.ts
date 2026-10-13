@@ -33,17 +33,30 @@ export const adminWorkshopService = {
     );
     return enrichWorkshop(data);
   },
-  approve: async (workshopId: string, token?: string | null): Promise<void> => {
-    await apiCall<void>(`/api/v1/admin/workshops/${toBackendWorkshopId(workshopId)}/approve`, { method: 'POST' }, token);
-  },
-  reject: async (workshopId: string, comment?: string, token?: string | null): Promise<void> => {
+  approve: async (workshopId: string, version: number | undefined, token?: string | null): Promise<void> => {
     await apiCall<void>(
-      `/api/v1/admin/workshops/${toBackendWorkshopId(workshopId)}/reject`,
-      { method: 'POST', body: JSON.stringify({ comment: comment || null }) },
+      `/api/v1/admin/workshops/${toBackendWorkshopId(workshopId)}/approve`,
+      { method: 'POST', body: JSON.stringify({ version }) },
       token
     );
   },
-  cancel: async (workshopId: string, token?: string | null): Promise<void> => {
-    await apiCall<void>(`/api/v1/admin/workshops/${toBackendWorkshopId(workshopId)}/cancel`, { method: 'POST' }, token);
+  reject: async (
+    workshopId: string,
+    comment: string | undefined,
+    version: number | undefined,
+    token?: string | null
+  ): Promise<void> => {
+    await apiCall<void>(
+      `/api/v1/admin/workshops/${toBackendWorkshopId(workshopId)}/reject`,
+      { method: 'POST', body: JSON.stringify({ comment: comment || null, version }) },
+      token
+    );
+  },
+  cancel: async (workshopId: string, version: number | undefined, token?: string | null): Promise<void> => {
+    await apiCall<void>(
+      `/api/v1/admin/workshops/${toBackendWorkshopId(workshopId)}/cancel`,
+      { method: 'POST', body: JSON.stringify({ version }) },
+      token
+    );
   },
 };

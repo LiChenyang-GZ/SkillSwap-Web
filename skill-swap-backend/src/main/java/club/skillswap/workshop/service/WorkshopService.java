@@ -33,11 +33,11 @@ public interface WorkshopService {
 
     WorkshopResponseDto updatePendingWorkshop(Long workshopId, WorkshopCreateRequestDto updateRequestDto, Authentication authentication);
 
-    void approveWorkshop(Long workshopId, Authentication authentication);
+    void approveWorkshop(Long workshopId, Long expectedVersion, Authentication authentication);
 
     void rejectWorkshop(Long workshopId, WorkshopReviewRequestDto reviewRequestDto, Authentication authentication);
 
-    void cancelWorkshop(Long workshopId, Authentication authentication);
+    void cancelWorkshop(Long workshopId, Long expectedVersion, Authentication authentication);
     
     void deleteWorkshop(Long workshopId, Authentication authentication);
 

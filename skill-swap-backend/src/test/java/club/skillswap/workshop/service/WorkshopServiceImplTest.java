@@ -47,12 +47,14 @@ import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class WorkshopServiceImplTest {
 
     private static final long WORKSHOP_ID = 50L;
+    private static final long CURRENT_VERSION = 3L;
     private static final UUID FACILITATOR_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID MEMBER_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final UUID ADMIN_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -241,12 +243,12 @@ class WorkshopServiceImplTest {
         workshop.setHiddenByHost(true);
         when(workshopRepository.findById(WORKSHOP_ID)).thenReturn(java.util.Optional.of(workshop));
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(admin);
-        when(workshopRepository.save(any(Workshop.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workshopRepository.saveAndFlush(any(Workshop.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        workshopService.approveWorkshop(WORKSHOP_ID, adminAuthentication(jwt));
+        workshopService.approveWorkshop(WORKSHOP_ID, CURRENT_VERSION, adminAuthentication(jwt));
 
         ArgumentCaptor<Workshop> workshopCaptor = ArgumentCaptor.forClass(Workshop.class);
-        verify(workshopRepository).save(workshopCaptor.capture());
+        verify(workshopRepository).saveAndFlush(workshopCaptor.capture());
         Workshop savedWorkshop = workshopCaptor.getValue();
         assertThat(savedWorkshop.getStatus()).isEqualTo("approved");
         assertThat(savedWorkshop.getApprovedAt()).isNotNull();
@@ -278,16 +280,16 @@ class WorkshopServiceImplTest {
         workshop.setApprovedAt(farPastDateTime());
         when(workshopRepository.findById(WORKSHOP_ID)).thenReturn(java.util.Optional.of(workshop));
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(admin);
-        when(workshopRepository.save(any(Workshop.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workshopRepository.saveAndFlush(any(Workshop.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         workshopService.rejectWorkshop(
                 WORKSHOP_ID,
-                new WorkshopReviewRequestDto("Needs clearer materials list."),
+                new WorkshopReviewRequestDto("Needs clearer materials list.", CURRENT_VERSION),
                 adminAuthentication(jwt)
         );
 
         ArgumentCaptor<Workshop> workshopCaptor = ArgumentCaptor.forClass(Workshop.class);
-        verify(workshopRepository).save(workshopCaptor.capture());
+        verify(workshopRepository).saveAndFlush(workshopCaptor.capture());
         Workshop savedWorkshop = workshopCaptor.getValue();
         assertThat(savedWorkshop.getStatus()).isEqualTo("rejected");
         assertThat(savedWorkshop.getApprovedAt()).isNull();
@@ -323,7 +325,7 @@ class WorkshopServiceImplTest {
         when(workshopRepository.findById(WORKSHOP_ID)).thenReturn(java.util.Optional.of(workshop));
         when(azureBlobStorageService.uploadImage(any(MultipartFile.class), anyString(), eq("image/gif")))
                 .thenReturn(NEW_IMAGE_URL);
-        when(workshopRepository.save(any(Workshop.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workshopRepository.saveAndFlush(any(Workshop.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(participantRepository.findByWorkshopIdWithUser(WORKSHOP_ID)).thenReturn(List.of());
 
         var result = workshopService.uploadWorkshopImage(WORKSHOP_ID, file, adminAuthentication(jwt));
@@ -335,7 +337,7 @@ class WorkshopServiceImplTest {
         verify(azureBlobStorageService).deleteByUrlQuietly(OLD_IMAGE_URL);
 
         ArgumentCaptor<Workshop> workshopCaptor = ArgumentCaptor.forClass(Workshop.class);
-        verify(workshopRepository).save(workshopCaptor.capture());
+        verify(workshopRepository).saveAndFlush(workshopCaptor.capture());
         assertThat(workshopCaptor.getValue().getImageUrl()).isEqualTo(NEW_IMAGE_URL);
     }
 
@@ -523,6 +525,60 @@ class WorkshopServiceImplTest {
         return response;
     }
 
+    @Test
+    @DisplayName("Rejects approving from a stale version without changing the workshop or notifying anyone.")
+    void shouldRejectApproveWithStaleVersion() {
+        Jwt jwt = jwt("admin-stale-approve");
+        Workshop workshop = pendingWorkshop(WORKSHOP_ID, facilitator());
+        when(workshopRepository.findById(WORKSHOP_ID)).thenReturn(java.util.Optional.of(workshop));
+
+        assertThatThrownBy(() -> workshopService.approveWorkshop(
+                WORKSHOP_ID, CURRENT_VERSION - 1, adminAuthentication(jwt)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(ex.getReason()).isEqualTo(
+                            "This workshop was changed by another admin. Reload it to see the latest version.");
+                });
+
+        assertThat(workshop.getStatus()).isEqualTo("pending");
+        verify(workshopRepository, never()).saveAndFlush(any(Workshop.class));
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("Rejects a reject request that omits the version with 400 Bad Request.")
+    void shouldRejectRejectWithoutVersion() {
+        Jwt jwt = jwt("admin-missing-version-reject");
+        Workshop workshop = pendingWorkshop(WORKSHOP_ID, facilitator());
+        when(workshopRepository.findById(WORKSHOP_ID)).thenReturn(java.util.Optional.of(workshop));
+
+        assertThatThrownBy(() -> workshopService.rejectWorkshop(
+                WORKSHOP_ID, new WorkshopReviewRequestDto("No version", null), adminAuthentication(jwt)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        assertThat(workshop.getStatus()).isEqualTo("pending");
+        verify(workshopRepository, never()).saveAndFlush(any(Workshop.class));
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("Rejects an admin edit built from a stale version.")
+    void shouldRejectAdminUpdateWithStaleVersion() {
+        Jwt jwt = jwt("admin-stale-edit");
+        Workshop workshop = pendingWorkshop(WORKSHOP_ID, facilitator());
+        workshop.setVersion(CURRENT_VERSION + 1);
+        when(workshopRepository.findById(WORKSHOP_ID)).thenReturn(java.util.Optional.of(workshop));
+
+        assertThatThrownBy(() -> workshopService.updatePendingWorkshop(
+                WORKSHOP_ID, createRequest(), adminAuthentication(jwt)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(workshopRepository, never()).saveAndFlush(any(Workshop.class));
+        verifyNoInteractions(notificationService);
+    }
+
     private WorkshopCreateRequestDto createRequest() {
         return new WorkshopCreateRequestDto(
                 "Taylor Host",
@@ -546,7 +602,8 @@ class WorkshopServiceImplTest {
                 "Taylor, Sam",
                 false,
                 "pending",
-                true
+                true,
+                CURRENT_VERSION
         );
     }
 
@@ -595,6 +652,7 @@ class WorkshopServiceImplTest {
     private Workshop baseWorkshop(Long id, UserAccount facilitator) {
         Workshop workshop = new Workshop();
         workshop.setId(id);
+        workshop.setVersion(CURRENT_VERSION);
         workshop.setTitle("Community Pottery");
         workshop.setDescription("A hands-on pottery workshop.");
         workshop.setCategory("Art");

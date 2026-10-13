@@ -11,3 +11,6 @@ export const MEMORY_STUDIO_SAVE_FAILED = "Failed to save memory.";
 export const MEMORY_STUDIO_SLUG_EXISTS_FAILED = "A memory with the same title already exists. Please change the title and save again.";
 export const MEMORY_STUDIO_DELETE_FAILED = "Failed to delete memory.";
 export const MEMORY_STUDIO_STATUS_FAILED = "Failed to update memory status.";
+export const MEMORY_STUDIO_STALE_SAVE =
+  "Another admin changed this memory after you opened it, so your save was not applied. Copy your edits, then reload the page to get the latest version.";
+export const MEMORY_STUDIO_STALE_ACTION = "Another admin changed this memory. Reload the page to get the latest version.";

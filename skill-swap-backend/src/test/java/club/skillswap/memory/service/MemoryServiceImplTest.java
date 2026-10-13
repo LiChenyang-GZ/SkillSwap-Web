@@ -49,6 +49,7 @@ class MemoryServiceImplTest {
             "DefaultEndpointsProtocol=https;AccountName=skillswaptest;AccountKey=fake;EndpointSuffix=core.windows.net";
     private static final String AZURE_BASE_URL = "https://skillswaptest.blob.core.windows.net/media";
     private static final long EDIT_LOCK_SECONDS = 60L;
+    private static final long CURRENT_VERSION = 4L;
     private static final UUID ADMIN_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static final UUID OTHER_ADMIN_ID = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
     private static final LocalDateTime PUBLISHED_AT = LocalDateTime.of(2025, 1, 10, 9, 30);
@@ -195,7 +196,7 @@ class MemoryServiceImplTest {
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(admin);
         when(memoryEntryRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(entry));
         when(memoryEntryRepository.existsBySlugAndIdNot("published-memory", 20L)).thenReturn(false);
-        when(memoryEntryRepository.save(any(MemoryEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(memoryEntryRepository.saveAndFlush(any(MemoryEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = memoryService.updateMemory(
                 20L,
@@ -211,7 +212,7 @@ class MemoryServiceImplTest {
         assertThat(entry.getCoverUrl()).isEqualTo(azureUrl("cover.jpg"));
         assertThat(entry.getContent()).isEqualTo("Existing content");
         assertThat(entry.getUpdatedBy()).isSameAs(admin);
-        verify(memoryEntryRepository).save(entry);
+        verify(memoryEntryRepository).saveAndFlush(entry);
     }
 
     @Test
@@ -224,7 +225,7 @@ class MemoryServiceImplTest {
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(admin);
         when(memoryEntryRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(entry));
         when(memoryEntryRepository.existsBySlugAndIdNot("draft-memory", 21L)).thenReturn(false);
-        when(memoryEntryRepository.save(any(MemoryEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(memoryEntryRepository.saveAndFlush(any(MemoryEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var result = memoryService.updateMemory(
                 21L,
@@ -237,7 +238,7 @@ class MemoryServiceImplTest {
         assertThat(entry.getEditLockOwner()).isNull();
         assertThat(entry.getEditLockAcquiredAt()).isNull();
         assertThat(entry.getEditLockExpiresAt()).isNull();
-        verify(memoryEntryRepository).save(entry);
+        verify(memoryEntryRepository).saveAndFlush(entry);
     }
 
     @Test
@@ -264,7 +265,7 @@ class MemoryServiceImplTest {
         assertThat(entry.getEditLockOwner()).isNull();
         assertThat(entry.getEditLockAcquiredAt()).isNull();
         assertThat(entry.getEditLockExpiresAt()).isNull();
-        verify(memoryEntryRepository, never()).save(any(MemoryEntry.class));
+        verify(memoryEntryRepository, never()).saveAndFlush(any(MemoryEntry.class));
     }
 
     @Test
@@ -394,7 +395,7 @@ class MemoryServiceImplTest {
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(adminUser());
         when(memoryEntryRepository.findByIdForUpdate(28L)).thenReturn(Optional.of(entry));
 
-        memoryService.deleteMemory(28L, adminAuthentication(jwt));
+        memoryService.deleteMemory(28L, CURRENT_VERSION, adminAuthentication(jwt));
 
         verify(memoryEntryRepository).delete(entry);
         ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
@@ -426,7 +427,7 @@ class MemoryServiceImplTest {
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(adminUser());
         when(memoryEntryRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(entry));
 
-        memoryService.deleteMemory(30L, adminAuthentication(jwt));
+        memoryService.deleteMemory(30L, CURRENT_VERSION, adminAuthentication(jwt));
 
         verify(memoryEntryRepository).delete(entry);
         ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
@@ -446,7 +447,7 @@ class MemoryServiceImplTest {
         when(userService.findOrCreateCurrentUser(jwt)).thenReturn(adminUser());
         when(memoryEntryRepository.findByIdForUpdate(29L)).thenReturn(Optional.of(entry));
 
-        memoryService.deleteMemory(29L, adminAuthentication(jwt));
+        memoryService.deleteMemory(29L, CURRENT_VERSION, adminAuthentication(jwt));
 
         verify(memoryEntryRepository).delete(entry);
         verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
@@ -473,6 +474,64 @@ class MemoryServiceImplTest {
         assertThat(pathCaptor.getValue()).matches("memory/[0-9a-fA-F-]{36}\\.gif");
     }
 
+    @Test
+    @DisplayName("Rejects a memory update built from a stale version with 409 Conflict.")
+    void shouldRejectMemoryUpdateWithStaleVersion() {
+        Jwt jwt = jwt("admin-stale-update");
+        MemoryEntry entry = publishedMemory(40L, "Published Memory", "published-memory");
+        entry.setContent("Saved by another admin");
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(adminUser());
+        when(memoryEntryRepository.findByIdForUpdate(40L)).thenReturn(Optional.of(entry));
+
+        MemoryEntryRequestDto staleRequest = new MemoryEntryRequestDto(
+                null, null, null, "Edited from an old copy", null, "published", null, CURRENT_VERSION - 1);
+
+        assertThatThrownBy(() -> memoryService.updateMemory(40L, staleRequest, adminAuthentication(jwt)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(ex.getReason()).isEqualTo(
+                            "This memory was changed by another admin. Reload it to see the latest version.");
+                });
+
+        assertThat(entry.getContent()).isEqualTo("Saved by another admin");
+        verify(memoryEntryRepository, never()).saveAndFlush(any(MemoryEntry.class));
+    }
+
+    @Test
+    @DisplayName("Rejects a memory update that omits the version with 400 Bad Request.")
+    void shouldRejectMemoryUpdateWithoutVersion() {
+        Jwt jwt = jwt("admin-missing-version-update");
+        MemoryEntry entry = publishedMemory(41L, "Published Memory", "published-memory");
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(adminUser());
+        when(memoryEntryRepository.findByIdForUpdate(41L)).thenReturn(Optional.of(entry));
+
+        MemoryEntryRequestDto unversionedRequest = new MemoryEntryRequestDto(
+                null, null, null, "No version", null, "published", null, null);
+
+        assertThatThrownBy(() -> memoryService.updateMemory(41L, unversionedRequest, adminAuthentication(jwt)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verify(memoryEntryRepository, never()).saveAndFlush(any(MemoryEntry.class));
+    }
+
+    @Test
+    @DisplayName("Rejects deleting a memory from a stale version so newer edits are not discarded.")
+    void shouldRejectMemoryDeleteWithStaleVersion() {
+        Jwt jwt = jwt("admin-stale-delete");
+        MemoryEntry entry = publishedMemory(42L, "Published Memory", "published-memory");
+        entry.setCoverUrl(azureUrl("cover.jpg"));
+        when(userService.findOrCreateCurrentUser(jwt)).thenReturn(adminUser());
+        when(memoryEntryRepository.findByIdForUpdate(42L)).thenReturn(Optional.of(entry));
+
+        assertThatThrownBy(() -> memoryService.deleteMemory(42L, CURRENT_VERSION - 1, adminAuthentication(jwt)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex ->
+                        assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+
+        verify(memoryEntryRepository, never()).delete(any(MemoryEntry.class));
+        verify(azureBlobStorageService, never()).deleteByUrlQuietly(anyString());
+    }
+
     private MemoryEntryRequestDto request(
             String title,
             String slug,
@@ -482,7 +541,7 @@ class MemoryServiceImplTest {
             String status,
             LocalDateTime publishedAt
     ) {
-        return new MemoryEntryRequestDto(title, slug, coverUrl, content, mediaUrls, status, publishedAt);
+        return new MemoryEntryRequestDto(title, slug, coverUrl, content, mediaUrls, status, publishedAt, CURRENT_VERSION);
     }
 
     private MemoryEntry publishedMemory(Long id, String title, String slug) {
@@ -501,6 +560,7 @@ class MemoryServiceImplTest {
         entry.setTitle(title);
         entry.setSlug(slug);
         entry.setStatus(status);
+        entry.setVersion(CURRENT_VERSION);
         return entry;
     }
 

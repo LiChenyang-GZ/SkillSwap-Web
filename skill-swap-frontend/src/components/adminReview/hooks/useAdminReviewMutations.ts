@@ -60,6 +60,11 @@ export function useAdminReviewMutations({
     return raw;
   };
 
+  const STALE_WORKSHOP_MESSAGE = 'Another admin changed this workshop. It has been reloaded with the latest version.';
+
+  const isStaleVersionError = (error: unknown) =>
+    typeof error === 'object' && error !== null && (error as { status?: number }).status === 409;
+
   const handleSave = async () => {
     if (!selectedWorkshop || !selectedHasDetail || !isAuthenticated) return;
 
@@ -99,6 +104,7 @@ export function useAdminReviewMutations({
         eventSubmitted: formData.eventSubmitted === 'true',
         usuApprovalStatus: formData.usuApprovalStatus,
         detailsConfirmed: formData.detailsConfirmed,
+        version: selectedWorkshop.version,
       };
 
       let updated = await adminWorkshopService.update(selectedWorkshop.id, payload, token);
@@ -113,6 +119,13 @@ export function useAdminReviewMutations({
       toast.success('Workshop updated successfully.');
     } catch (error) {
       console.error('Failed to update workshop:', error);
+      if (isStaleVersionError(error)) {
+        // Not reloading here: that would overwrite the form before the admin can copy their edits.
+        toast.error(
+          'Another admin changed this workshop after you opened it, so your edits were not saved. Copy them, then reload the page.'
+        );
+        return;
+      }
       toast.error(parseErrorMessage(error, 'Failed to update workshop.'));
     } finally {
       setIsSaving(false);
@@ -126,7 +139,7 @@ export function useAdminReviewMutations({
     try {
       const token = await getAuthToken();
       if (!token) throw new Error('Authentication token unavailable');
-      await adminWorkshopService.approve(selectedWorkshop.id, token);
+      await adminWorkshopService.approve(selectedWorkshop.id, selectedWorkshop.version, token);
       toast.success('Workshop approved.');
       setWorkshops((prev) =>
         prev.map((workshop) =>
@@ -141,6 +154,11 @@ export function useAdminReviewMutations({
       refreshWorkshops();
     } catch (error) {
       console.error('Failed to approve workshop:', error);
+      if (isStaleVersionError(error)) {
+        toast.error(STALE_WORKSHOP_MESSAGE);
+        refreshWorkshops();
+        return;
+      }
       toast.error('Failed to approve workshop.');
     } finally {
       setIsSaving(false);
@@ -154,7 +172,12 @@ export function useAdminReviewMutations({
     try {
       const token = await getAuthToken();
       if (!token) throw new Error('Authentication token unavailable');
-      await adminWorkshopService.reject(selectedWorkshop.id, rejectComment || undefined, token);
+      await adminWorkshopService.reject(
+        selectedWorkshop.id,
+        rejectComment || undefined,
+        selectedWorkshop.version,
+        token
+      );
       toast.success('Workshop rejected.');
       setWorkshops((prev) =>
         prev.map((workshop) =>
@@ -170,6 +193,11 @@ export function useAdminReviewMutations({
       refreshWorkshops();
     } catch (error) {
       console.error('Failed to reject workshop:', error);
+      if (isStaleVersionError(error)) {
+        toast.error(STALE_WORKSHOP_MESSAGE);
+        refreshWorkshops();
+        return;
+      }
       toast.error('Failed to reject workshop.');
     } finally {
       setIsSaving(false);
@@ -183,7 +211,7 @@ export function useAdminReviewMutations({
     try {
       const token = await getAuthToken();
       if (!token) throw new Error('Authentication token unavailable');
-      await adminWorkshopService.cancel(selectedWorkshop.id, token);
+      await adminWorkshopService.cancel(selectedWorkshop.id, selectedWorkshop.version, token);
       toast.success('Workshop cancelled.');
       setWorkshops((prev) =>
         prev.map((workshop) =>
@@ -198,6 +226,11 @@ export function useAdminReviewMutations({
       refreshWorkshops();
     } catch (error) {
       console.error('Failed to cancel workshop:', error);
+      if (isStaleVersionError(error)) {
+        toast.error(STALE_WORKSHOP_MESSAGE);
+        refreshWorkshops();
+        return;
+      }
       toast.error('Failed to cancel workshop.');
     } finally {
       setIsSaving(false);

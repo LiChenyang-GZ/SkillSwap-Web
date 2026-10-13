@@ -7,6 +7,8 @@ import {
   MEMORY_STUDIO_DELETE_FAILED,
   MEMORY_STUDIO_SAVE_FAILED,
   MEMORY_STUDIO_SLUG_EXISTS_FAILED,
+  MEMORY_STUDIO_STALE_ACTION,
+  MEMORY_STUDIO_STALE_SAVE,
   MEMORY_STUDIO_STATUS_FAILED,
 } from "../constants/memoryMessages";
 import type { ParsedMemoryDocument } from "../models/memoryFormModel";
@@ -80,6 +82,7 @@ export function useMemoryStudioMutations({
         content: documentText,
         status: statusToPersist,
         mediaUrls: parsedDoc.mediaUrls,
+        version: selectedEntry?.version,
       };
 
       if (selectedId) {
@@ -116,6 +119,11 @@ export function useMemoryStudioMutations({
         toast.info(msg);
         return;
       }
+      if (status === 409) {
+        // Keep the editor as-is so the admin can copy their edits before reloading.
+        toast.error(MEMORY_STUDIO_STALE_SAVE);
+        return;
+      }
       toast.error(MEMORY_STUDIO_SAVE_FAILED);
     } finally {
       setIsSaving(false);
@@ -139,7 +147,7 @@ export function useMemoryStudioMutations({
 
     setIsSaving(true);
     try {
-      await memoryAdminService.deleteByAdmin(deleteDialogEntry.id, token);
+      await memoryAdminService.deleteByAdmin(deleteDialogEntry.id, deleteDialogEntry.version, token);
       if (heldLockEntryIdRef.current === deleteDialogEntry.id) {
         heldLockEntryIdRef.current = null;
       }
@@ -153,6 +161,10 @@ export function useMemoryStudioMutations({
         const msg = getMemoryErrorMessage(error) || "This memory is currently locked. Re-open it to acquire the edit lock.";
         setLockMessage(msg);
         toast.info(msg);
+        return;
+      }
+      if (status === 409) {
+        toast.error(MEMORY_STUDIO_STALE_ACTION);
         return;
       }
       toast.error(MEMORY_STUDIO_DELETE_FAILED);
@@ -176,7 +188,11 @@ export function useMemoryStudioMutations({
 
     setIsSaving(true);
     try {
-      const updated = await memoryAdminService.updateByAdmin(entry.id, { status: nextStatus }, token);
+      const updated = await memoryAdminService.updateByAdmin(
+        entry.id,
+        { status: nextStatus, version: entry.version },
+        token
+      );
       setEntries((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
       if (selectedId === entry.id) {
         setSelectedStatus(updated.status || nextStatus);
@@ -189,6 +205,10 @@ export function useMemoryStudioMutations({
         const msg = getMemoryErrorMessage(error) || "This draft is currently locked by another admin.";
         setLockMessage(msg);
         toast.info(msg);
+        return;
+      }
+      if (status === 409) {
+        toast.error(MEMORY_STUDIO_STALE_ACTION);
         return;
       }
       toast.error(MEMORY_STUDIO_STATUS_FAILED);

@@ -32,9 +32,10 @@ export const memoryAdminService = {
     return mapMemoryEntry(data);
   },
 
-  deleteByAdmin: async (id: string, token?: string | null): Promise<void> => {
+  deleteByAdmin: async (id: string, version: number | undefined, token?: string | null): Promise<void> => {
+    const query = version === undefined ? "" : `?version=${encodeURIComponent(version)}`;
     await apiCall<void>(
-      `/api/v1/admin/memories/${id}`,
+      `/api/v1/admin/memories/${id}${query}`,
       {
         method: "DELETE",
       },

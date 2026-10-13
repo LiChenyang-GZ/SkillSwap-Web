@@ -78,5 +78,8 @@ public record WorkshopCreateRequestDto(
 
     @NotNull(message = "Details confirmation is required.")
     @AssertTrue(message = "You must confirm that the details are accurate.")
-    Boolean detailsConfirmed
+    Boolean detailsConfirmed,
+
+    // The version the admin read; required on admin update, ignored on create.
+    Long version
 ) {}

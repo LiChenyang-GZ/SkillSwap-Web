@@ -19,7 +19,7 @@ public interface MemoryService {
 
     MemoryEntryResponseDto updateMemory(Long id, MemoryEntryRequestDto requestDto, Authentication authentication);
 
-    void deleteMemory(Long id, Authentication authentication);
+    void deleteMemory(Long id, Long expectedVersion, Authentication authentication);
 
     MemoryEntryResponseDto acquireEditLock(Long id, Authentication authentication);
 
