@@ -70,8 +70,7 @@ Nginx handles public HTTP/HTTPS traffic, redirects HTTP to HTTPS, terminates TLS
 - Troubleshooting production API failures requires checking Nginx, Docker, and backend logs together.
 
 ### Future Considerations
-- Store a sanitized Nginx configuration template in documentation or infrastructure code.
-- Add Infrastructure as Code for VM, firewall/NSG, Nginx, and certificate setup.
+- `infra/azure/cloud-init/backend-vm.yaml` now provisions the base Nginx reverse-proxy site (HTTP to `127.0.0.1:8080`), and the Bicep NSG opens only 22, 80, and 443. Extend it with the Certbot and HTTPS server configuration used in production.
 - Add monitoring for certificate expiry, Nginx health, and backend upstream health.
 - Consider binding the backend container only to localhost or a private Docker network.
 - Add rate limiting or request size controls in Nginx if upload/API abuse becomes a concern.
