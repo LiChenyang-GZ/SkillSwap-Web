@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+    # Only a backend change or a change to this workflow needs a new image;
+    # docs, frontend and infra/ commits would otherwise restart the API for nothing.
+    paths:
+      - 'skill-swap-backend/**'
+      - '.github/workflows/deploy.yml'
+  # Redeploy without a code change, e.g. after rotating a secret.
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
