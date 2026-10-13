@@ -12,9 +12,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OptimisticLock;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -60,14 +62,19 @@ public class MemoryEntry {
     @JoinColumn(name = "updated_by")
     private UserAccount updatedBy;
 
+    // Edit-lock bookkeeping is excluded from optimistic locking: the editor renews its lock on a
+    // heartbeat, and that must not invalidate the version the lock holder is about to save with.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "edit_lock_owner")
+    @OptimisticLock(excluded = true)
     private UserAccount editLockOwner;
 
     @Column(name = "edit_lock_acquired_at")
+    @OptimisticLock(excluded = true)
     private LocalDateTime editLockAcquiredAt;
 
     @Column(name = "edit_lock_expires_at")
+    @OptimisticLock(excluded = true)
     private LocalDateTime editLockExpiresAt;
 
     @CreationTimestamp
@@ -77,6 +84,10 @@ public class MemoryEntry {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @OneToMany(mappedBy = "entry", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<MemoryMedia> media = new ArrayList<>();

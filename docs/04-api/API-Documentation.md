@@ -108,6 +108,16 @@ Application-thrown authentication/authorization failures use `ResponseStatusExce
 | Empty response | `204 No Content` for `GET /health`, `DELETE /api/v1/admin/memories/{id}`, and `DELETE /api/v1/admin/memories/{id}/lock`. |
 | Error response | Usually `ErrorResponseDto`: `{ "timestamp", "status", "error", "message", "path" }`. |
 
+### Optimistic Locking For Admin Writes
+
+`WorkshopResponseDto` and `MemoryEntryResponseDto` include a `version` number. Admin writes that change a workshop or memory must send back the `version` the admin last read:
+
+- `PUT /api/v1/admin/workshops/{id}`, `POST .../approve`, `POST .../reject`, `POST .../cancel`: `version` in the JSON body.
+- `PUT /api/v1/admin/memories/{id}`: `version` in the JSON body.
+- `DELETE /api/v1/admin/memories/{id}`: `?version=` query parameter.
+
+A missing `version` returns `400`. A `version` that no longer matches returns `409 Conflict`, and nothing is written. Clients should reload the record and let the admin re-apply their change. Each successful write returns the new `version`. Draft edit-lock acquire/renew/release (`/lock`) does not change `version`. Workshop image upload does not check `version`, but it does increase it.
+
 ### Date And Time Formats
 
 Inferred from DTO types and Jackson defaults:
@@ -136,10 +146,10 @@ Inferred from DTO types and Jackson defaults:
 | GET | `/api/v1/admin/workshops` | Admin list all workshops | Yes | Admin | None | `WorkshopResponseDto[]` | `AdminWorkshopController` |
 | GET | `/api/v1/admin/workshops/pending` | Admin list pending workshops | Yes | Admin | None | `WorkshopResponseDto[]` | `AdminWorkshopController` |
 | GET | `/api/v1/admin/workshops/{id}` | Workshop detail through admin route | Yes | Admin | None | `WorkshopResponseDto` | `AdminWorkshopController` |
-| PUT | `/api/v1/admin/workshops/{id}` | Admin update editable workshop details | Yes | Admin | `WorkshopCreateRequestDto` | `WorkshopResponseDto` | `AdminWorkshopController` |
-| POST | `/api/v1/admin/workshops/{id}/approve` | Approve pending workshop | Yes | Admin | None | `ApiMessageDto` | `AdminWorkshopController` |
-| POST | `/api/v1/admin/workshops/{id}/reject` | Reject pending workshop | Yes | Admin | `WorkshopReviewRequestDto` optional | `ApiMessageDto` | `AdminWorkshopController` |
-| POST | `/api/v1/admin/workshops/{id}/cancel` | Cancel eligible workshop | Yes | Admin | None | `ApiMessageDto` | `AdminWorkshopController` |
+| PUT | `/api/v1/admin/workshops/{id}` | Admin update editable workshop details | Yes | Admin | `WorkshopCreateRequestDto` with `version` | `WorkshopResponseDto` | `AdminWorkshopController` |
+| POST | `/api/v1/admin/workshops/{id}/approve` | Approve pending workshop | Yes | Admin | `WorkshopActionRequestDto` (`version`) | `ApiMessageDto` | `AdminWorkshopController` |
+| POST | `/api/v1/admin/workshops/{id}/reject` | Reject pending workshop | Yes | Admin | `WorkshopReviewRequestDto` (`comment`, `version`) | `ApiMessageDto` | `AdminWorkshopController` |
+| POST | `/api/v1/admin/workshops/{id}/cancel` | Cancel eligible workshop | Yes | Admin | `WorkshopActionRequestDto` (`version`) | `ApiMessageDto` | `AdminWorkshopController` |
 | POST | `/api/v1/admin/workshops/{id}/image` | Upload workshop image | Yes | Admin | multipart `file` | `WorkshopResponseDto` | `AdminWorkshopController` |
 | GET | `/api/v1/admin/hello` | Admin protected check endpoint | Yes | Admin | None | Plain text | `AdminController` |
 | GET | `/api/v1/users/me` | Current user profile | Yes | Member | None | `UserProfileDto` | `UserController` |
@@ -156,8 +166,8 @@ Inferred from DTO types and Jackson defaults:
 | GET | `/api/v1/memories/{slug}` | Get published memory by slug | No | None | None | `MemoryEntryResponseDto` | `MemoryController` |
 | GET | `/api/v1/admin/memories` | Admin list all memory entries | Yes | Admin | None | `MemoryEntryResponseDto[]` | `AdminMemoryController` |
 | POST | `/api/v1/admin/memories` | Admin create memory entry | Yes | Admin | `MemoryEntryRequestDto` | `201 MemoryEntryResponseDto` | `AdminMemoryController` |
-| PUT | `/api/v1/admin/memories/{id}` | Admin update memory entry | Yes | Admin | `MemoryEntryRequestDto` | `MemoryEntryResponseDto` | `AdminMemoryController` |
-| DELETE | `/api/v1/admin/memories/{id}` | Admin delete memory entry | Yes | Admin | None | `204 No Content` | `AdminMemoryController` |
+| PUT | `/api/v1/admin/memories/{id}` | Admin update memory entry | Yes | Admin | `MemoryEntryRequestDto` with `version` | `MemoryEntryResponseDto` | `AdminMemoryController` |
+| DELETE | `/api/v1/admin/memories/{id}` | Admin delete memory entry | Yes | Admin | Query `version` | `204 No Content` | `AdminMemoryController` |
 | POST | `/api/v1/admin/memories/{id}/lock` | Acquire draft edit lock | Yes | Admin | None | `MemoryEntryResponseDto` | `AdminMemoryController` |
 | DELETE | `/api/v1/admin/memories/{id}/lock` | Release draft edit lock | Yes | Admin | None | `204 No Content` | `AdminMemoryController` |
 | POST | `/api/v1/admin/memories/media` | Upload memory media | Yes | Admin | multipart `file` | `201 MemoryMediaUploadResponseDto` | `AdminMemoryController` |
@@ -970,7 +980,8 @@ curl -X PUT "<API_BASE_URL>/api/v1/admin/workshops/<WORKSHOP_ID>" \
     "isOnline": false,
     "location": "Room TBC",
     "contactNumber": "0412345678",
-    "detailsConfirmed": true
+    "detailsConfirmed": true,
+    "version": 3
   }'
 ```
 
@@ -978,15 +989,16 @@ Example response: `WorkshopResponseDto` for the updated workshop.
 
 Error cases:
 
-- `400`: validation failure, completed/cancelled workshop, already-started workshop, invalid `usuApprovalStatus`.
+- `400`: validation failure, missing `version`, completed/cancelled workshop, already-started workshop, invalid `usuApprovalStatus`.
 - `401`: missing/invalid authentication.
 - `403`: caller is not admin.
 - `404`: workshop not found.
+- `409`: `version` is stale because another admin changed the workshop after it was read. Reload and retry.
 
 #### POST `/api/v1/admin/workshops/{id}/approve`
 
 - Purpose: approve a pending workshop.
-- Request body: none.
+- Request body schema: `WorkshopActionRequestDto` — `{ "version": <number> }`.
 - Successful response: `200 ApiMessageDto`.
 - Source: `AdminWorkshopController`, `WorkshopServiceImpl.approveWorkshop`; directly verified.
 
@@ -994,7 +1006,9 @@ Example request:
 
 ```bash
 curl -X POST "<API_BASE_URL>/api/v1/admin/workshops/<WORKSHOP_ID>/approve" \
-  -H "Authorization: Bearer <JWT_TOKEN>"
+  -H "Authorization: Bearer <JWT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{ "version": 3 }'
 ```
 
 Example response:
@@ -1007,13 +1021,14 @@ Example response:
 
 Error cases:
 
-- `400`: only pending workshops can be approved.
+- `400`: only pending workshops can be approved, or `version` is missing.
 - `401`, `403`, `404`.
+- `409`: `version` is stale because another admin changed the workshop after it was read. Reload and retry.
 
 #### POST `/api/v1/admin/workshops/{id}/reject`
 
 - Purpose: reject a pending workshop.
-- Request body schema: optional `WorkshopReviewRequestDto`.
+- Request body schema: `WorkshopReviewRequestDto` — `{ "comment": <string|null>, "version": <number> }`.
 - Successful response: `200 ApiMessageDto`.
 - Source: `AdminWorkshopController`, `WorkshopServiceImpl.rejectWorkshop`; directly verified.
 
@@ -1023,7 +1038,7 @@ Example request:
 curl -X POST "<API_BASE_URL>/api/v1/admin/workshops/<WORKSHOP_ID>/reject" \
   -H "Authorization: Bearer <JWT_TOKEN>" \
   -H "Content-Type: application/json" \
-  -d '{ "comment": "Please clarify the venue requirements." }'
+  -d '{ "comment": "Please clarify the venue requirements.", "version": 3 }'
 ```
 
 Example response:
@@ -1036,13 +1051,14 @@ Example response:
 
 Error cases:
 
-- `400`: only pending workshops can be rejected.
+- `400`: only pending workshops can be rejected, or `version` is missing.
 - `401`, `403`, `404`.
+- `409`: `version` is stale because another admin changed the workshop after it was read. Reload and retry.
 
 #### POST `/api/v1/admin/workshops/{id}/cancel`
 
 - Purpose: cancel an eligible workshop before it starts.
-- Request body: none.
+- Request body schema: `WorkshopActionRequestDto` — `{ "version": <number> }`.
 - Successful response: `200 ApiMessageDto`.
 - Source: `AdminWorkshopController`, `WorkshopServiceImpl.cancelWorkshop`; directly verified.
 
@@ -1050,7 +1066,9 @@ Example request:
 
 ```bash
 curl -X POST "<API_BASE_URL>/api/v1/admin/workshops/<WORKSHOP_ID>/cancel" \
-  -H "Authorization: Bearer <JWT_TOKEN>"
+  -H "Authorization: Bearer <JWT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{ "version": 3 }'
 ```
 
 Example response:
@@ -1063,8 +1081,9 @@ Example response:
 
 Error cases:
 
-- `400`: completed/cancelled workshop or already-started workshop.
+- `400`: completed/cancelled workshop, already-started workshop, or missing `version`.
 - `401`, `403`, `404`.
+- `409`: `version` is stale because another admin changed the workshop after it was read. Reload and retry.
 
 #### POST `/api/v1/admin/workshops/{id}/image`
 
@@ -1384,6 +1403,7 @@ Error cases:
 - Source: `AdminMemoryController`, `MemoryServiceImpl`; directly verified.
 - Important implementation behaviour: if `status` is omitted, `applyPayload` normalizes it to `draft`. Include the intended status in update requests.
 - Draft update rule: if the entry is currently `draft`, the caller must hold an active edit lock.
+- Versioning: `version` is required and must match the current version (see Optimistic Locking For Admin Writes).
 
 Example request:
 
@@ -1397,7 +1417,8 @@ curl -X PUT "<API_BASE_URL>/api/v1/admin/memories/<MEMORY_ID>" \
     "coverUrl": "<IMAGE_URL>",
     "content": "# Updated content",
     "mediaUrls": ["<IMAGE_URL>"],
-    "status": "published"
+    "status": "published",
+    "version": 2
   }'
 ```
 
@@ -1405,15 +1426,17 @@ Example response: `MemoryEntryResponseDto` with updated fields.
 
 Error cases:
 
-- `400`: duplicate slug, unsupported status, missing body, invalid field length, or non-Azure Blob `coverUrl`/`mediaUrls`.
+- `400`: duplicate slug, unsupported status, missing body, missing `version`, invalid field length, or non-Azure Blob `coverUrl`/`mediaUrls`.
 - `401`, `403`.
 - `404`: memory not found.
+- `409`: `version` is stale because another admin changed the memory after it was read. Reload and retry.
 - `423`: draft not locked by caller or locked by another admin.
 
 #### DELETE `/api/v1/admin/memories/{id}`
 
 - Purpose: delete a memory entry and attempt cleanup of related media URLs.
 - Path parameters: `id` as memory ID.
+- Query parameters: `version` (required), the version the admin last read.
 - Request body: none.
 - Successful response: `204 No Content`.
 - Source: `AdminMemoryController`, `MemoryServiceImpl.deleteMemory`; directly verified.
@@ -1422,7 +1445,7 @@ Error cases:
 Example request:
 
 ```bash
-curl -X DELETE "<API_BASE_URL>/api/v1/admin/memories/<MEMORY_ID>" \
+curl -X DELETE "<API_BASE_URL>/api/v1/admin/memories/<MEMORY_ID>?version=2" \
   -H "Authorization: Bearer <JWT_TOKEN>"
 ```
 
@@ -1434,8 +1457,10 @@ HTTP/1.1 204 No Content
 
 Error cases:
 
+- `400`: missing `version`.
 - `401`, `403`.
 - `404`: memory not found.
+- `409`: `version` is stale because another admin changed the memory after it was read. Reload and retry.
 - `423`: draft lock failure.
 
 #### POST `/api/v1/admin/memories/{id}/lock`

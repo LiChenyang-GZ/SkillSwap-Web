@@ -1,5 +1,6 @@
 package club.skillswap.workshop.service;
 
+import club.skillswap.common.concurrency.VersionGuard;
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.common.storage.AzureBlobStorageService;
 import club.skillswap.common.validation.ImageUploadValidator;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 public class WorkshopServiceImpl implements WorkshopService {
 
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
+    private static final String VERSIONED_RESOURCE = "workshop";
 
     private final WorkshopRepository workshopRepository;
     private final UserService userService;
@@ -233,6 +235,8 @@ public class WorkshopServiceImpl implements WorkshopService {
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
 
+        VersionGuard.requireCurrentVersion(updateRequestDto.version(), workshop.getVersion(), VERSIONED_RESOURCE);
+
         String currentStatus = normalizeStatus(workshop.getStatus());
         if ("completed".equals(currentStatus) || "cancelled".equals(currentStatus)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Completed or cancelled workshops cannot be edited.");
@@ -264,7 +268,9 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setEventSubmitted(Boolean.TRUE.equals(updateRequestDto.eventSubmitted()));
         workshop.setUsuApprovalStatus(normalizeUsuApprovalStatus(updateRequestDto.usuApprovalStatus()));
 
-        Workshop saved = workshopRepository.save(workshop);
+        // Flush so a concurrent writer's version bump fails here, before the
+        // REQUIRES_NEW notification is committed on its own.
+        Workshop saved = workshopRepository.saveAndFlush(workshop);
         notifyWorkshopAdminUpdate(saved);
         return mapToDtoForViewer(saved, authentication);
     }
@@ -287,7 +293,8 @@ public class WorkshopServiceImpl implements WorkshopService {
         String publicUrl = azureBlobStorageService.uploadImage(file, objectPath, image.contentType());
 
         workshop.setImageUrl(publicUrl);
-        Workshop saved = workshopRepository.save(workshop);
+        // Flush so the response carries the bumped version for the admin's next versioned write.
+        Workshop saved = workshopRepository.saveAndFlush(workshop);
 
         if (previousImageUrl != null && !previousImageUrl.equals(publicUrl)) {
             azureBlobStorageService.deleteByUrlQuietly(previousImageUrl);
@@ -297,11 +304,12 @@ public class WorkshopServiceImpl implements WorkshopService {
 
     @Override
     @Transactional
-    public void approveWorkshop(Long workshopId, Authentication authentication) {
+    public void approveWorkshop(Long workshopId, Long expectedVersion, Authentication authentication) {
         requireAdmin(authentication);
 
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+        VersionGuard.requireCurrentVersion(expectedVersion, workshop.getVersion(), VERSIONED_RESOURCE);
 
         String currentStatus = normalizeStatus(workshop.getStatus());
         if (!"pending".equals(currentStatus)) {
@@ -315,7 +323,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedBy(extractUserUuid(authentication));
         workshop.setHiddenByHost(false);
 
-        Workshop saved = workshopRepository.save(workshop);
+        Workshop saved = workshopRepository.saveAndFlush(workshop);
         notifyWorkshopReview(saved, "workshop_approved", "Workshop approved: " + saved.getTitle(),
             "Your workshop (" + saved.getTitle() + ") has been approved and is now visible to others.");
     }
@@ -327,6 +335,8 @@ public class WorkshopServiceImpl implements WorkshopService {
 
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+        VersionGuard.requireCurrentVersion(
+                reviewRequestDto != null ? reviewRequestDto.version() : null, workshop.getVersion(), VERSIONED_RESOURCE);
 
         String currentStatus = normalizeStatus(workshop.getStatus());
         if (!"pending".equals(currentStatus)) {
@@ -339,18 +349,19 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewComment(reviewRequestDto != null ? reviewRequestDto.comment() : null);
         workshop.setReviewedBy(extractUserUuid(authentication));
 
-        Workshop saved = workshopRepository.save(workshop);
+        Workshop saved = workshopRepository.saveAndFlush(workshop);
         notifyWorkshopReview(saved, "workshop_rejected", "Workshop rejected: " + saved.getTitle(),
             "Your workshop submission (" + saved.getTitle() + ") was rejected. You can review the details and submit again.");
     }
 
     @Override
     @Transactional
-    public void cancelWorkshop(Long workshopId, Authentication authentication) {
+    public void cancelWorkshop(Long workshopId, Long expectedVersion, Authentication authentication) {
         requireAdmin(authentication);
 
         Workshop workshop = workshopRepository.findById(workshopId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workshop not found with ID: " + workshopId));
+        VersionGuard.requireCurrentVersion(expectedVersion, workshop.getVersion(), VERSIONED_RESOURCE);
 
         String currentStatus = normalizeStatus(workshop.getStatus());
         if ("completed".equals(currentStatus) || "cancelled".equals(currentStatus)) {
@@ -364,7 +375,7 @@ public class WorkshopServiceImpl implements WorkshopService {
         workshop.setReviewedAt(LocalDateTime.now());
         workshop.setReviewedBy(extractUserUuid(authentication));
 
-        Workshop saved = workshopRepository.save(workshop);
+        Workshop saved = workshopRepository.saveAndFlush(workshop);
         notifyWorkshopCancelled(saved);
     }
 
@@ -625,7 +636,8 @@ public class WorkshopServiceImpl implements WorkshopService {
             Boolean.TRUE.equals(workshop.getHiddenByHost()),
             facilitatorDto,
             null,
-            workshop.getCreatedAt()
+            workshop.getCreatedAt(),
+            workshop.getVersion()
         );
     }
 
@@ -765,7 +777,8 @@ public class WorkshopServiceImpl implements WorkshopService {
             Boolean.TRUE.equals(workshop.getHiddenByHost()),
             facilitatorDto,
             safeParticipants,
-            workshop.getCreatedAt()
+            workshop.getCreatedAt(),
+            workshop.getVersion()
             );
     }
 

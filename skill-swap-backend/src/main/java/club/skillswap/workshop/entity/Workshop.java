@@ -130,4 +130,8 @@ public class Workshop {
     @Column(name = "hidden_by_host", nullable = false, columnDefinition = "boolean not null default false")
     private Boolean hiddenByHost = false;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
 }

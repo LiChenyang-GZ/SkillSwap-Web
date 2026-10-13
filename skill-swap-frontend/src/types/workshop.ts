@@ -47,5 +47,7 @@ export interface Workshop {
   participants?: WorkshopParticipant[];
   materials?: string[];
   requirements?: string[];
+  // Optimistic-locking version; sent back on admin writes so stale writes are rejected.
+  version?: number;
 }
 

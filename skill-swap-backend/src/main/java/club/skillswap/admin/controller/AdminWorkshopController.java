@@ -1,6 +1,7 @@
 package club.skillswap.admin.controller;
 
 import club.skillswap.common.dto.ApiMessageDto;
+import club.skillswap.workshop.dto.WorkshopActionRequestDto;
 import club.skillswap.workshop.dto.WorkshopCreateRequestDto;
 import club.skillswap.workshop.dto.WorkshopReviewRequestDto;
 import club.skillswap.workshop.dto.WorkshopResponseDto;
@@ -59,8 +60,9 @@ public class AdminWorkshopController {
     @PostMapping("/{id}/approve")
     public ResponseEntity<ApiMessageDto> approveWorkshop(
             @PathVariable Long id,
+            @RequestBody(required = false) WorkshopActionRequestDto request,
             Authentication authentication) {
-        workshopService.approveWorkshop(id, authentication);
+        workshopService.approveWorkshop(id, request != null ? request.version() : null, authentication);
         return ResponseEntity.ok(new ApiMessageDto("Workshop approved successfully."));
     }
 
@@ -76,8 +78,9 @@ public class AdminWorkshopController {
     @PostMapping("/{id}/cancel")
     public ResponseEntity<ApiMessageDto> cancelWorkshop(
             @PathVariable Long id,
+            @RequestBody(required = false) WorkshopActionRequestDto request,
             Authentication authentication) {
-        workshopService.cancelWorkshop(id, authentication);
+        workshopService.cancelWorkshop(id, request != null ? request.version() : null, authentication);
         return ResponseEntity.ok(new ApiMessageDto("Workshop cancelled successfully."));
     }
 

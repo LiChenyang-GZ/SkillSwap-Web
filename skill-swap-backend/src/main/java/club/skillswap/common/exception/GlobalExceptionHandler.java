@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -165,6 +166,24 @@ public class GlobalExceptionHandler {
             "Cannot delete: related records exist.", req.getRequestURI()
         );
         log.warn("Data integrity violation: {}", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Two writes carried the same version and both passed the request-level check; the database
+     * accepted the first and Hibernate's versioned UPDATE matched no row for the second.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponseDto> handleOptimisticLockingFailure(
+            OptimisticLockingFailureException ex,
+            HttpServletRequest req
+    ) {
+        log.info("Rejected stale write on {}: {}", req.getRequestURI(), ex.getMessage());
+        ErrorResponseDto body = new ErrorResponseDto(
+            Instant.now(), 409, "Conflict",
+            "This record was changed by another admin. Reload it to see the latest version.",
+            req.getRequestURI()
+        );
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 

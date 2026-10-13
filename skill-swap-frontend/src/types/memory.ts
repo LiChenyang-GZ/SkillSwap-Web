@@ -14,5 +14,7 @@ export interface MemoryEntry {
   editLockOwnerId?: string;
   editLockOwnerName?: string;
   editLockExpiresAt?: string;
+  // Optimistic-locking version; sent back on update/delete so stale writes are rejected.
+  version?: number;
 }
 

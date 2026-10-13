@@ -18,6 +18,8 @@ public record MemoryEntryRequestDto(
         List<@Size(max = 2048, message = "Memory media URL must be at most 2048 characters.") String> mediaUrls,
         @Size(max = 30, message = "Memory status must be at most 30 characters.")
         String status,
-        LocalDateTime publishedAt
+        LocalDateTime publishedAt,
+        // The version the admin read; required on update, ignored on create.
+        Long version
 ) {
 }

@@ -25,6 +25,7 @@ export interface WorkshopUpsertPayload {
   eventSubmitted?: boolean;
   usuApprovalStatus?: 'pending' | 'approved';
   detailsConfirmed: boolean;
+  version?: number;
 }
 
 // Backend API configuration
@@ -145,6 +146,7 @@ export function enrichWorkshop(workshop: any): Workshop {
     participants,
     materials: workshop.materials,
     requirements: workshop.requirements,
+    version: workshop.version,
   };
 }
 

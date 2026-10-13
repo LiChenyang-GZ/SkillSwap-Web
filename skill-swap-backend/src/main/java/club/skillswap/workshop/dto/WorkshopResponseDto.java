@@ -42,5 +42,6 @@ public record WorkshopResponseDto(
     Boolean hiddenByHost,
     FacilitatorDto facilitator,
     List<WorkshopParticipantDto> participants,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    Long version
 ) {}

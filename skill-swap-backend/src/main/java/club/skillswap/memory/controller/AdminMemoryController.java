@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
@@ -56,8 +57,12 @@ public class AdminMemoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMemory(@PathVariable Long id, Authentication authentication) {
-        memoryService.deleteMemory(id, authentication);
+    public ResponseEntity<Void> deleteMemory(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long version,
+            Authentication authentication
+    ) {
+        memoryService.deleteMemory(id, version, authentication);
         return ResponseEntity.noContent().build();
     }
 

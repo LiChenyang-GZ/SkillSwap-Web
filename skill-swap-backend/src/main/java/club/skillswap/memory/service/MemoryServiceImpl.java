@@ -1,5 +1,6 @@
 package club.skillswap.memory.service;
 
+import club.skillswap.common.concurrency.VersionGuard;
 import club.skillswap.common.exception.ResourceNotFoundException;
 import club.skillswap.common.storage.AzureBlobStorageService;
 import club.skillswap.common.validation.AzureBlobUrlValidator;
@@ -42,6 +43,7 @@ public class MemoryServiceImpl implements MemoryService {
     private static final String STATUS_PUBLISHED = "published";
     private static final String STATUS_ARCHIVED = "archived";
     private static final int MAX_SLUG_LENGTH = 220;
+    private static final String VERSIONED_RESOURCE = "memory";
     private static final long DEFAULT_MAX_IMAGE_BYTES = 10L * 1024L * 1024L;
     private static final long DEFAULT_EDIT_LOCK_SECONDS = 180L;
     private static final Pattern MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^\\]]*\\]\\(([^)]+)\\)");
@@ -116,6 +118,9 @@ public class MemoryServiceImpl implements MemoryService {
         if (STATUS_DRAFT.equals(entry.getStatus())) {
             requireActiveEditLockOwner(entry, actor, true);
         }
+        // The row is held FOR UPDATE, so this comparison sees the latest committed version.
+        VersionGuard.requireCurrentVersion(
+                requestDto == null ? null : requestDto.version(), entry.getVersion(), VERSIONED_RESOURCE);
 
         applyPayload(entry, requestDto, false);
         entry.setUpdatedBy(actor);
@@ -124,13 +129,14 @@ public class MemoryServiceImpl implements MemoryService {
             clearEditLock(entry);
         }
 
-        MemoryEntry saved = memoryEntryRepository.save(entry);
+        // Flush so @Version is bumped before the response is built; the client saves with it next.
+        MemoryEntry saved = memoryEntryRepository.saveAndFlush(entry);
         return toResponse(saved);
     }
 
     @Override
     @Transactional
-    public void deleteMemory(Long id, Authentication authentication) {
+    public void deleteMemory(Long id, Long expectedVersion, Authentication authentication) {
         UserAccount actor = requireAdminAndResolveActor(authentication);
 
         MemoryEntry entry = memoryEntryRepository.findByIdForUpdate(id)
@@ -139,6 +145,7 @@ public class MemoryServiceImpl implements MemoryService {
         if (STATUS_DRAFT.equals(entry.getStatus())) {
             requireActiveEditLockOwner(entry, actor, false);
         }
+        VersionGuard.requireCurrentVersion(expectedVersion, entry.getVersion(), VERSIONED_RESOURCE);
 
         Set<String> mediaUrlsToDelete = collectMediaUrlsForCleanup(entry);
         memoryEntryRepository.delete(entry);
@@ -382,7 +389,8 @@ public class MemoryServiceImpl implements MemoryService {
                 updatedBy,
                 editLockOwnerId,
                 editLockOwnerName,
-                editLockExpiresAt
+                editLockExpiresAt,
+                entry.getVersion()
         );
     }
 
