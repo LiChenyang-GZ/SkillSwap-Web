@@ -3,11 +3,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {
+      // Playwright runs the dev server in e2e mode: swap Clerk for a fake so tests can sign in without real credentials.
+      ...(mode === 'e2e' ? { '@clerk/clerk-react': path.resolve(__dirname, './e2e/fakes/clerk-react.tsx') } : {}),
       'vaul@1.1.2': 'vaul',
       'sonner@2.0.3': 'sonner',
       'recharts@2.15.2': 'recharts',
@@ -56,6 +58,6 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true,
+    open: mode !== 'e2e',
   },
-});
+}));
