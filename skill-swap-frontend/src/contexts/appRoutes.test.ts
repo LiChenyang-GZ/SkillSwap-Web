@@ -78,6 +78,25 @@ describe('pageFromPath', () => {
   it('reads a memory slug out of /memory/<slug>', () => {
     expect(pageFromPath('/memory/first-meetup')).toBe('memory-entry-first-meetup'); // 回忆详情页
   });
+
+  // bug A 的回归测试（regression test）：先写出来是红的（抛 URIError），修完变绿
+  // 背景：分享链接被截断，"%E0%A4%A8" 少了最后一位 → 不是合法的 % 编码 → decodeURIComponent 抛错
+  //      pageFromPath 在 AppContext 第一次渲染时就被调用，抛错 = 整个 App 白屏
+  describe('malformed percent-encoding in the URL (bug A)', () => {
+    it('does not throw for a truncated workshop link and keeps the raw id', () => {
+      const pathname = new URL('http://localhost/workshops/%E0%A4%A').pathname; // 浏览器的 pathname 会原样保留坏掉的编码
+      expect(() => pageFromPath(pathname)).not.toThrow(); // 不能抛错（抛错就是白屏）
+      expect(pageFromPath(pathname)).toBe('workshop-%E0%A4%A'); // 解不开就用原文当 id → 详情页会显示"找不到这个 workshop"，而不是白屏
+    });
+
+    it('does not throw for a memory link with a lone %', () => {
+      expect(pageFromPath('/memory/100%')).toBe('memory-entry-100%'); // 回忆链接走的是另一个函数（memoryRoute.ts），也要修
+    });
+
+    it('still decodes a well-formed link', () => {
+      expect(pageFromPath('/workshops/a%20b')).toBe('workshop-a b'); // 修复不能把正常的解码弄坏
+    });
+  });
 });
 
 describe('pathFromPage', () => {

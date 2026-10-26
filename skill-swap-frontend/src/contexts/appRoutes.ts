@@ -6,6 +6,7 @@ import {
   MEMORY_PATH,
 } from "../components/memory/constants/memoryRouteConstants";
 import { pageFromMemoryPath, pathFromMemoryPage } from "../components/memory/utils/memoryRoute";
+import { safeDecodeURIComponent } from "../shared/utils/safeDecodeURIComponent";
 import type { RefreshDataMode } from "./appContextTypes";
 
 export const WORKSHOP_PAGE_PREFIX = "workshop-";
@@ -47,7 +48,7 @@ export const normalizePath = (pathname: string) => {
 export const pageFromPath = (pathname: string) => {
   const normalizedPath = normalizePath(pathname);
   if (normalizedPath.startsWith(WORKSHOP_PATH_PREFIX)) {
-    const workshopId = decodeURIComponent(normalizedPath.slice(WORKSHOP_PATH_PREFIX.length));
+    const workshopId = safeDecodeURIComponent(normalizedPath.slice(WORKSHOP_PATH_PREFIX.length));
     return workshopId ? `${WORKSHOP_PAGE_PREFIX}${workshopId}` : "explore";
   }
   const memoryPage = pageFromMemoryPath(normalizedPath);
