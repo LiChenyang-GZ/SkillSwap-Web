@@ -7,7 +7,7 @@ import { adminWorkshopService } from '../../../shared/service/workshop/adminWork
 import { WorkshopFormState } from '../models/adminReviewFormModel';
 import type { AdminReviewFieldErrors } from '../models/adminReviewValidationModel';
 import { normalizeAttendCloseAtForApi, normalizeContactNumber } from '../utils/adminReviewUtils';
-import { validateAdminReviewWorkshopForm } from '../utils/adminReviewValidation';
+import { parseFormNumber, validateAdminReviewWorkshopForm } from '../utils/adminReviewValidation';
 
 interface UseAdminReviewMutationsParams {
   isAuthenticated: boolean;
@@ -87,8 +87,8 @@ export function useAdminReviewMutations({
         description: formData.description,
         category: formData.category,
         contactNumber: normalizeContactNumber(formData.contactNumber),
-        duration: formData.duration ? parseInt(formData.duration, 10) : 0,
-        maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants, 10) : null,
+        duration: formData.duration ? parseFormNumber(formData.duration) : 0,
+        maxParticipants: formData.maxParticipants ? parseFormNumber(formData.maxParticipants) : null,
         date: formData.date,
         time: formData.time,
         attendCloseAt: normalizeAttendCloseAtForApi(formData.attendCloseAt),
@@ -98,7 +98,7 @@ export function useAdminReviewMutations({
         materialsNeededFromClub: formData.materialsNeededFromClub,
         venueRequirements: formData.venueRequirements,
         otherImportantInfo: formData.otherImportantInfo,
-        weekNumber: formData.weekNumber ? parseInt(formData.weekNumber, 10) : null,
+        weekNumber: formData.weekNumber ? parseFormNumber(formData.weekNumber) : null,
         memberResponsible: formData.memberResponsible,
         membersPresent: formData.membersPresent,
         eventSubmitted: formData.eventSubmitted === 'true',

@@ -5,8 +5,12 @@ import type { AdminReviewFieldErrors, AdminReviewValidationResult } from '../mod
 const nonEmptyString = (message: string) =>
   z.string().refine((value) => value.trim().length > 0, { message });
 
+// Validation and save both convert the number inputs with this, so they always agree
+// (e.g. "1e2" is 100 in both places, matching the create-workshop form).
+export const parseFormNumber = (value: string): number => Number(value);
+
 const positiveIntegerString = (value: string): boolean => {
-  const parsed = Number(value);
+  const parsed = parseFormNumber(value);
   return Number.isInteger(parsed) && parsed > 0;
 };
 
