@@ -1,9 +1,15 @@
 import type { MemoryEntry } from "../../../types/memory";
 import type { ParsedMemoryDocument } from "../models/memoryFormModel";
 
-function parseFrontMatter(documentText: string): { meta: Record<string, string>; body: string } {
+// The one place that decides where front matter is. The editor (parse), the public page (strip)
+// and reopening an entry (build) all use it, so they cannot disagree about a leading BOM or blank lines.
+function matchFrontMatter(documentText: string): { normalized: string; match: RegExpMatchArray | null } {
   const normalized = documentText.replace(/\r\n/g, "\n");
-  const match = normalized.match(/^\uFEFF?(?:\s*\n)*---\n([\s\S]*?)\n---\n?/);
+  return { normalized, match: normalized.match(/^\uFEFF?(?:\s*\n)*---\n([\s\S]*?)\n---\n?/) };
+}
+
+function parseFrontMatter(documentText: string): { meta: Record<string, string>; body: string } {
+  const { normalized, match } = matchFrontMatter(documentText);
   if (!match) {
     return { meta: {}, body: normalized };
   }
@@ -77,7 +83,7 @@ function extractMemoryMediaUrls(markdown: string): string[] {
 
 export function buildMemoryDocumentFromEntry(entry: MemoryEntry): string {
   const content = entry.content || "";
-  if (content.startsWith("---\n")) {
+  if (matchFrontMatter(content).match) {
     return content;
   }
 
@@ -106,8 +112,7 @@ export function parseMemoryDocument(documentText: string): ParsedMemoryDocument 
 
 export function stripMemoryFrontMatter(content?: string): string {
   if (!content) return "";
-  const normalized = content.replace(/\r\n/g, "\n");
-  const match = normalized.match(/^---\n([\s\S]*?)\n---\n?/);
+  const { normalized, match } = matchFrontMatter(content);
   if (!match) return normalized;
   return normalized.slice(match[0].length);
 }

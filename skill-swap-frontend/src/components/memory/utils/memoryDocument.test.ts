@@ -185,3 +185,32 @@ describe('stripMemoryFrontMatter', () => {
     expect(stripMemoryFrontMatter('No header here')).toBe('No header here');
   });
 });
+
+describe('front matter that does not start on the very first character (bug C)', () => {
+  // bug C：以前只有 parse（编辑器用）能认出前面带 BOM / 空行的 front matter，strip（公开文章页用）和 build（重新打开时用）认不出
+  //   结果：编辑器里一切正常，公开页面顶上露出 "title: … cover: …"；再打开时外面又套了一层 front matter
+  // 每一行：[说明, 文档开头多出来的东西]
+  const LEADING_JUNK: Array<[string, string]> = [
+    ['a byte-order mark (BOM)', '﻿'], // 有些编辑器保存时会在文件最前面加一个看不见的 BOM 字符
+    ['blank lines', '\n\n'], // 用户在第一行 --- 前面多敲了回车
+    ['blank lines containing spaces', '  \n\t\n'], // 空行里还有空格 / Tab，看起来也是空行
+    ['Windows line endings and a blank line', '\r\n'], // Windows 换行 \r\n，再加一个空行（整篇也换成 \r\n）
+  ];
+
+  // 把开头的东西拼到标准文档前面；Windows 那一行要把整篇的 \n 都换成 \r\n
+  const withLeading = (junk: string) => (junk === '\r\n' ? `\r\n${DOC.replace(/\n/g, '\r\n')}` : `${junk}${DOC}`);
+
+  it.each(LEADING_JUNK)('strip hides the front matter on the public page when it is preceded by %s', (_label, junk) => {
+    expect(stripMemoryFrontMatter(withLeading(junk))).toBe('Hello world'); // 公开页面只显示正文，不露出 "title: …"
+  });
+
+  it.each(LEADING_JUNK)('strip and parse agree on the body when the front matter is preceded by %s', (_label, junk) => {
+    const doc = withLeading(junk); // 同一篇文档
+    expect(stripMemoryFrontMatter(doc)).toBe(parseMemoryDocument(doc).body); // 公开页面看到的正文 = 编辑器看到的正文
+  });
+
+  it.each(LEADING_JUNK)('build does not wrap a second front matter around one preceded by %s', (_label, junk) => {
+    const content = withLeading(junk); // 数据库里存的就是这篇（带 front matter 的整篇文档）
+    expect(buildMemoryDocumentFromEntry(makeEntry({ content }))).toBe(content); // 原样返回，不会在外面再套一层 title / cover
+  });
+});
