@@ -4,13 +4,14 @@ import {
   MEMORY_PATH,
   MEMORY_PATH_PREFIX,
 } from "../constants/memoryRouteConstants";
+import { safeDecodeURIComponent } from "../../../shared/utils/safeDecodeURIComponent";
 
 export function pageFromMemoryPath(pathname: string): string | null {
   if (!pathname.startsWith(MEMORY_PATH_PREFIX)) {
     return null;
   }
 
-  const slug = decodeURIComponent(pathname.slice(MEMORY_PATH_PREFIX.length));
+  const slug = safeDecodeURIComponent(pathname.slice(MEMORY_PATH_PREFIX.length));
   return slug ? `${MEMORY_ENTRY_PAGE_PREFIX}${slug}` : MEMORY_PAGE_ID;
 }
 
