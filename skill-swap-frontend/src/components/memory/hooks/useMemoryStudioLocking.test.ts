@@ -215,9 +215,9 @@ describe('useMemoryStudioLocking', () => {
       expect(result.current.heldLockEntryIdRef.current).toBe('b'); // 现在手里拿的是 b
     });
 
-    // ⚠️ 已知 bug D（还没修，见 PR 说明）：it.fails 表示"这条测试现在预期是失败的"
-    //    bug 还在 → 断言失败 → it.fails 显示绿色；有人修好了 → 断言通过 → it.fails 反而变红，提醒把 .fails 去掉
-    it.fails('releases the old entry even if the user switches away before its lock request returns (known bug D)', async () => {
+    // bug D（已修）：以前清理函数跑的时候 a 的请求还没回来，不知道自己会拿到锁，于是不还；请求回来后锁就漏了
+    //    修法：请求回来时先看 effect 是不是已经被清理（disposed），是的话由它自己把锁还掉
+    it('releases the old entry even if the user switches away before its lock request returns (bug D)', async () => {
       let resolveA!: (entry: MemoryEntry) => void; // 先不让 a 的抢锁请求返回，手动控制它什么时候"到"
       acquire.mockImplementation((id) =>
         id === 'a'
@@ -232,7 +232,63 @@ describe('useMemoryStudioLocking', () => {
       await flush();
       await act(async () => { resolveA(lockedBy(a, ME)); await vi.advanceTimersByTimeAsync(0); }); // a 的请求这时才返回：后端已经把 a 锁给了我
 
-      expect(release).toHaveBeenCalledWith('a', 'token'); // 期望：a 的锁也应该还掉。现在不会 → a 一直被我锁着，别人打不开，直到后端的锁过期
+      expect(release).toHaveBeenCalledWith('a', 'token'); // a 的锁也还掉了。修之前不会 → a 一直被我锁着，别人打不开，直到后端的锁过期
+    });
+
+    it('does not mark the old entry as held when its lock request returns after switching away', async () => {
+      let resolveA!: (entry: MemoryEntry) => void; // 手动控制 a 的抢锁请求什么时候返回
+      acquire.mockImplementation((id) =>
+        id === 'a'
+          ? new Promise<MemoryEntry>((resolve) => { resolveA = resolve; }) // a：请求还在路上
+          : Promise.resolve(lockedBy(makeEntry({ id: 'b' }), ME)) // b：马上返回，锁给我
+      );
+      const a = makeEntry({ id: 'a' }); // 先打开的文章 a
+      const { rerender, props, result } = renderLocking({ selectedEntry: a }); // 打开 a，发出抢锁请求
+      await flush(); // a 的请求发出去了，还没返回
+
+      rerender({ ...props, selectedEntry: makeEntry({ id: 'b' }) }); // 切到 b
+      await flush(); // b 的锁已经拿到，手里记的是 b
+      await act(async () => { resolveA(lockedBy(a, ME)); await vi.advanceTimersByTimeAsync(0); }); // a 的请求这时才回来
+
+      expect(result.current.heldLockEntryIdRef.current).toBe('b'); // 手里记的还是 b。防的 bug：迟到的 a 把记录改成 a，之后离开 b 时就不会还 b 的锁
+      expect(props.onPatchEntry).not.toHaveBeenCalledWith(lockedBy(a, ME)); // 迟到的结果不再更新页面（锁马上就要还掉了，不该显示"被我锁着"）
+    });
+
+    it('releases the lock if the editor is closed before the lock request returns', async () => {
+      let resolveLock!: (entry: MemoryEntry) => void; // 手动控制抢锁请求什么时候返回
+      acquire.mockImplementation(() => new Promise<MemoryEntry>((resolve) => { resolveLock = resolve; })); // 请求一直在路上
+      const { unmount } = renderLocking(); // 打开草稿 m1
+      await flush(); // 请求发出去了，还没返回
+
+      unmount(); // 用户直接关掉了编辑器（组件卸载，清理函数执行，这时还不知道会拿到锁）
+      await act(async () => { resolveLock(lockedBy(makeEntry(), ME)); await vi.advanceTimersByTimeAsync(0); }); // 请求这时才回来：后端把 m1 锁给了我
+
+      expect(release).toHaveBeenCalledWith('m1', 'token'); // 组件已经没了，也要把 m1 的锁还掉，不然别人打不开
+    });
+
+    it('does not release the lock a newer visit holds when an older request for the same entry returns late (A → B → A)', async () => {
+      const pendingA: Array<(entry: MemoryEntry) => void> = []; // 记下每一次抢 a 锁的请求，手动决定谁先回来
+      const a = makeEntry({ id: 'a' }); // 文章 a
+      const b = makeEntry({ id: 'b' }); // 文章 b
+      acquire.mockImplementation((id) =>
+        id === 'a'
+          ? new Promise<MemoryEntry>((resolve) => { pendingA.push(resolve); }) // a：每次请求都先挂着
+          : Promise.resolve(lockedBy(b, ME)) // b：马上返回
+      );
+      const { rerender, props, result } = renderLocking({ selectedEntry: a }); // 第一次打开 a（请求 1）
+      await flush(); // 请求 1 还在路上
+
+      rerender({ ...props, selectedEntry: b }); // 切到 b
+      await flush(); // 拿到 b 的锁
+      rerender({ ...props, selectedEntry: a }); // 又切回 a（请求 2），这时会还掉 b
+      await flush(); // 请求 2 也在路上
+      release.mockClear(); // 只关心接下来对 a 的还锁
+
+      await act(async () => { pendingA[1](lockedBy(a, ME)); await vi.advanceTimersByTimeAsync(0); }); // 请求 2 先回来：现在这次打开 a 拿到了锁
+      await act(async () => { pendingA[0](lockedBy(a, ME)); await vi.advanceTimersByTimeAsync(0); }); // 请求 1 迟到
+
+      expect(result.current.heldLockEntryIdRef.current).toBe('a'); // 手里拿着 a 的锁
+      expect(release).not.toHaveBeenCalledWith('a', 'token'); // 迟到的请求 1 不能把当前正在用的 a 锁还掉，否则另一个 admin 能同时编辑
     });
   });
 

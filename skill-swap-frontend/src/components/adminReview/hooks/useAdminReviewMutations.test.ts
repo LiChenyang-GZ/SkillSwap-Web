@@ -254,13 +254,28 @@ describe('useAdminReviewMutations', () => {
       expect(toast.error).toHaveBeenCalledWith('Venue is closed that day'); // 从 JSON 里取出文字给用户看
     });
 
-    // ⚠️ 已知 bug B（还没修，见 PR 说明）：校验用 Number()，保存用 parseInt()，两边对 "1e2" 的理解不一样
+    // bug B（已修）：以前校验用 Number()，保存用 parseInt()，两边对 "1e2" 的理解不一样
     //    Number("1e2") = 100 → 校验通过；parseInt("1e2") = 1 → 实际存了 1 分钟
-    it.fails('saves the same duration the validation accepted, e.g. "1e2" (known bug B)', async () => {
+    //    修法：校验和保存都调用同一个 parseFormNumber，和创建表单一样把 "1e2" 当成 100
+    it('saves the same duration the validation accepted, e.g. "1e2" (bug B)', async () => {
       service.update.mockResolvedValue(pending);
       const { result } = renderMutations({ formData: { ...validForm, duration: '1e2' } }); // type="number" 的输入框允许输入 e
       await act(() => result.current.handleSave());
-      expect(service.update).toHaveBeenCalledWith('w1', expect.objectContaining({ duration: 100 }), 'token'); // 期望 100，现在是 1
+      expect(service.update).toHaveBeenCalledWith('w1', expect.objectContaining({ duration: 100 }), 'token'); // 存的是 100，修之前是 1
+    });
+
+    it('saves the same max participants the validation accepted, e.g. "2e1"', async () => {
+      service.update.mockResolvedValue(pending); // 后端保存成功
+      const { result } = renderMutations({ formData: { ...validForm, maxParticipants: '2e1' } }); // 人数输入框里输入 2e1（= 20）
+      await act(() => result.current.handleSave()); // 点保存
+      expect(service.update).toHaveBeenCalledWith('w1', expect.objectContaining({ maxParticipants: 20 }), 'token'); // 存 20 人。防的 bug：parseInt 读成 2，名额被悄悄改小
+    });
+
+    it('saves the same week number the validation accepted, e.g. "1e1"', async () => {
+      service.update.mockResolvedValue(pending); // 后端保存成功
+      const { result } = renderMutations({ formData: { ...validForm, weekNumber: '1e1' } }); // 周数输入框里输入 1e1（= 10）
+      await act(() => result.current.handleSave()); // 点保存
+      expect(service.update).toHaveBeenCalledWith('w1', expect.objectContaining({ weekNumber: 10 }), 'token'); // 存第 10 周。防的 bug：parseInt 读成 1，排到第 1 周
     });
   });
 });

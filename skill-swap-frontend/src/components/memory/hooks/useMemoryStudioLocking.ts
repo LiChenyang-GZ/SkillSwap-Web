@@ -53,18 +53,23 @@ export function useMemoryStudioLocking({
   );
 
   const acquireLockForEntry = useCallback(
-    async (entryId: string, silent = false): Promise<MemoryEntry | null> => {
+    async (entryId: string, silent = false, isCancelled: () => boolean = () => false): Promise<MemoryEntry | null> => {
       if (!currentUserId) {
         return null;
       }
 
       const token = await getAuthToken();
-      if (!token) {
+      if (!token || isCancelled()) {
         return null;
       }
 
       try {
         const lockedEntry = await memoryAdminService.acquireLockByAdmin(entryId, token);
+        // The user switched away or closed the editor while the request was in flight:
+        // leave the current entry's state alone and let the caller give the lock back.
+        if (isCancelled()) {
+          return lockedEntry;
+        }
         onPatchEntry(lockedEntry);
 
         if (lockedEntry.editLockOwnerId && String(lockedEntry.editLockOwnerId) === currentUserId) {
@@ -115,8 +120,17 @@ export function useMemoryStudioLocking({
     let disposed = false;
 
     const syncLock = async (silent: boolean) => {
-      const locked = await acquireLockForEntry(selectedEntryId, silent);
-      if (disposed || !locked) {
+      const locked = await acquireLockForEntry(selectedEntryId, silent, () => disposed);
+      if (disposed) {
+        // The cleanup already ran without knowing this request would win the lock,
+        // so release it here unless a newer effect for the same entry now holds it.
+        const wonLock = Boolean(locked?.editLockOwnerId && String(locked.editLockOwnerId) === currentUserId);
+        if (wonLock && heldLockEntryIdRef.current !== selectedEntryId) {
+          void releaseHeldLock(selectedEntryId, true);
+        }
+        return;
+      }
+      if (!locked) {
         return;
       }
       if (locked.editLockOwnerId && String(locked.editLockOwnerId) !== currentUserId) {
